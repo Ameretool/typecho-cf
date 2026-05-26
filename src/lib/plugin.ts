@@ -253,6 +253,21 @@ const initialisedPlugins = new Set<string>();
 let pluginInitContext: { addHook: typeof addHook; HookPoints: typeof HookPoints } | null = null;
 
 /**
+ * Plugins can register admin paths that bypass the reserved-core-path guard
+ * in middleware. Call this during plugin init() for each /admin/ or /api/admin/
+ * path the plugin serves via route:request.
+ */
+const pluginAdminPaths = new Set<string>();
+
+export function registerPluginAdminPath(path: string): void {
+  pluginAdminPaths.add(path);
+}
+
+export function isPluginAdminPath(path: string): boolean {
+  return pluginAdminPaths.has(path);
+}
+
+/**
  * Called once at module load by plugin-loader injected code. Stores the
  * init functions and the bound addHook reference for later replay.
  */

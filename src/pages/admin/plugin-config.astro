@@ -86,8 +86,9 @@ if (Astro.request.method === 'POST') {
     const finalSettings = validation.settings || settings;
     await setOption(ctx.db, `plugin:${pluginId}`, JSON.stringify(finalSettings));
 
-    // Purge cached options so subsequent requests read the updated config
-    const { purgeSiteCache } = await import('@/lib/cache');
+    // Bump cache version so all Worker isolates pick up the updated config.
+    const { bumpCacheVersion, purgeSiteCache } = await import('@/lib/cache');
+    await bumpCacheVersion(ctx.db);
     await purgeSiteCache(options.siteUrl || '');
 
     // Update local options cache
@@ -155,6 +156,25 @@ function isFieldVisible(field: PluginConfigField, row: Record<string, any>): boo
   const expected = Array.isArray(field.showWhen.value) ? field.showWhen.value : [field.showWhen.value];
   return expected.map(String).includes(current);
 }
+
+function displayRepeatableValue(value: unknown, field: PluginConfigField): unknown {
+  if (field.type === 'text' && field.default === '/' && value === '') {
+    return '/';
+  }
+  if (field.type === 'text' && field.default === '/' && typeof value === 'string' && value && !value.startsWith('/')) {
+    return `/${value}`;
+  }
+  return value;
+}
+
+function fieldValueForOption(value: unknown): string {
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return String(value);
+}
+
+function selectedAttr(actual: unknown, expected: unknown): true | undefined {
+  return fieldValueForOption(actual) === String(expected) ? true : undefined;
+}
 ---
 <Admin title={pageTitle} options={options} urls={urls} user={user} activeMenu="plugins">
   <div class="col-mb-12 col-tb-8 col-tb-offset-2" role="form">
@@ -200,9 +220,9 @@ function isFieldVisible(field: PluginConfigField, row: Record<string, any>): boo
 
               {field.type === 'select' && fieldOptions(field) && (
                 <p>
-                  <select id={`cfg-${key}`} name={key}>
+                  <select id={`cfg-${key}`} name={key} data-current-value={fieldValueForOption(value)}>
                     {Object.entries(fieldOptions(field)!).map(([optVal, optLabel]) => (
-                      <option value={optVal} selected={String(value) === optVal}>{optLabel}</option>
+                      <option value={optVal} selected={selectedAttr(value, optVal)}>{optLabel}</option>
                     ))}
                   </select>
                 </p>
@@ -274,7 +294,7 @@ function isFieldVisible(field: PluginConfigField, row: Record<string, any>): boo
                       <fieldset class="typecho-repeatable-item">
                         <legend>{field.label} #{rowIndex + 1}</legend>
                         {Object.entries(field.itemFields || {}).map(([itemKey, itemField]: [string, PluginConfigField]) => {
-                          const itemValue = row[itemKey] ?? itemField.default ?? '';
+                          const itemValue = displayRepeatableValue(row[itemKey] ?? itemField.default ?? '', itemField);
                           const inputName = `${key}[${rowIndex}][${itemKey}]`;
                           const inputId = `cfg-${key}-${rowIndex}-${itemKey}`;
                           const visible = isFieldVisible(itemField, row);
@@ -303,9 +323,9 @@ function isFieldVisible(field: PluginConfigField, row: Record<string, any>): boo
 
                               {itemField.type === 'select' && fieldOptions(itemField) && (
                                 <p>
-                                  <select id={inputId} name={inputName} disabled={!visible}>
+                                  <select id={inputId} name={inputName} disabled={!visible} data-current-value={fieldValueForOption(itemValue)}>
                                     {Object.entries(fieldOptions(itemField)!).map(([optVal, optLabel]) => (
-                                      <option value={optVal} selected={String(itemValue) === String(optVal)}>{optLabel}</option>
+                                      <option value={optVal} selected={selectedAttr(itemValue, optVal)}>{optLabel}</option>
                                     ))}
                                   </select>
                                 </p>
@@ -355,9 +375,9 @@ function isFieldVisible(field: PluginConfigField, row: Record<string, any>): boo
                             )}
                             {itemField.type === 'select' && fieldOptions(itemField) && (
                               <p>
-                                <select id={inputId} name={inputName} disabled={!visible}>
+                                <select id={inputId} name={inputName} disabled={!visible} data-current-value={fieldValueForOption(itemValue)}>
                                   {Object.entries(fieldOptions(itemField)!).map(([optVal, optLabel]) => (
-                                    <option value={optVal} selected={String(itemValue) === String(optVal)}>{optLabel}</option>
+                                    <option value={optVal} selected={selectedAttr(itemValue, optVal)}>{optLabel}</option>
                                   ))}
                                 </select>
                               </p>
@@ -485,6 +505,12 @@ function isFieldVisible(field: PluginConfigField, row: Record<string, any>): boo
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
       var item = target.closest('.typecho-repeatable-item');
       if (item) toggleConditionalFields(item);
+    });
+
+    document.querySelectorAll('select[data-current-value]').forEach(function(select) {
+      if (select instanceof HTMLSelectElement) {
+        select.value = select.getAttribute('data-current-value') || '';
+      }
     });
   </script>
 </Admin>

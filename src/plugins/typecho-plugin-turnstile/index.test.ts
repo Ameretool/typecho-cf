@@ -94,9 +94,29 @@ describe('typecho-plugin-turnstile', () => {
       'admin:loginHead',
       'archive:footer',
       'archive:header',
+      'csp:directives',
       'feedback:comment',
       'user:login',
     ]);
+  });
+
+  it('registers the CSP sources required by Turnstile and Cloudflare browser insights', () => {
+    const hooks = collectHooks();
+    const extendCsp = hooks.get('csp:directives')!;
+
+    const directives = extendCsp({
+      'default-src': ["'self'"],
+      'script-src': ["'self'"],
+      'connect-src': ["'self'"],
+      'frame-src': [],
+    });
+
+    expect(directives['script-src']).toContain('https://challenges.cloudflare.com');
+    expect(directives['script-src']).toContain('https://static.cloudflareinsights.com');
+    expect(directives['connect-src']).toContain('https://challenges.cloudflare.com');
+    expect(directives['connect-src']).toContain('https://static.cloudflareinsights.com');
+    expect(directives['connect-src']).toContain('https://cloudflareinsights.com');
+    expect(directives['frame-src']).toContain('https://challenges.cloudflare.com');
   });
 
   it('rejects login when Turnstile token is missing', async () => {

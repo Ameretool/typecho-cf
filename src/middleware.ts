@@ -2,13 +2,13 @@ import { defineMiddleware } from 'astro:middleware';
 import { getDb } from '@/db';
 import { schema } from '@/db';
 import { loadOptions } from '@/lib/options';
-import { addHook, applyFilter, HookPoints, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
+import { addHook, applyFilter, getRegisteredHooks, HookPoints, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
 import { applySecurityHeaders } from '@/lib/security-headers';
 import { generateIndexSQL } from '@/lib/schema-sql';
+import initWebDavPlugin from '@/plugins/typecho-plugin-webdav/index';
 import { eq, and } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
-import initWebDavPlugin from 'typecho-plugin-webdav/index.ts';
 
 const redirectToInstall = (request: Request) =>
   applySecurityHeaders(new Response(null, { status: 302, headers: { Location: '/install' } }), { request });
@@ -27,8 +27,14 @@ let webDavRouteHookReady = false;
 // logged but non-fatal.
 let indexEnsurePassed = false;
 
-function ensureMiddlewareRouteHooks(): void {
+function ensureMiddlewareRouteHooks(activatedIds: string[]): void {
   if (webDavRouteHookReady) return;
+  if (!activatedIds.includes('typecho-plugin-webdav')) return;
+  const routeHooks = getRegisteredHooks().get('route:request') || [];
+  if (routeHooks.some(hook => hook.pluginId === 'typecho-plugin-webdav')) {
+    webDavRouteHookReady = true;
+    return;
+  }
   webDavRouteHookReady = true;
   initWebDavPlugin({ addHook, HookPoints, pluginId: 'typecho-plugin-webdav' });
 }
@@ -142,7 +148,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
   setActivatedPlugins(activatedIds);
-  ensureMiddlewareRouteHooks();
+  ensureMiddlewareRouteHooks(activatedIds);
 
   const pluginRoute = await applyFilter('route:request', { handled: false }, {
     request: context.request,
@@ -362,6 +368,8 @@ function mergeVary(existing: string | null, additions: string[]): string {
  * flow, login, or admin endpoints.
  */
 function isReservedCorePath(path: string): boolean {
+  // Allow plugins to claim specific admin paths (registered via registerPluginAdminPath)
+  if (isPluginAdminPath(path)) return false;
   if (path === '/install' || path === '/api/install') return true;
   if (path === '/admin' || path.startsWith('/admin/')) return true;
   if (path === '/api/admin' || path.startsWith('/api/admin/')) return true;

@@ -27,7 +27,9 @@ describe('CSP directive helpers', () => {
     const csp = serializeCsp(defaultCspDirectives());
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("script-src 'self'");
-    expect(csp).toContain('https://challenges.cloudflare.com');
+    expect(csp).not.toContain('https://challenges.cloudflare.com');
+    expect(csp).not.toContain('https://static.cloudflareinsights.com');
+    expect(csp).not.toContain('https://cloudflareinsights.com');
   });
 });
 

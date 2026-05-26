@@ -10,8 +10,7 @@ import { applyFilterSafely } from '@/lib/plugin';
 
 /**
  * The default Content-Security-Policy. Tuned for the bundled minimal
- * theme + the four built-in plugins (turnstile injects scripts from
- * challenges.cloudflare.com, the markdown sanitizer permits embedded
+ * theme + common embedded content (the markdown sanitizer permits embedded
  * youtube/bilibili/vimeo iframes, and gravatar URLs are images).
  *
  * Plugins that need extra origins can extend the directives via the
@@ -24,14 +23,13 @@ export function defaultCspDirectives(): CspDirectives {
     'default-src': ["'self'"],
     'img-src': ["'self'", 'data:', 'https://www.gravatar.com', 'https:'],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'script-src': ["'self'", "'unsafe-inline'", 'https://challenges.cloudflare.com'],
+    'script-src': ["'self'", "'unsafe-inline'"],
     'font-src': ["'self'", 'data:'],
-    'connect-src': ["'self'", 'https://challenges.cloudflare.com'],
+    'connect-src': ["'self'"],
     'frame-src': [
       'https://www.youtube.com',
       'https://player.bilibili.com',
       'https://player.vimeo.com',
-      'https://challenges.cloudflare.com',
     ],
     'frame-ancestors': ["'none'"],
     'base-uri': ["'self'"],

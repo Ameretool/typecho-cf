@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hashPassword } from '@/lib/auth';
+import { generateAuthToken, hashPassword } from '@/lib/auth';
 import init, {
   clearWebDavAuthFailures,
   getWebDavClientIp,
@@ -135,6 +135,43 @@ async function routeWithAuth(
 
 function basicAuth(username = 'admin', password = 'secret'): string {
   return `Basic ${btoa(`${username}:${password}`)}`;
+}
+
+async function routeAdminApiWithAuth(
+  path: string,
+  settings: Record<string, unknown>,
+  env: Record<string, unknown>,
+) {
+  const hooks = collectHooks();
+  const route = hooks.get('route:request')!;
+  const secret = 'admin-secret';
+  const authCode = 'admin-auth';
+  const token = await generateAuthToken(1, authCode, secret);
+  return await route({ handled: false }, {
+    request: new Request(`https://example.com${path}`, {
+      headers: {
+        cookie: `__typecho_uid=1; __typecho_authCode=${token.split(':')[1]}`,
+      },
+    }),
+    path: '/api/admin/webdav',
+    db: {
+      query: {
+        users: {
+          findFirst: async () => ({
+            uid: 1,
+            name: 'admin',
+            authCode,
+            group: 'administrator',
+          }),
+        },
+      },
+    },
+    options: {
+      secret,
+      'plugin:typecho-plugin-webdav': JSON.stringify(settings),
+    },
+    env,
+  });
 }
 
 describe('typecho-plugin-webdav config', () => {
@@ -317,6 +354,7 @@ describe('typecho-plugin-webdav config', () => {
   it('normalizes saved settings', () => {
     const config = normalizeConfig({
       routePath: 'webdav/',
+      protocolEnabled: 'false',
       mounts: VALID_MOUNTS,
       failBanEnabled: 'true',
       failBanMaxFailures: '3',
@@ -325,6 +363,7 @@ describe('typecho-plugin-webdav config', () => {
     });
 
     expect(config.routePath).toBe('/webdav');
+    expect(config.protocolEnabled).toBe(false);
     expect(config.mounts[0].bindingName).toBe('BUCKET');
     expect(config.failBanEnabled).toBe(true);
     expect(config.failBanMaxFailures).toBe(3);
@@ -332,6 +371,36 @@ describe('typecho-plugin-webdav config', () => {
     expect(config.failBanSeconds).toBe(600);
   });
 
+  it('accepts tianyi provider with accessToken', () => {
+    const mounts = parseMounts(JSON.stringify([{
+      mount: 'cloud', provider: 'tianyi', accessToken: 'test-token-123', rootDir: '-11',
+    }]));
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0]).toMatchObject({ mount: 'cloud', provider: 'tianyi', accessToken: 'test-token-123', rootDir: '-11' });
+  });
+
+  it('accepts tianyi provider with appKey and appSecret', () => {
+    const mounts = parseMounts(JSON.stringify([{
+      mount: 'cloud', provider: 'tianyi', appKey: 'ak-test', appSecret: 'sk-test',
+    }]));
+    expect(mounts[0]).toMatchObject({ provider: 'tianyi', appKey: 'ak-test', appSecret: 'sk-test' });
+  });
+
+  it('rejects tianyi provider without any credentials', () => {
+    expect(() => parseMounts(JSON.stringify([{
+      mount: 'cloud', provider: 'tianyi',
+    }]))).toThrow('需要填写 accessToken 或 (appKey + appSecret)');
+  });
+
+  it('accepts mixed provider types (r2 + s3 + tianyi)', () => {
+    const mounts = parseMounts(JSON.stringify([
+      { mount: 'r2mount', provider: 'r2', bindingName: 'BUCKET' },
+      { mount: 's3mount', provider: 's3', endpoint: 'https://s3.us-east-1.amazonaws.com', bucket: 'b', region: 'us-east-1', accessKeyId: 'ak', secretAccessKey: 'sk' },
+      { mount: 'cloud', provider: 'tianyi', accessToken: 'token-123' },
+    ]));
+    expect(mounts).toHaveLength(3);
+    expect(mounts.map(m => m.provider)).toEqual(['r2', 's3', 'tianyi']);
+  });
 });
 
 describe('typecho-plugin-webdav auth parsing', () => {
@@ -381,6 +450,8 @@ describe('typecho-plugin-webdav hooks', () => {
     const hooks = collectHooks();
 
     expect([...hooks.keys()].sort()).toEqual([
+      'admin:footer',
+      'admin:page',
       'plugin:config:beforeSave',
       'route:request',
     ]);
@@ -400,6 +471,8 @@ describe('typecho-plugin-webdav hooks', () => {
 
     expect(result.success).toBe(true);
     expect(result.settings.routePath).toBe('/dav');
+    expect(result.settings.protocolEnabled).toBe('true');
+    expect(result.settings.failBanEnabled).toBe('true');
     expect(result.settings.failBanMaxFailures).toBe(5);
     expect(result.settings.mounts[0]).toMatchObject({
       mount: 'media',
@@ -407,6 +480,23 @@ describe('typecho-plugin-webdav hooks', () => {
       bindingName: 'BUCKET',
       prefix: 'uploads',
     });
+  });
+
+  it('preserves disabled protocol setting during config validation', () => {
+    const hooks = collectHooks();
+    const validate = hooks.get('plugin:config:beforeSave')!;
+
+    const result = validate({ success: true, settings: {} }, {
+      pluginId: 'typecho-plugin-webdav',
+      settings: {
+        routePath: '/webdav',
+        protocolEnabled: 'false',
+        mounts: VALID_MOUNTS,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.settings.protocolEnabled).toBe('false');
   });
 
   it('ignores requests outside the configured route', async () => {
@@ -446,6 +536,25 @@ describe('typecho-plugin-webdav hooks', () => {
     expect(result.response.status).toBe(204);
     expect(result.response.headers.get('DAV')).toBe('1, 2');
     expect(result.response.headers.get('Allow')).toContain('PROPFIND');
+  });
+
+  it('does not claim the WebDAV route when the protocol entry is disabled', async () => {
+    const hooks = collectHooks();
+    const route = hooks.get('route:request')!;
+
+    const result = await route({ handled: false }, {
+      request: new Request('https://example.com/webdav', { method: 'OPTIONS' }),
+      path: '/webdav',
+      options: {
+        'plugin:typecho-plugin-webdav': JSON.stringify({
+          protocolEnabled: false,
+          routePath: '/webdav',
+          mounts: VALID_MOUNTS,
+        }),
+      },
+    });
+
+    expect(result).toEqual({ handled: false });
   });
 
   it('allows administrators to PROPFIND the default /webdav root route', async () => {
@@ -731,5 +840,114 @@ describe('typecho-plugin-webdav hooks', () => {
     expect(xml).toContain('<d:href>/dav/photos/readme.txt</d:href>');
     expect(xml).toContain('<d:href>/dav/photos/nested/</d:href>');
     expect(xml.match(/<d:resourcetype><d:collection \/><\/d:resourcetype>/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('typecho-plugin-webdav admin panel', () => {
+  it('does not intercept /admin/webdav (served by admin:page framework)', async () => {
+    const hooks = collectHooks();
+    const route = hooks.get('route:request')!;
+
+    const result = await route({ handled: false }, {
+      request: new Request('https://example.com/admin/webdav'),
+      path: '/admin/webdav',
+      db: { query: { users: { findFirst: async () => null } } },
+      options: {},
+    });
+
+    // Plugin no longer intercepts /admin/webdav; Astro renders via admin:page hook
+    expect(result.handled).toBe(false);
+  });
+
+  it('returns 401 JSON for unauthenticated /api/admin/webdav', async () => {
+    const hooks = collectHooks();
+    const route = hooks.get('route:request')!;
+
+    const result = await route({ handled: false }, {
+      request: new Request('https://example.com/api/admin/webdav?action=list'),
+      path: '/api/admin/webdav',
+      db: { query: { users: { findFirst: async () => null } } },
+      options: {},
+    });
+
+    expect(result.handled).toBe(true);
+    expect(result.response.status).toBe(401);
+    expect(result.response.headers.get('Content-Type')).toContain('application/json');
+  });
+
+  it('lists named mounts at the admin API root', async () => {
+    const bucket = new MemoryR2Bucket();
+    const result = await routeAdminApiWithAuth('/api/admin/webdav?action=list&path=', {
+      routePath: '/webdav',
+      mounts: [
+        { mount: 'media', provider: 'r2', bindingName: 'BUCKET' },
+        { mount: 'backup', provider: 'r2', bindingName: 'BUCKET' },
+      ],
+    }, { BUCKET: bucket });
+
+    expect(result.handled).toBe(true);
+    expect(result.response.status).toBe(200);
+    const body = await result.response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.prefixes).toEqual(['media/', 'backup/']);
+    expect(body.data.objects).toEqual([]);
+  });
+
+  it('injects WebDav menu item for administrators via admin:footer', () => {
+    const hooks = collectHooks();
+    const footer = hooks.get('admin:footer')!;
+
+    const result = footer('', { activeMenu: 'manage-posts', user: { group: 'administrator' } });
+    expect(result).toContain('WebDav');
+    expect(result).toContain('/admin/plugin/webdav');
+    expect(result).toContain('<script>');
+  });
+
+  it('renders syntactically valid admin page scripts', () => {
+    const hooks = collectHooks();
+    const page = hooks.get('admin:page')!;
+
+    const result = page('', { slug: 'webdav', csrfToken: 'csrf-token' });
+    const scripts = [...result.matchAll(/<script>\s*([\s\S]*?)\s*<\/script>/g)].map(match => match[1]);
+
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) {
+      expect(() => new Function(script)).not.toThrow();
+    }
+  });
+
+  it('does not inject menu item for non-admin users', () => {
+    const hooks = collectHooks();
+    const footer = hooks.get('admin:footer')!;
+
+    const result = footer('existing-content', { activeMenu: 'manage-posts', user: { group: 'editor' } });
+    expect(result).toBe('existing-content');
+    expect(result).not.toContain('WebDav');
+  });
+
+  it('adds focus class when webdav menu is active', () => {
+    const hooks = collectHooks();
+    const footer = hooks.get('admin:footer')!;
+
+    const result = footer('', { activeMenu: 'webdav', user: { group: 'administrator' } });
+    expect(result).toContain("className = 'focus'");
+  });
+
+  it('does not treat /admin/webdav as WebDAV protocol path', async () => {
+    const hooks = collectHooks();
+    const route = hooks.get('route:request')!;
+
+    const result = await route({ handled: false }, {
+      request: new Request('https://example.com/admin/webdav'),
+      path: '/admin/webdav',
+      db: { query: { users: { findFirst: async () => null } } },
+      options: {
+        'plugin:typecho-plugin-webdav': JSON.stringify({ routePath: '/webdav', mounts: VALID_MOUNTS }),
+      },
+    });
+
+    // Plugin does not intercept /admin/webdav (admin:page framework handles it).
+    // Also must NOT be caught by WebDAV protocol (routePath is /webdav, not /admin/webdav)
+    expect(result.handled).toBe(false);
   });
 });

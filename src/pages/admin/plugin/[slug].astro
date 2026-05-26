@@ -1,0 +1,37 @@
+---
+import Admin from '@/layouts/Admin.astro';
+import { createContext, requireAuth } from '@/lib/context';
+import { hasPermission } from '@/lib/auth';
+import { applyFilterSafely } from '@/lib/plugin';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const authCheck = requireAuth(ctx);
+if (authCheck) return authCheck;
+
+if (!hasPermission(ctx.user!.group || 'visitor', 'administrator')) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const { options, urls, user, csrfToken } = ctx!;
+const { slug } = Astro.params;
+
+const pageContent = await applyFilterSafely('admin:page', '', {
+  slug,
+  options,
+  urls,
+  user,
+  csrfToken,
+  request: Astro.request,
+});
+---
+
+<Admin title={slug ? `${slug} 插件页面` : '插件页面'} options={options} urls={urls} user={user!} activeMenu={slug ?? 'plugins'}>
+  {pageContent ? (
+    <Fragment set:html={pageContent} />
+  ) : (
+    <div class="col-mb-12" style="padding:2em;text-align:center;color:#999">
+      <p>未找到插件页面 "{slug}"</p>
+      <p style="font-size:.92857em">请确认对应插件已启用。</p>
+    </div>
+  )}
+</Admin>

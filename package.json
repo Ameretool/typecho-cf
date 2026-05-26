@@ -24,8 +24,8 @@
     "reset-password:cloudflare": "tsx scripts/reset-password.ts --target cloudflare"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^13.5.2",
-    "astro": "^6.3.5",
+    "@astrojs/cloudflare": "^13.5.4",
+    "astro": "^6.3.7",
     "drizzle-orm": "^0.45.2",
     "marked": "^18.0.4",
     "sanitize-html": "^2.17.4",
@@ -36,14 +36,17 @@
     "typecho-plugin-webdav": "file:src/plugins/typecho-plugin-webdav",
     "typecho-theme-minimal": "file:src/themes/typecho-theme-minimal"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
+  },
   "devDependencies": {
     "@libsql/client": "^0.17.3",
     "@types/sanitize-html": "^2.16.1",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.7",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6",
-    "wrangler": "^4.93.0"
+    "vitest": "^4.1.7",
+    "wrangler": "^4.94.0"
   }
 }

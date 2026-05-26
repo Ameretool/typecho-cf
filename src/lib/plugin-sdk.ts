@@ -15,6 +15,7 @@ export {
   loadPluginConfig,
   escapeAttr,
   getClientIp,
+  registerPluginAdminPath,
 } from './plugin';
 
 // ── Auth ──

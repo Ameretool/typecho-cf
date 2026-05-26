@@ -194,22 +194,62 @@ addHook(hookPoint, pluginId, handler, priority = 10)
 - 真正的 `init({ addHook, pluginId })` 由 `setActivatedPlugins(activatedIds)` 在第一次激活时按需触发，未激活的插件不会注入任何 hook（G6）
 - 插件不要在模块顶层做副作用（数据库读写、外部请求、`addHook` 写入），所有注册逻辑必须放在导出的 `init()` 内
 
-### 6.3 插件包约定
+### 6.3 插件管理路径注册
+
+插件通过 `route:request` hook 处理的 admin/api 路径必须注册，否则中间件的 `isReservedCorePath` 会拦截：
+
+```typescript
+import { registerPluginAdminPath } from 'typecho/plugin-sdk';
+
+export default function init({ addHook, pluginId }: PluginInitContext): void {
+  // 注册插件的管理路径，使其不被中间件拦截
+  registerPluginAdminPath('/api/admin/webdav');
+
+  addHook('route:request', pluginId, async (result, extra) => {
+    if (extra.path === '/api/admin/webdav') { /* ... */ }
+    return result;
+  });
+}
+```
+
+- 路径应在插件 `init()` 中注册，在任何 hook handler 之前
+- `isPluginAdminPath(path)` 在中间件 `isReservedCorePath` 中调用，白名单通过后放行
+- `pluginAdminPaths` Set 是模块级状态，插件停用后同一 isolate 内不自动清退
+
+### 6.4 插件专属管理页面
+
+插件可以在后台渲染完整的单页界面，通过 `admin:page` filter hook 和 `[slug].astro` 路由实现：
+
+```
+src/pages/admin/plugin/[slug].astro  — 通用插件页面容器
+  → applyFilterSafely('admin:page', '', { slug, csrfToken, ... })
+  → 插件注册 admin:page hook，匹配 slug 后返回 HTML
+  → HTML 通过 set:html 注入（插件负责自行转义用户数据）
+```
+
+WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含 CRUD UI 的 HTML + 内联 JS，`admin:footer` 注入导航菜单项。
+
+**关键规则**：
+- `[slug].astro` 使用 `applyFilterSafely`（不是 `applyFilter`），单个插件异常不会导致整页 500
+- 插件通过 `admin:footer` hook 向导航栏注入菜单入口（JSON 注入 + JS DOM 操作）
+- 插件返回的 HTML 中所有用户数据必须转义（参考 WebDAV 中的 `E()` 辅助函数）
+
+### 6.5 插件包约定
 
 - npm 包的 `package.json` 的 `keywords` 必须同时包含 `"typecho"` 和 `"plugin"`
 - 由 `src/integrations/plugin-loader.ts` 在构建时发现并注入
 - 本地插件放在 `src/plugins/<name>/`，需在根 `package.json` 添加 file 依赖
 - 入口优先发现 `index.ts`，其次 `index.js` / `index.mjs` / `plugin.ts` / `plugin.js`
 
-### 6.4 完整 Hook 点（50+）
+### 6.6 完整 Hook 点（50+）
 
 **call 类型**：
 `system:begin`, `system:end`, `admin:header`, `admin:footer`, `admin:navBar`, `admin:begin`, `admin:end`, `admin:writePost:option`, `admin:writePost:advanceOption`, `admin:writePost:bottom`, `admin:writePage:option`, `admin:writePage:advanceOption`, `admin:writePage:bottom`, `admin:profile:bottom`, `post:finishPublish`, `post:finishSave`, `post:delete`, `post:finishDelete`, `page:finishPublish`, `page:finishSave`, `page:delete`, `page:finishDelete`, `feedback:finishComment`, `feedback:reply`, `comment:action`, `user:login`, `user:loginSucceed`, `user:loginFail`, `user:logout`, `user:finishRegister`, `upload:beforeUpload`, `upload:upload`, `upload:delete`
 
 **filter 类型**：
-`route:request`, `admin:loginHead`, `admin:loginForm`, `archive:select`, `archive:header`, `archive:footer`, `archive:indexHandle`, `archive:singleHandle`, `archive:categoryHandle`, `archive:tagHandle`, `archive:searchHandle`, `archive:handleInit`, `archive:beforeRender`, `archive:afterRender`, `content:filter`, `content:title`, `content:excerpt`, `content:markdown`, `content:content`, `comment:filter`, `comment:content`, `comment:markdown`, `post:write`, `page:write`, `feedback:comment`, `feed:item`, `feed:generate`, `widget:sidebar`, `user:register`, `plugin:config:beforeSave`, `csp:directives`
+`route:request`, `admin:page`, `admin:loginHead`, `admin:loginForm`, `archive:select`, `archive:header`, `archive:footer`, `archive:indexHandle`, `archive:singleHandle`, `archive:categoryHandle`, `archive:tagHandle`, `archive:searchHandle`, `archive:handleInit`, `archive:beforeRender`, `archive:afterRender`, `content:filter`, `content:title`, `content:excerpt`, `content:markdown`, `content:content`, `comment:filter`, `comment:content`, `comment:markdown`, `post:write`, `page:write`, `feedback:comment`, `feed:item`, `feed:generate`, `widget:sidebar`, `user:register`, `plugin:config:beforeSave`, `csp:directives`
 
-### 6.5 新增 Hook 点步骤
+### 6.7 新增 Hook 点步骤
 
 1. 在 `src/lib/plugin.ts` 的 `HookPoints` 中添加常量，命名格式 `component:hookName`
 2. 在触发位置调用 `doHook()` 或 `applyFilter()`
@@ -351,6 +391,13 @@ Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的�
 `package.json` 的 `typecho.plugin.config` 字段支持以下类型：
 `text`, `textarea`, `select`, `radio`, `checkbox`, `password`, `hidden`, `repeatable`
 
+**扩展属性**：
+- `showWhen` — 条件显示，仅适用于 `repeatable.itemFields`。格式：`{ field: "provider", value: "s3" }`，`value` 可为单值或数组
+- `optionsSource` — 动态选项源，仅适用于 `select`。当前支持 `"r2Bindings"`（自动读取 wrangler.toml 中的 R2 binding 名称）
+- `itemFields` — 嵌套字段定义，仅适用于 `repeatable`
+
+**boolean 型 select**：当选项值为 `"true"` / `"false"` 时，系统通过 `parseBoolean` 辅助函数转换为实际 boolean 存储。在 `plugin:config:beforeSave` hook 中需显式返回该字段（boolean 值），否则会被过滤丢失。
+
 声明 `config` 后，管理插件列表自动显示「设置」链接。
 
 ---
@@ -397,7 +444,9 @@ vi.mock('cloudflare:workers', () => ({ env: { DB: null, BUCKET: { delete: mockFn
 
 | 示例 | 路径 | 说明 |
 |------|------|------|
-| 参考插件 | `src/plugins/typecho-plugin-antispam/` | 含完整 package.json、index.ts、index.test.ts |
+| 参考插件（基础） | `src/plugins/typecho-plugin-antispam/` | 含完整 package.json、index.ts、index.test.ts，基础 filter hook 示例 |
+| 参考插件（高级） | `src/plugins/typecho-plugin-webdav/` | 含 `plugin:config:beforeSave` 校验、`route:request` 自定义路由、`admin:page` 管理页面、`admin:footer` 菜单注入、`csp:directives` CSP 扩展、`WebDavStorageAdapter` 适配器模式、内联 JS 文件管理器 |
+| 参考插件（CSP 注入） | `src/plugins/typecho-plugin-turnstile/` | 含 `csp:directives` filter hook 动态追加 CSP 来源、`admin:loginHead`/`admin:loginForm` 注入 Turnstile Widget |
 | 参考主题 | `src/themes/typecho-theme-minimal/` | 含完整 theme.json、5 个模板组件 |
 
 ---
@@ -421,6 +470,7 @@ src/
 │   ├── schema-sql.ts                # 建表 SQL 反射生成
 │   ├── sidebar.ts                   # 侧边栏/导航数据加载
 │   ├── theme-props.ts               # 主题 Props 类型定义
+│   ├── security-headers.ts          # 安全响应头（CSP、HSTS、X-Frame 等）+ csp:directives filter
 │   ├── markdown.ts                  # Markdown 渲染 + HTML 净化
 │   └── url.ts                       # URL 规范化与校验
 ├── integrations/
@@ -429,11 +479,18 @@ src/
 ├── pages/
 │   ├── [slug].astro                 # 文章/页面路由
 │   ├── admin/                       # 管理后台页面
+│   │   └── plugin/
+│   │       └── [slug].astro         # 插件专属管理页面容器（admin:page hook 注入点）
 │   └── api/
 │       ├── comment.ts               # 前台评论 API
 │       └── admin/                   # 管理 API 端点
 ├── plugins/                         # 内置插件（工作区包）
-│   └── README.md                    # 插件开发完整规范
+│   ├── README.md                    # 插件开发完整规范
+│   ├── typecho-plugin-antispam/     # 反垃圾评论（参考基础插件）
+│   ├── typecho-plugin-webdav/       # WebDAV 协议 + 文件管理器（参考高级插件）
+│   ├── typecho-plugin-turnstile/    # Cloudflare Turnstile 人机验证
+│   ├── typecho-plugin-scribe/       # AI 写作辅助
+│   └── typecho-plugin-wechat-publisher/ # 微信公众号发布
 └── themes/                          # 内置主题（工作区包）
     └── README.md                    # 主题开发完整规范
 tests/

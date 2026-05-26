@@ -27,6 +27,8 @@ interface VerificationExtra {
   skipIfLoggedIn?: boolean;
 }
 
+type CspDirectives = Record<string, string[]>;
+
 const DEFAULTS: TurnstileConfig = {
   sitekey: '',
   secret: '',
@@ -46,6 +48,12 @@ function getPluginConfig(options?: Record<string, unknown>): TurnstileConfig {
     theme: String(config.theme || DEFAULTS.theme),
     size: String(config.size || DEFAULTS.size),
   };
+}
+
+function addCspSource(directives: CspDirectives, key: string, sources: string[]): void {
+  const existing = new Set(directives[key] || []);
+  for (const src of sources) existing.add(src);
+  directives[key] = Array.from(existing);
 }
 
 async function verifyTurnstile(token: string, secret: string, remoteIp: string): Promise<TurnstileVerifyResponse> {
@@ -247,6 +255,20 @@ async function checkTurnstile(config: TurnstileConfig, extra: VerificationExtra)
 }
 
 export default function init({ addHook, pluginId }: PluginInitContext): void {
+  addHook('csp:directives', pluginId, (directives: CspDirectives) => {
+    addCspSource(directives, 'script-src', [
+      'https://challenges.cloudflare.com',
+      'https://static.cloudflareinsights.com',
+    ]);
+    addCspSource(directives, 'connect-src', [
+      'https://challenges.cloudflare.com',
+      'https://static.cloudflareinsights.com',
+      'https://cloudflareinsights.com',
+    ]);
+    addCspSource(directives, 'frame-src', ['https://challenges.cloudflare.com']);
+    return directives;
+  });
+
   addHook('feedback:comment', pluginId, async (commentData: MutableContext, extra?: VerificationExtra) => {
     if (!extra?.options) return commentData;
 

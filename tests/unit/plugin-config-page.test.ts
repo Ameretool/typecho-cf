@@ -36,6 +36,63 @@ describe('admin plugin config page', () => {
     expect(source.match(/renumberRepeatableItems\(root\)/g)).toHaveLength(3);
   });
 
+  it('renders normalized root repeatable paths as slash values', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      'utf-8',
+    );
+
+    expect(source).toContain('function displayRepeatableValue');
+    expect(source).toContain("field.type === 'text' && field.default === '/' && value === ''");
+    expect(source).toContain("value && !value.startsWith('/')");
+  });
+
+  it('renders boolean select values as manifest option strings', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      'utf-8',
+    );
+
+    expect(source).toContain('function fieldValueForOption');
+    expect(source).toContain('function selectedAttr');
+    expect(source).toContain("typeof value === 'boolean'");
+    expect(source).toContain('data-current-value={fieldValueForOption(value)}');
+    expect(source).toContain('selected={selectedAttr(value, optVal)}');
+    expect(source).toContain("document.querySelectorAll('select[data-current-value]')");
+    expect(source).toContain("select.value = select.getAttribute('data-current-value') || ''");
+  });
+
+  it('loads WebDAV middleware hooks from the source plugin, not the stale file dependency copy', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/middleware.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from '@/plugins/typecho-plugin-webdav/index'");
+    expect(source).not.toContain("from 'typecho-plugin-webdav/index.ts'");
+    expect(source).toContain("hook.pluginId === 'typecho-plugin-webdav'");
+  });
+
+  it('bumps cache version when legacy Astro admin pages save config-like choices', () => {
+    const pluginConfigSource = readFileSync(
+      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      'utf-8',
+    );
+    const pluginsSource = readFileSync(
+      join(process.cwd(), 'src/pages/admin/plugins.astro'),
+      'utf-8',
+    );
+    const themesSource = readFileSync(
+      join(process.cwd(), 'src/pages/admin/themes.astro'),
+      'utf-8',
+    );
+
+    expect(pluginConfigSource).toContain('bumpCacheVersion(ctx.db)');
+    expect(pluginConfigSource).toContain('purgeSiteCache(options.siteUrl || \'\')');
+    expect(pluginsSource).toContain('bumpCacheVersion(db)');
+    expect(themesSource).toContain('bumpCacheVersion(ctx.db)');
+  });
+
   it('does not expose configurable WebDAV access rules', () => {
     const manifest = loadWebdavManifest();
     expect(manifest.config.requiredGroup).toBeUndefined();
@@ -50,9 +107,9 @@ describe('admin plugin config page', () => {
 
   it('defaults WebDAV mounts to the route root and whole bucket', () => {
     const manifest = loadWebdavManifest();
-    expect(manifest.config.mounts.default[0].mount).toBe('');
+    expect(manifest.config.mounts.default[0].mount).toBe('/');
     expect(manifest.config.mounts.default[0].prefix).toBe('');
-    expect(manifest.config.mounts.itemFields.mount.default).toBe('');
+    expect(manifest.config.mounts.itemFields.mount.default).toBe('/');
     expect(manifest.config.mounts.itemFields.prefix.default).toBe('');
   });
 });

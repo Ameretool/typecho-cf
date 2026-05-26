@@ -35,8 +35,9 @@ if (Astro.request.method === 'POST') {
         // Update local options to reflect change
         (options as any).theme = themeId;
 
-        // Purge options cache so next request reads fresh data from DB
-        const { purgeSiteCache } = await import('@/lib/cache');
+        // Bump cache version so public pages and other isolates see theme changes.
+        const { bumpCacheVersion, purgeSiteCache } = await import('@/lib/cache');
+        await bumpCacheVersion(ctx.db);
         await purgeSiteCache(options.siteUrl || '');
 
         message = `主题已切换为 "${themeId}"`;

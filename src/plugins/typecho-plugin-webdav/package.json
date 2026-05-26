@@ -2,7 +2,7 @@
   "name": "typecho-plugin-webdav",
   "version": "1.0.0",
   "description": "Expose configured S3 and R2 object storage mounts through WebDAV.",
-  "keywords": ["typecho", "plugin", "webdav", "s3", "r2"],
+  "keywords": ["typecho", "plugin", "webdav", "s3", "r2", "tianyi", "cloud-storage"],
   "author": "eslizn",
   "license": "MIT",
   "type": "module",
@@ -11,19 +11,29 @@
     "plugin": {
       "id": "typecho-plugin-webdav",
       "name": "WebDAV",
-      "description": "通过 WebDAV 协议挂载和访问 S3/R2 存储后端，支持多挂载点",
+      "description": "通过 WebDAV 协议挂载和访问 R2/S3/天翼云盘存储后端，支持多挂载点，内置管理面板",
       "author": "eslizn",
       "authorUrl": "https://eslizn.com",
       "version": "1.0.0",
       "homepage": "https://github.com/eslizn/typecho-cf/tree/master/src/plugins/typecho-plugin-webdav",
       "license": "MIT",
-      "tags": ["webdav", "storage", "s3", "r2"],
+      "tags": ["webdav", "storage", "s3", "r2", "tianyi"],
       "config": {
         "routePath": {
           "type": "text",
           "label": "入口路由路径",
           "default": "/webdav",
           "description": "WebDAV 入口路径，例如 /webdav。保存后通过该路径访问挂载的存储。"
+        },
+        "protocolEnabled": {
+          "type": "select",
+          "label": "WebDAV 协议入口",
+          "default": "true",
+          "options": {
+            "true": "启用",
+            "false": "关闭"
+          },
+          "description": "关闭后 WebDAV 协议入口不可用，仅可通过管理端 WebDav 面板操作文件。"
         },
         "failBanEnabled": {
           "type": "select",
@@ -58,7 +68,7 @@
           "label": "后端存储挂载",
           "default": [
             {
-              "mount": "",
+              "mount": "/",
               "provider": "r2",
               "bindingName": "BUCKET",
               "prefix": "",
@@ -75,8 +85,8 @@
             "mount": {
               "type": "text",
               "label": "挂载目录",
-              "default": "",
-              "description": "入口根目录下的一级目录名，例如 /webdav/media；留空或填写 / 表示挂载到 /webdav 根目录。"
+              "default": "/",
+              "description": "入口根目录下的一级目录名，例如 media；填写 / 表示挂载到 /webdav 根目录（唯一根挂载）。"
             },
             "provider": {
               "type": "select",
@@ -84,7 +94,48 @@
               "default": "r2",
               "options": {
                 "r2": "Cloudflare R2",
-                "s3": "Amazon S3 兼容"
+                "s3": "Amazon S3 兼容",
+                "tianyi": "天翼云盘"
+              }
+            },
+            "appKey": {
+              "type": "text",
+              "label": "App Key",
+              "default": "",
+              "description": "天翼云盘开放平台 App Key（AK）",
+              "showWhen": {
+                "field": "provider",
+                "value": "tianyi"
+              }
+            },
+            "appSecret": {
+              "type": "password",
+              "label": "App Secret",
+              "default": "",
+              "description": "天翼云盘开放平台 App Secret（SK）",
+              "showWhen": {
+                "field": "provider",
+                "value": "tianyi"
+              }
+            },
+            "accessToken": {
+              "type": "password",
+              "label": "Access Token",
+              "default": "",
+              "description": "天翼云盘 OAuth Access Token。可直接填写已获取的 token，或留空通过 App Key/Secret 自动获取。",
+              "showWhen": {
+                "field": "provider",
+                "value": "tianyi"
+              }
+            },
+            "rootDir": {
+              "type": "text",
+              "label": "根目录 ID",
+              "default": "-11",
+              "description": "天翼云盘根目录 folderId，默认 -11 为网盘根目录。",
+              "showWhen": {
+                "field": "provider",
+                "value": "tianyi"
               }
             },
             "bindingName": {
