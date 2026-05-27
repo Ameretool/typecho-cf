@@ -1,16 +1,11 @@
 import type { WebDavConfig, StorageMount, S3Object } from './types';
 import {
-  resolveWebDavTarget, normalizeRoutePath, matchWebDavRoute,
-  withMountPrefix, stripMountPrefix, isCollectionPath, href,
+  resolveWebDavTarget, matchWebDavRoute,
+  stripMountPrefix, isCollectionPath, href,
   getWebDavClientIp, isWebDavClientBanned, recordWebDavAuthFailure,
-  clearWebDavAuthFailures, authenticate, encodePathSegment, encodeKeyPath,
+  clearWebDavAuthFailures, authenticate,
 } from './config';
-import {
-  listObjects, objectMeta, collectionExists, s3Fetch, getR2Bucket,
-  tianyiResolvePath, tianyiGetDownloadUrl, tianyiCreateFolder,
-  tianyiDeleteFile, tianyiDeleteFolder, tianyiRenameFile,
-  tianyiEnsureSession, TIANYI_API_BASE, TIANYI_UA,
-} from './adapters';
+import { getStorageOps } from './adapters';
 
 // --- Constants ---
 
@@ -139,9 +134,8 @@ async function browserMountListing(
   }
 
   const cleanKey = key.replace(/^\/+|\/+$/g, '');
-  const fullKey = withMountPrefix(mount, cleanKey);
-  const prefix = fullKey && !fullKey.endsWith('/') ? `${fullKey}/` : fullKey;
-  const listing = await listObjects(mount, prefix, workerEnv);
+  const ops = getStorageOps(mount);
+  const listing = await ops.list(cleanKey, workerEnv);
   const items: string[] = [];
   const emittedCollections = new Set<string>();
 
@@ -156,11 +150,10 @@ async function browserMountListing(
   }
 
   for (const object of listing.objects) {
-    if (object.key === prefix) continue;
-    const relative = stripMountPrefix(mount, object.key);
     if (object.key.endsWith('/')) {
+      const relative = stripMountPrefix(mount, object.key);
       const collectionRelative = relative.replace(/\/+$/, '');
-      if (!collectionRelative || emittedCollections.has(collectionRelative)) continue;
+      if (!collectionRelative || collectionRelative === cleanKey || emittedCollections.has(collectionRelative)) continue;
       emittedCollections.add(collectionRelative);
       const display = collectionRelative.split('/').pop() || collectionRelative;
       items.push(`<li><a href="${escapeXml(href(config.routePath, [
@@ -169,6 +162,7 @@ async function browserMountListing(
       ], true))}">${escapeXml(display)}/</a></li>`);
       continue;
     }
+    const relative = stripMountPrefix(mount, object.key);
     const normalizedCleanKey = cleanKey ? `${cleanKey}/` : '';
     if (relative.includes('/') && !relative.startsWith(normalizedCleanKey)) continue;
     const display = relative.split('/').pop() || relative;
@@ -191,16 +185,15 @@ async function propfindMount(
   depth: string, workerEnv?: Record<string, unknown>,
 ): Promise<Response> {
   const cleanKey = key.replace(/^\/+/, '');
-  const fullKey = withMountPrefix(mount, cleanKey);
   const mountParts = [
     ...(mount.mount ? [mount.mount] : []),
     ...cleanKey.split('/').filter(Boolean),
   ];
   const responses: string[] = [];
+  const ops = getStorageOps(mount);
 
   if (cleanKey === '' || isCollectionPath(key)) {
-    const prefix = fullKey && !fullKey.endsWith('/') ? `${fullKey}/` : fullKey;
-    const listing = await listObjects(mount, prefix, workerEnv);
+    const listing = await ops.list(cleanKey, workerEnv);
     responses.push(responseXml(href(config.routePath, mountParts, true), mountParts.at(-1) || mount.mount || 'WebDAV', true));
 
     if (depth !== '0') {
@@ -215,11 +208,10 @@ async function propfindMount(
         ], true), display, true));
       }
       for (const object of listing.objects) {
-        if (object.key === prefix) continue;
-        const relative = stripMountPrefix(mount, object.key);
         if (object.key.endsWith('/')) {
+          const relative = stripMountPrefix(mount, object.key);
           const collectionRelative = relative.replace(/\/+$/, '');
-          if (!collectionRelative || emittedCollections.has(collectionRelative)) continue;
+          if (!collectionRelative || collectionRelative === cleanKey || emittedCollections.has(collectionRelative)) continue;
           emittedCollections.add(collectionRelative);
           const display = collectionRelative.split('/').pop() || collectionRelative;
           responses.push(responseXml(href(config.routePath, [
@@ -228,6 +220,7 @@ async function propfindMount(
           ], true), display, true));
           continue;
         }
+        const relative = stripMountPrefix(mount, object.key);
         if (relative.includes('/') && !relative.startsWith(cleanKey ? `${cleanKey.replace(/\/+$/, '')}/` : '')) continue;
         const display = relative.split('/').pop() || relative;
         responses.push(responseXml(href(config.routePath, [
@@ -239,14 +232,14 @@ async function propfindMount(
     return multistatus(responses);
   }
 
-  const meta = await objectMeta(mount, fullKey, workerEnv);
+  const meta = await ops.meta(cleanKey, workerEnv);
   if (meta) {
     return multistatus([
       responseXml(href(config.routePath, mountParts, false), mountParts.at(-1) || cleanKey, false, meta),
     ]);
   }
 
-  const existsAsCollection = await collectionExists(mount, fullKey, workerEnv);
+  const existsAsCollection = await ops.collectionExists(cleanKey, workerEnv);
   if (!existsAsCollection) return new Response('Not Found', { status: 404 });
   if (depth !== '0') {
     return propfindMount(config, mount, `${cleanKey}/`, depth, workerEnv);
@@ -260,33 +253,7 @@ async function handleRead(
   method: string, mount: StorageMount, key: string,
   workerEnv?: Record<string, unknown>,
 ): Promise<Response> {
-  const fullKey = withMountPrefix(mount, key);
-  if (mount.provider === 'r2') {
-    const object = await getR2Bucket(mount, workerEnv).get(fullKey);
-    if (!object) return new Response('Not Found', { status: 404 });
-    const headers = new Headers();
-    if (object.size != null) headers.set('Content-Length', String(object.size));
-    if (object.httpEtag || object.etag) headers.set('ETag', object.httpEtag || object.etag || '');
-    if (object.uploaded) headers.set('Last-Modified', object.uploaded.toUTCString());
-    if (object.httpMetadata?.contentType) headers.set('Content-Type', object.httpMetadata.contentType);
-    return new Response(method === 'HEAD' ? null : object.body, { status: 200, headers });
-  }
-  if (mount.provider === 'tianyi') {
-    const cleanKey = fullKey.replace(/\/+$/, '');
-    const resolved = await tianyiResolvePath(mount, cleanKey);
-    if (!resolved || resolved.isFolder) return new Response('Not Found', { status: 404 });
-    if (method === 'HEAD') return new Response(null, { status: 200 });
-    const downloadUrl = await tianyiGetDownloadUrl(mount, resolved.id);
-    if (!downloadUrl) return new Response('Not Found', { status: 404 });
-    const downloadResp = await fetch(downloadUrl);
-    if (!downloadResp.ok) return new Response('Download failed', { status: 502 });
-    return downloadResp;
-  }
-  const response = await s3Fetch(mount, method, fullKey);
-  if (response.status === 404 || response.status === 403) {
-    return new Response('Not Found', { status: 404 });
-  }
-  return response;
+  return getStorageOps(mount).read(key, method as 'GET' | 'HEAD', workerEnv);
 }
 
 async function handlePut(
@@ -294,91 +261,24 @@ async function handlePut(
   workerEnv?: Record<string, unknown>,
 ): Promise<Response> {
   if (!key || key.endsWith('/')) return new Response('Invalid target', { status: 409 });
-  const headers: Record<string, string> = {};
-  const contentType = request.headers.get('content-type');
-  if (contentType) headers['content-type'] = contentType;
-
-  if (mount.provider === 'r2') {
-    await getR2Bucket(mount, workerEnv).put(withMountPrefix(mount, key), request.body || '', {
-      httpMetadata: contentType ? { contentType } : undefined,
-    });
-    return new Response(null, { status: 201 });
-  }
-  if (mount.provider === 'tianyi') {
-    const fullKey = withMountPrefix(mount, key);
-    const lastSlash = fullKey.lastIndexOf('/');
-    const parentPath = lastSlash >= 0 ? fullKey.slice(0, lastSlash) : '';
-    const fileName = lastSlash >= 0 ? fullKey.slice(lastSlash + 1) : fullKey;
-    const parent = await tianyiResolvePath(mount, parentPath || '');
-    if (!parent || !parent.isFolder) return new Response('Parent folder not found', { status: 404 });
-    const cookie = await tianyiEnsureSession(mount);
-    const form = new FormData();
-    form.append('folderId', parent.id);
-    form.append('file', request.body instanceof Blob ? request.body : new Blob([await request.arrayBuffer()]), fileName);
-    const uploadUrl = `${TIANYI_API_BASE}/api/open/file/uploadFile.action`;
-    const uploadResp = await fetch(uploadUrl, { method: 'POST', headers: { 'Cookie': cookie, 'Referer': 'https://cloud.189.cn/', 'User-Agent': TIANYI_UA }, body: form });
-    if (!uploadResp.ok) return new Response('Upload failed', { status: 502 });
-    return new Response(null, { status: 201 });
-  }
-  const response = await s3Fetch(mount, 'PUT', withMountPrefix(mount, key), {}, headers, request.body);
-  if (!response.ok) return new Response('Storage write failed', { status: 502 });
-  return new Response(null, { status: 201 });
+  const contentType = request.headers.get('content-type') || undefined;
+  return getStorageOps(mount).write(key, request.body, contentType, workerEnv);
 }
 
 async function handleMkcol(mount: StorageMount, key: string, workerEnv?: Record<string, unknown>): Promise<Response> {
   if (!key) return new Response('Method Not Allowed', { status: 405 });
-  const dirKey = withMountPrefix(mount, key.endsWith('/') ? key : `${key}/`);
-  if (mount.provider === 'r2') {
-    await getR2Bucket(mount, workerEnv).put(dirKey, '', {
-      httpMetadata: { contentType: 'application/x-directory' },
-    });
-    return new Response(null, { status: 201 });
-  }
-  if (mount.provider === 'tianyi') {
-    const cleanKey = dirKey.replace(/\/+$/, '');
-    const segments = cleanKey.split('/').filter(Boolean);
-    const folderName = segments.pop() || cleanKey;
-    const parentPath = segments.join('/');
-    const parent = await tianyiResolvePath(mount, parentPath || '');
-    if (!parent || !parent.isFolder) return new Response('Parent folder not found', { status: 409 });
-    await tianyiCreateFolder(mount, parent.id, folderName);
-    return new Response(null, { status: 201 });
-  }
-  const response = await s3Fetch(mount, 'PUT', dirKey, {}, { 'content-type': 'application/x-directory' }, '');
-  if (!response.ok) return new Response('Storage write failed', { status: 502 });
-  return new Response(null, { status: 201 });
+  return getStorageOps(mount).mkdir(key, workerEnv);
 }
 
 async function handleDelete(mount: StorageMount, key: string, workerEnv?: Record<string, unknown>): Promise<Response> {
   if (!key) return new Response('Cannot delete mount root', { status: 409 });
+  const ops = getStorageOps(mount);
   if (key.endsWith('/')) {
-    const prefix = withMountPrefix(mount, key);
-    const listing = await listObjects(mount, prefix, workerEnv);
-    if (listing.prefixes.length > 0 || listing.objects.some(object => object.key !== prefix)) {
+    if (!(await ops.isEmpty(key, workerEnv))) {
       return new Response('Directory is not empty', { status: 409 });
     }
   }
-
-  if (mount.provider === 'r2') {
-    await getR2Bucket(mount, workerEnv).delete(withMountPrefix(mount, key));
-    return new Response(null, { status: 204 });
-  }
-  if (mount.provider === 'tianyi') {
-    const prefixedKey = withMountPrefix(mount, key || '');
-    const cleanKey = prefixedKey.replace(/\/+$/, '');
-    const resolved = await tianyiResolvePath(mount, cleanKey);
-    if (!resolved) return new Response('Not Found', { status: 404 });
-    if (resolved.isFolder) {
-      await tianyiDeleteFolder(mount, resolved.id);
-    } else {
-      await tianyiDeleteFile(mount, resolved.id);
-    }
-    return new Response(null, { status: 204 });
-  }
-
-  const response = await s3Fetch(mount, 'DELETE', withMountPrefix(mount, key));
-  if (!response.ok && response.status !== 404) return new Response('Storage delete failed', { status: 502 });
-  return new Response(null, { status: 204 });
+  return ops.delete(key, workerEnv);
 }
 
 function resolveDestination(config: WebDavConfig, destinationHeader: string | null): { mountName: string; key: string } | null {
@@ -405,79 +305,12 @@ async function handleCopyMove(
 
   const overwrite = (request.headers.get('overwrite') || 'T').toUpperCase() !== 'F';
   if (!overwrite) {
-    const existing = await objectMeta(sourceMount, withMountPrefix(sourceMount, destination.key), workerEnv);
+    const existing = await getStorageOps(sourceMount).meta(destination.key, workerEnv);
     if (existing) return new Response('Precondition Failed', { status: 412 });
   }
 
-  if (sourceMount.provider === 'r2') {
-    const bucket = getR2Bucket(sourceMount, workerEnv);
-    const sourceObject = await bucket.get(withMountPrefix(sourceMount, sourceKey));
-    if (!sourceObject) return new Response('Not Found', { status: 404 });
-    await bucket.put(withMountPrefix(sourceMount, destination.key), sourceObject.body, {
-      httpMetadata: sourceObject.httpMetadata,
-    });
-    if (move) await bucket.delete(withMountPrefix(sourceMount, sourceKey));
-    return new Response(null, { status: 201 });
-  }
-
-  if (sourceMount.provider === 'tianyi') {
-    const cleanSource = sourceKey.replace(/\/+$/, '');
-    const cleanDest = destination.key.replace(/\/+$/, '');
-    const source = await tianyiResolvePath(sourceMount, cleanSource);
-    if (!source) return new Response('Not Found', { status: 404 });
-
-    const destSlash = cleanDest.lastIndexOf('/');
-    const destParentPath = destSlash >= 0 ? cleanDest.slice(0, destSlash) : '';
-    const destName = destSlash >= 0 ? cleanDest.slice(destSlash + 1) : cleanDest;
-    const destParent = await tianyiResolvePath(sourceMount, destParentPath || '/');
-    if (!destParent || !destParent.isFolder) return new Response('Destination folder not found', { status: 409 });
-
-    const srcSlash = cleanSource.lastIndexOf('/');
-    const srcParentPath = srcSlash >= 0 ? cleanSource.slice(0, srcSlash) : '';
-    const srcParent = srcParentPath ? await tianyiResolvePath(sourceMount, srcParentPath) : { id: sourceMount.rootDir || '-11', isFolder: true, name: '' };
-    const sameParent = srcParent && destParent.id === srcParent.id;
-
-    if (!move) {
-      await tianyiCopyFile(sourceMount, source.id, destParent.id);
-      if (destName && destName !== source.name) {
-        let copied = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          if (attempt > 0) await new Promise(r => setTimeout(r, 200));
-          copied = await tianyiResolvePath(sourceMount, (destParentPath ? destParentPath + '/' : '') + source.name);
-          if (copied) break;
-        }
-        if (copied && !copied.isFolder) await tianyiRenameFile(sourceMount, copied.id, destName);
-      }
-    } else if (sameParent) {
-      await tianyiRenameFile(sourceMount, source.id, destName);
-    } else {
-      await tianyiMoveFile(sourceMount, source.id, destParent.id);
-      if (destName !== source.name) {
-        let moved = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          if (attempt > 0) await new Promise(r => setTimeout(r, 200));
-          moved = await tianyiResolvePath(sourceMount, (destParentPath ? destParentPath + '/' : '') + source.name);
-          if (moved) break;
-        }
-        if (moved && !moved.isFolder) await tianyiRenameFile(sourceMount, moved.id, destName);
-      }
-    }
-    return new Response(null, { status: 201 });
-  }
-
-  const copySource = `/${encodePathSegment(sourceMount.bucket)}/${encodeKeyPath(withMountPrefix(sourceMount, sourceKey))}`;
-  const copyResponse = await s3Fetch(
-    sourceMount, 'PUT', withMountPrefix(sourceMount, destination.key), {},
-    { 'x-amz-copy-source': copySource },
-  );
-  if (!copyResponse.ok) return new Response('Storage copy failed', { status: 502 });
-  if (move) {
-    const deleteResponse = await s3Fetch(sourceMount, 'DELETE', withMountPrefix(sourceMount, sourceKey));
-    if (!deleteResponse.ok && deleteResponse.status !== 404) {
-      return new Response('Storage move cleanup failed', { status: 502 });
-    }
-  }
-  return new Response(null, { status: 201 });
+  const ops = getStorageOps(sourceMount);
+  return move ? ops.move(sourceKey, destination.key, workerEnv) : ops.copy(sourceKey, destination.key, workerEnv);
 }
 
 // --- Main Dispatcher ---
@@ -536,7 +369,7 @@ export async function handleWebDavRequest(config: WebDavConfig, relativePath: st
       {
         const readResponse = await handleRead(request.method, mount, key, workerEnv);
         if (readResponse.status !== 404) return readResponse;
-        if (await collectionExists(mount, withMountPrefix(mount, key), workerEnv)) {
+        if (await getStorageOps(mount).collectionExists(key, workerEnv)) {
           return browserMountListing(config, mount, key, request.method, workerEnv);
         }
         return readResponse;
@@ -558,89 +391,51 @@ export async function handleWebDavRequest(config: WebDavConfig, relativePath: st
 
 // --- Storage Adapter for Admin API ---
 
-export function createStorageAdapter(config: WebDavConfig): {
-  list(path: string, workerEnv?: Record<string, unknown>, limit?: number, offset?: number): Promise<S3ListResult>;
-  meta(path: string, workerEnv?: Record<string, unknown>): Promise<S3Object | null>;
-  read(path: string, workerEnv?: Record<string, unknown>): Promise<Response>;
-  write(path: string, body: ReadableStream<Uint8Array> | null, contentType: string, workerEnv?: Record<string, unknown>): Promise<Response>;
-  mkdir(path: string, workerEnv?: Record<string, unknown>): Promise<Response>;
-  delete(path: string, workerEnv?: Record<string, unknown>): Promise<Response>;
-  getMounts(): { name: string; provider: string }[];
-} {
+export function createStorageAdapter(config: WebDavConfig) {
+  function resolve(path: string) {
+    const target = resolveWebDavTarget(config, path);
+    if (!target) throw new Error('Invalid path');
+    return { ops: getStorageOps(target.mount), mount: target.mount, key: target.key };
+  }
+
   return {
-    list(path, workerEnv, limit, offset) {
-      const target = resolveWebDavTarget(config, path);
-      if (!target) throw new Error('Invalid path');
-      const prefix = target.mount.prefix ? `${target.mount.prefix}/${target.key}` : target.key;
-      const listPrefix = prefix && !prefix.endsWith('/') ? `${prefix}/` : prefix;
-      return listObjects(target.mount, listPrefix, workerEnv, limit, offset);
+    list(path: string, workerEnv?: Record<string, unknown>, limit?: number, offset?: number) {
+      const { ops, key } = resolve(path);
+      return ops.list(key, workerEnv, limit, offset);
     },
-    meta(path, workerEnv) {
+    // Does not use resolve() — returns null for invalid paths instead of throwing
+    async meta(path: string, workerEnv?: Record<string, unknown>) {
       const target = resolveWebDavTarget(config, path);
-      if (!target) return Promise.resolve(null);
-      const fullKey = withMountPrefix(target.mount, target.key);
-      return objectMeta(target.mount, fullKey, workerEnv);
+      if (!target) return null;
+      return getStorageOps(target.mount).meta(target.key, workerEnv);
     },
-    read(path, workerEnv) {
-      const target = resolveWebDavTarget(config, path);
-      if (!target) throw new Error('Invalid path');
-      return handleRead('GET', target.mount, target.key, workerEnv);
+    read(path: string, workerEnv?: Record<string, unknown>) {
+      const { ops, key } = resolve(path);
+      return ops.read(key, 'GET', workerEnv);
     },
-    async write(path, body, contentType, workerEnv) {
-      const target = resolveWebDavTarget(config, path);
-      if (!target) throw new Error('Invalid path');
-      if (!target.key || target.key.endsWith('/')) throw new Error('Invalid target');
-      if (target.mount.provider === 'r2') {
-        const bucket = getR2Bucket(target.mount, workerEnv);
-        const fullKey = withMountPrefix(target.mount, target.key);
-        if (!body) throw new Error('No body');
-        await bucket.put(fullKey, body, { httpMetadata: contentType ? { contentType } : undefined });
-        return new Response(null, { status: 201 });
-      }
-      if (target.mount.provider === 'tianyi') {
-        const fullKey = withMountPrefix(target.mount, target.key);
-        const lastSlash = fullKey.lastIndexOf('/');
-        const parentPath = lastSlash >= 0 ? fullKey.slice(0, lastSlash) : '';
-        const fileName = lastSlash >= 0 ? fullKey.slice(lastSlash + 1) : fullKey;
-        const parent = await tianyiResolvePath(target.mount, parentPath || '/');
-        if (!parent || !parent.isFolder) throw new Error('Parent folder not found');
-        const cookie = await tianyiEnsureSession(target.mount);
-        const form = new FormData();
-        form.append('folderId', parent.id);
-        if (body) {
-          const buf = await new Response(body).arrayBuffer();
-          form.append('file', new Blob([buf]), fileName);
-        }
-        const uploadUrl = `${TIANYI_API_BASE}/api/open/file/uploadFile.action`;
-        const uploadResp = await fetch(uploadUrl, { method: 'POST', headers: { 'Cookie': cookie, 'Referer': 'https://cloud.189.cn/', 'User-Agent': TIANYI_UA }, body: form });
-        if (!uploadResp.ok) throw new Error(`Upload failed (${uploadResp.status})`);
-        return new Response(null, { status: 201 });
-      }
-      const fullKey = withMountPrefix(target.mount, target.key);
-      const response = await s3Fetch(target.mount, 'PUT', fullKey, {}, contentType ? { 'content-type': contentType } : {}, body);
+    async write(path: string, body: ReadableStream<Uint8Array> | null, contentType: string, workerEnv?: Record<string, unknown>) {
+      const { ops, key } = resolve(path);
+      if (!key || key.endsWith('/')) throw new Error('Invalid target');
+      const response = await ops.write(key, body, contentType, workerEnv);
       if (!response.ok) throw new Error(`Storage write failed (${response.status})`);
-      return new Response(null, { status: 201 });
+      return response;
     },
-    async mkdir(path, workerEnv) {
-      const target = resolveWebDavTarget(config, path);
-      if (!target) throw new Error('Invalid path');
-      const response = await handleMkcol(target.mount, target.key, workerEnv);
+    async mkdir(path: string, workerEnv?: Record<string, unknown>) {
+      const { ops, key } = resolve(path);
+      const response = await ops.mkdir(key, workerEnv);
       if (!response.ok) throw new Error(`Create directory failed (${response.status})`);
       return response;
     },
-    async delete(path, workerEnv) {
-      const target = resolveWebDavTarget(config, path);
-      if (!target) throw new Error('Invalid path');
+    async delete(path: string, workerEnv?: Record<string, unknown>) {
+      const { ops, key } = resolve(path);
+      if (!key) throw new Error('Cannot delete mount root');
       const isCollection = path.endsWith('/') || path === '';
-      if (isCollection && target.key) {
-        const raw = withMountPrefix(target.mount, target.key);
-        const prefix = raw && !raw.endsWith('/') ? `${raw}/` : raw;
-        const listing = await listObjects(target.mount, prefix, workerEnv);
-        if (listing.prefixes.length > 0 || listing.objects.some(o => o.key !== prefix)) {
+      if (isCollection) {
+        if (!(await ops.isEmpty(key, workerEnv))) {
           throw new Error('Directory is not empty');
         }
       }
-      const response = await handleDelete(target.mount, target.key, workerEnv);
+      const response = await ops.delete(key, workerEnv);
       if (!response.ok) throw new Error(`Delete failed (${response.status})`);
       return response;
     },

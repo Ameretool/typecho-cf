@@ -1,4 +1,4 @@
-import { encodePathSegment, encodeKeyPath } from './config';
+import { encodePathSegment, encodeKeyPath, withMountPrefix } from './config';
 import type { StorageMount, S3Object, S3ListResult } from './types';
 
 // --- Constants ---
@@ -730,4 +730,339 @@ export async function collectionExists(mount: StorageMount, prefix: string, work
   const normalizedPrefix = prefix && !prefix.endsWith('/') ? `${prefix}/` : prefix;
   const listing = await listObjects(mount, normalizedPrefix, workerEnv, 1, 0);
   return listing.prefixes.length > 0 || listing.objects.length > 0;
+}
+
+// --- Storage Operations Interface ---
+
+export interface StorageOps {
+  read(key: string, method: 'GET' | 'HEAD', workerEnv?: Record<string, unknown>): Promise<Response>;
+  write(key: string, body: BodyInit | null, contentType?: string, workerEnv?: Record<string, unknown>): Promise<Response>;
+  mkdir(key: string, workerEnv?: Record<string, unknown>): Promise<Response>;
+  delete(key: string, workerEnv?: Record<string, unknown>): Promise<Response>;
+  copy(srcKey: string, destKey: string, workerEnv?: Record<string, unknown>): Promise<Response>;
+  move(srcKey: string, destKey: string, workerEnv?: Record<string, unknown>): Promise<Response>;
+  list(prefix: string, workerEnv?: Record<string, unknown>, limit?: number, offset?: number): Promise<S3ListResult>;
+  meta(key: string, workerEnv?: Record<string, unknown>): Promise<S3Object | null>;
+  collectionExists(prefix: string, workerEnv?: Record<string, unknown>): Promise<boolean>;
+  isEmpty(dirKey: string, workerEnv?: Record<string, unknown>): Promise<boolean>;
+}
+
+// --- Provider Implementations ---
+
+function pk(mount: StorageMount, key: string): string {
+  return withMountPrefix(mount, key);
+}
+
+function pkd(mount: StorageMount, key: string): string {
+  const full = withMountPrefix(mount, key);
+  return full && !full.endsWith('/') ? `${full}/` : full;
+}
+
+function createR2Ops(mount: StorageMount): StorageOps {
+  return {
+    async read(k, method, workerEnv) {
+      const bucket = getR2Bucket(mount, workerEnv);
+      const object = await bucket.get(pk(mount, k));
+      if (!object) return new Response('Not Found', { status: 404 });
+      const headers = new Headers();
+      if (object.size != null) headers.set('Content-Length', String(object.size));
+      if (object.httpEtag || object.etag) headers.set('ETag', object.httpEtag || object.etag || '');
+      if (object.uploaded) headers.set('Last-Modified', object.uploaded.toUTCString());
+      if (object.httpMetadata?.contentType) headers.set('Content-Type', object.httpMetadata.contentType);
+      return new Response(method === 'HEAD' ? null : object.body, { status: 200, headers });
+    },
+
+    async write(k, body, contentType, workerEnv) {
+      const bucket = getR2Bucket(mount, workerEnv);
+      await bucket.put(pk(mount, k), (body ?? '') as string | ReadableStream | ArrayBuffer | Blob, {
+        httpMetadata: contentType ? { contentType } : undefined,
+      });
+      return new Response(null, { status: 201 });
+    },
+
+    async mkdir(k, workerEnv) {
+      const bucket = getR2Bucket(mount, workerEnv);
+      const dirKey = k.endsWith('/') ? pk(mount, k) : `${pk(mount, k)}/`;
+      await bucket.put(dirKey, '', {
+        httpMetadata: { contentType: 'application/x-directory' },
+      });
+      return new Response(null, { status: 201 });
+    },
+
+    async delete(k, workerEnv) {
+      const bucket = getR2Bucket(mount, workerEnv);
+      await bucket.delete(pk(mount, k));
+      return new Response(null, { status: 204 });
+    },
+
+    async copy(srcK, destK, workerEnv) {
+      const bucket = getR2Bucket(mount, workerEnv);
+      const sourceObject = await bucket.get(pk(mount, srcK));
+      if (!sourceObject) return new Response('Not Found', { status: 404 });
+      await bucket.put(pk(mount, destK), sourceObject.body, {
+        httpMetadata: sourceObject.httpMetadata,
+      });
+      return new Response(null, { status: 201 });
+    },
+
+    async move(srcK, destK, workerEnv) {
+      const bucket = getR2Bucket(mount, workerEnv);
+      const sourceObject = await bucket.get(pk(mount, srcK));
+      if (!sourceObject) return new Response('Not Found', { status: 404 });
+      await bucket.put(pk(mount, destK), sourceObject.body, {
+        httpMetadata: sourceObject.httpMetadata,
+      });
+      await bucket.delete(pk(mount, srcK));
+      return new Response(null, { status: 201 });
+    },
+
+    list(prefix, workerEnv, limit, offset) {
+      return listObjects(mount, pkd(mount, prefix), workerEnv, limit, offset);
+    },
+
+    meta(k, workerEnv) {
+      return objectMeta(mount, pk(mount, k), workerEnv);
+    },
+
+    collectionExists(prefix, workerEnv) {
+      return collectionExists(mount, pkd(mount, prefix), workerEnv);
+    },
+
+    async isEmpty(dirK, workerEnv) {
+      const prefix = pkd(mount, dirK);
+      const bucket = getR2Bucket(mount, workerEnv);
+      const result = await bucket.list({ prefix, delimiter: '/', limit: 2 });
+      if ((result.delimitedPrefixes || []).length > 0) return false;
+      const nonMarkers = (result.objects || []).filter(o => o.key !== prefix);
+      if (nonMarkers.length > 0) return false;
+      if (result.truncated) return false;
+      return true;
+    },
+  };
+}
+
+function createS3Ops(mount: StorageMount): StorageOps {
+  return {
+    async read(k, method, workerEnv) {
+      const response = await s3Fetch(mount, method, pk(mount, k));
+      if (response.status === 404 || response.status === 403) {
+        return new Response('Not Found', { status: 404 });
+      }
+      return response;
+    },
+
+    async write(k, body, contentType, workerEnv) {
+      const headers: Record<string, string> = {};
+      if (contentType) headers['content-type'] = contentType;
+      const response = await s3Fetch(mount, 'PUT', pk(mount, k), {}, headers, body);
+      if (!response.ok) return new Response(`Storage write failed (${response.status})`, { status: 502 });
+      return new Response(null, { status: 201 });
+    },
+
+    async mkdir(k, workerEnv) {
+      const dirKey = k.endsWith('/') ? pk(mount, k) : `${pk(mount, k)}/`;
+      const response = await s3Fetch(mount, 'PUT', dirKey, {}, { 'content-type': 'application/x-directory' }, '');
+      if (!response.ok) return new Response(`Storage write failed (${response.status})`, { status: 502 });
+      return new Response(null, { status: 201 });
+    },
+
+    async delete(k, workerEnv) {
+      const response = await s3Fetch(mount, 'DELETE', pk(mount, k));
+      if (!response.ok && response.status !== 404) return new Response(`Storage delete failed (${response.status})`, { status: 502 });
+      return new Response(null, { status: 204 });
+    },
+
+    async copy(srcK, destK, workerEnv) {
+      const copySource = `/${encodePathSegment(mount.bucket)}/${encodeKeyPath(pk(mount, srcK))}`;
+      const response = await s3Fetch(mount, 'PUT', pk(mount, destK), {}, { 'x-amz-copy-source': copySource });
+      if (!response.ok) return new Response(`Storage copy failed (${response.status})`, { status: 502 });
+      return new Response(null, { status: 201 });
+    },
+
+    async move(srcK, destK, workerEnv) {
+      const copySource = `/${encodePathSegment(mount.bucket)}/${encodeKeyPath(pk(mount, srcK))}`;
+      const copyResponse = await s3Fetch(mount, 'PUT', pk(mount, destK), {}, { 'x-amz-copy-source': copySource });
+      if (!copyResponse.ok) return new Response(`Storage copy failed (${copyResponse.status})`, { status: 502 });
+      const deleteResponse = await s3Fetch(mount, 'DELETE', pk(mount, srcK));
+      if (!deleteResponse.ok && deleteResponse.status !== 404) {
+        return new Response(`Storage move cleanup failed (${deleteResponse.status})`, { status: 502 });
+      }
+      return new Response(null, { status: 201 });
+    },
+
+    list(prefix, workerEnv, limit, offset) {
+      return listObjects(mount, pkd(mount, prefix), workerEnv, limit, offset);
+    },
+
+    meta(k, workerEnv) {
+      return objectMeta(mount, pk(mount, k), workerEnv);
+    },
+
+    collectionExists(prefix, workerEnv) {
+      return collectionExists(mount, pkd(mount, prefix), workerEnv);
+    },
+
+    async isEmpty(dirK, workerEnv) {
+      const prefix = pkd(mount, dirK);
+      const response = await s3Fetch(mount, 'GET', '', {
+        'delimiter': '/', 'list-type': '2', 'max-keys': '2', 'prefix': prefix,
+      });
+      if (!response.ok) return false;
+      const xml = await response.text();
+      if (xml.match(/<CommonPrefixes>/)) return false;
+      const contentMatches = Array.from(xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g));
+      if (contentMatches.length === 0) return true;
+      const hasNonMarker = contentMatches.some(match => {
+        const block = match[1] || '';
+        const key = decodeXml(block.match(/<Key>([\s\S]*?)<\/Key>/)?.[1] || '');
+        return key !== prefix;
+      });
+      if (hasNonMarker) return false;
+      if (xml.includes('<IsTruncated>true</IsTruncated>')) return false;
+      return true;
+    },
+  };
+}
+
+async function tianyiPollAndRename(
+  mount: StorageMount, destParentPath: string, sourceName: string, destName: string,
+): Promise<void> {
+  if (!destName || destName === sourceName) return;
+  let resolved: { id: string; isFolder: boolean; name: string } | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 200));
+    resolved = await tianyiResolvePath(mount, (destParentPath ? `${destParentPath}/` : '') + sourceName);
+    if (resolved) break;
+  }
+  if (resolved && !resolved.isFolder) await tianyiRenameFile(mount, resolved.id, destName);
+}
+
+function createTianyiOps(mount: StorageMount): StorageOps {
+  return {
+    async read(k, method, workerEnv) {
+      const fullKey = pk(mount, k);
+      const cleanKey = fullKey.replace(/\/+$/, '');
+      const resolved = await tianyiResolvePath(mount, cleanKey);
+      if (!resolved || resolved.isFolder) return new Response('Not Found', { status: 404 });
+      if (method === 'HEAD') return new Response(null, { status: 200 });
+      const downloadUrl = await tianyiGetDownloadUrl(mount, resolved.id);
+      if (!downloadUrl) return new Response('Not Found', { status: 404 });
+      const downloadResp = await fetch(downloadUrl);
+      if (!downloadResp.ok) return new Response(`Download failed (${downloadResp.status})`, { status: 502 });
+      return downloadResp;
+    },
+
+    async write(k, body, contentType, workerEnv) {
+      const fullKey = pk(mount, k);
+      const lastSlash = fullKey.lastIndexOf('/');
+      const parentPath = lastSlash >= 0 ? fullKey.slice(0, lastSlash) : '';
+      const fileName = lastSlash >= 0 ? fullKey.slice(lastSlash + 1) : fullKey;
+      const parent = await tianyiResolvePath(mount, parentPath || '');
+      if (!parent || !parent.isFolder) return new Response('Parent folder not found', { status: 404 });
+      const cookie = await tianyiEnsureSession(mount);
+      const form = new FormData();
+      form.append('folderId', parent.id);
+      if (body) {
+        const buf = await new Response(body).arrayBuffer();
+        form.append('file', new Blob([buf]), fileName);
+      }
+      const uploadUrl = `${TIANYI_API_BASE}/api/open/file/uploadFile.action`;
+      const uploadResp = await fetch(uploadUrl, { method: 'POST', headers: { 'Cookie': cookie, 'Referer': 'https://cloud.189.cn/', 'User-Agent': TIANYI_UA }, body: form });
+      if (!uploadResp.ok) return new Response(`Upload failed (${uploadResp.status})`, { status: 502 });
+      return new Response(null, { status: 201 });
+    },
+
+    async mkdir(k, workerEnv) {
+      const dirKey = (k.endsWith('/') ? pk(mount, k) : `${pk(mount, k)}/`).replace(/\/+$/, '');
+      const segments = dirKey.split('/').filter(Boolean);
+      const folderName = segments.pop() || dirKey;
+      const parentPath = segments.join('/');
+      const parent = await tianyiResolvePath(mount, parentPath || '');
+      if (!parent || !parent.isFolder) return new Response('Parent folder not found', { status: 409 });
+      await tianyiCreateFolder(mount, parent.id, folderName);
+      return new Response(null, { status: 201 });
+    },
+
+    async delete(k, workerEnv) {
+      const cleanKey = pk(mount, k).replace(/\/+$/, '');
+      const resolved = await tianyiResolvePath(mount, cleanKey);
+      if (!resolved) return new Response('Not Found', { status: 404 });
+      if (resolved.isFolder) {
+        await tianyiDeleteFolder(mount, resolved.id);
+      } else {
+        await tianyiDeleteFile(mount, resolved.id);
+      }
+      return new Response(null, { status: 204 });
+    },
+
+    async copy(srcK, destK, workerEnv) {
+      const cleanSource = pk(mount, srcK).replace(/\/+$/, '');
+      const cleanDest = pk(mount, destK).replace(/\/+$/, '');
+      const source = await tianyiResolvePath(mount, cleanSource);
+      if (!source) return new Response('Not Found', { status: 404 });
+      if (source.isFolder) return new Response('Collection copy is not supported', { status: 409 });
+
+      const destSlash = cleanDest.lastIndexOf('/');
+      const destParentPath = destSlash >= 0 ? cleanDest.slice(0, destSlash) : '';
+      const destName = destSlash >= 0 ? cleanDest.slice(destSlash + 1) : cleanDest;
+      const destParent = await tianyiResolvePath(mount, destParentPath || '');
+      if (!destParent || !destParent.isFolder) return new Response('Destination folder not found', { status: 409 });
+
+      await tianyiCopyFile(mount, source.id, destParent.id);
+      await tianyiPollAndRename(mount, destParentPath, source.name, destName);
+      return new Response(null, { status: 201 });
+    },
+
+    async move(srcK, destK, workerEnv) {
+      const cleanSource = pk(mount, srcK).replace(/\/+$/, '');
+      const cleanDest = pk(mount, destK).replace(/\/+$/, '');
+      const source = await tianyiResolvePath(mount, cleanSource);
+      if (!source) return new Response('Not Found', { status: 404 });
+      if (source.isFolder) return new Response('Collection move is not supported', { status: 409 });
+
+      const destSlash = cleanDest.lastIndexOf('/');
+      const destParentPath = destSlash >= 0 ? cleanDest.slice(0, destSlash) : '';
+      const destName = destSlash >= 0 ? cleanDest.slice(destSlash + 1) : cleanDest;
+      const destParent = await tianyiResolvePath(mount, destParentPath || '');
+      if (!destParent || !destParent.isFolder) return new Response('Destination folder not found', { status: 409 });
+
+      const srcSlash = cleanSource.lastIndexOf('/');
+      const srcParentPath = srcSlash >= 0 ? cleanSource.slice(0, srcSlash) : '';
+      const srcParent = srcParentPath ? await tianyiResolvePath(mount, srcParentPath) : { id: mount.rootDir || '-11', isFolder: true, name: '' };
+      const sameParent = srcParent && destParent.id === srcParent.id;
+
+      if (sameParent) {
+        await tianyiRenameFile(mount, source.id, destName);
+      } else {
+        await tianyiMoveFile(mount, source.id, destParent.id);
+        await tianyiPollAndRename(mount, destParentPath, source.name, destName);
+      }
+      return new Response(null, { status: 201 });
+    },
+
+    list(prefix, workerEnv, limit, offset) {
+      return listObjects(mount, pkd(mount, prefix), workerEnv, limit, offset);
+    },
+
+    meta(k, workerEnv) {
+      return objectMeta(mount, pk(mount, k), workerEnv);
+    },
+
+    collectionExists(prefix, workerEnv) {
+      return collectionExists(mount, pkd(mount, prefix), workerEnv);
+    },
+
+    async isEmpty(dirK, workerEnv) {
+      const listing = await listObjects(mount, pkd(mount, dirK), workerEnv, 2, 0);
+      return listing.prefixes.length === 0 && listing.objects.length === 0;
+    },
+  };
+}
+
+export function getStorageOps(mount: StorageMount): StorageOps {
+  switch (mount.provider) {
+    case 'r2': return createR2Ops(mount);
+    case 'tianyi': return createTianyiOps(mount);
+    default: return createS3Ops(mount);
+  }
 }

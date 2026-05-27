@@ -12,7 +12,7 @@ import {
 import { handleWebDavRequest, createStorageAdapter } from './protocol';
 
 // Re-export public API
-export { StorageProvider, WebDavConfig, StorageMount, WebDavStorageAdapter } from './types';
+export type { StorageProvider, WebDavConfig, StorageMount, WebDavStorageAdapter } from './types';
 export { PLUGIN_ID } from './types';
 export {
   readObject, readPluginSettings, normalizeRoutePath, parseMounts,
@@ -105,8 +105,10 @@ async function handleAdminApiRequest(request: Request, config: WebDavConfig, wor
         pagedPrefixes = prefixes;
         pagedObjects = objects;
       } else {
-        const all = prefixes.map(p => ({ type: 'folder' as const, name: p }))
-          .concat(objects.map(o => ({ type: 'file' as const, name: o.key, obj: o })));
+        const all = [
+          ...prefixes.map(p => ({ type: 'folder' as const, name: p })),
+          ...objects.map(o => ({ type: 'file' as const, name: o.key, obj: o })),
+        ];
         const sliced = all.slice(offset, offset + pageSize);
         pagedPrefixes = [];
         pagedObjects = [];
@@ -199,7 +201,7 @@ function adminPageHtml(csrf: string, pageSize: number): string {
   </div>
   <div class="typecho-table-wrap" id="webdav-table-wrap">
     <table class="typecho-list-table">
-      <colgroup><col width="20"><col width="40%"><col width="15%"><col width="20%"><col width="15%"></colgroup>
+      <colgroup><col width="20"><col width=""><col width="12%" class="kit-hidden-mb"><col width="18%" class="kit-hidden-mb"><col width="12%"></colgroup>
       <thead><tr><th><input type="checkbox" class="typecho-table-select-all"></th><th>名称</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
       <tbody id="file-list-body"><tr><td colspan="5"><h6 class="typecho-list-table-title"><span class="loading">加载中...</span></h6></td></tr></tbody>
     </table>
