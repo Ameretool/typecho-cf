@@ -38,21 +38,17 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 | `region` | text (S3) | `us-east-1` | S3 Region |
 | `accessKeyId` | text (S3) | — | S3 Access Key ID |
 | `secretAccessKey` | password (S3) | — | S3 Secret Access Key |
-| `appKey` | text (天翼) | — | 天翼云盘开放平台 App Key（AK） |
-| `appSecret` | password (天翼) | — | 天翼云盘开放平台 App Secret（SK） |
-| `accessToken` | password (天翼) | — | 天翼云盘 OAuth Access Token（可直接填写，或通过 App Key/Secret 自动获取） |
+| `username` | text (天翼) | — | 天翼云盘登录手机号 |
+| `password` | password (天翼) | — | 天翼云盘登录密码 |
 | `rootDir` | text (天翼) | `-11` | 天翼云盘根目录 folderId |
 | `prefix` | text | — | 桶内前缀，限制可访问范围 |
 | `pathStyle` | select (S3) | Path-style | S3 URL 路径风格 |
 
 ### 天翼云盘配置说明
 
-天翼云盘通过 [开放平台 API](https://openapi.cloud.189.cn) 接入。认证方式：
+天翼云盘通过账号密码方式登录，使用 [天翼云盘 API](https://cloud.189.cn) 接入。
 
-1. **直接填写 Access Token**：在 `accessToken` 字段填入已获取的 OAuth token
-2. **App Key / Secret**：填写 `appKey` 和 `appSecret`，插件启动时自动通过 client_credentials 模式获取 token
-
-至少需要填写 `accessToken` 或 `appKey + appSecret` 之一，否则保存时会报错。
+在 `username` 字段填写登录手机号，`password` 字段填写登录密码。保存后插件会自动通过 RSA 加密登录获取 session，后续 API 调用均携带 session cookie。
 
 天翼云盘使用 folderId 而非路径来定位文件，因此首次访问目录时可能有额外延迟（路径解析需要逐层遍历）。
 
@@ -86,7 +82,7 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
   → 查找匹配的 StorageMount 配置
   → R2: 通过 env[bindingName] 获取 R2Bucket 对象
   → S3: 构造 AWS Signature V4 签名的 HTTP 请求
-  → 天翼: 通过 OAuth Access Token 调用开放平台 API
+  → 天翼: 通过账号密码登录，session cookie 调用云盘 API
 
 请求分派
   → PROPFIND: 列出目录/文件列表，返回 XML
@@ -124,5 +120,5 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 
 - Cloudflare Workers R2 binding（R2 模式）
 - AWS Signature V4（S3 模式）
-- 天翼云盘开放平台 API（天翼模式）
+- 天翼云盘 API（天翼模式）
 - Typecho 用户表认证

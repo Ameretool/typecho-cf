@@ -371,32 +371,25 @@ describe('typecho-plugin-webdav config', () => {
     expect(config.failBanSeconds).toBe(600);
   });
 
-  it('accepts tianyi provider with accessToken', () => {
+  it('accepts tianyi provider with username and password', () => {
     const mounts = parseMounts(JSON.stringify([{
-      mount: 'cloud', provider: 'tianyi', accessToken: 'test-token-123', rootDir: '-11',
+      mount: 'cloud', provider: 'tianyi', username: '13800138000', password: 'test-password', rootDir: '-11',
     }]));
     expect(mounts).toHaveLength(1);
-    expect(mounts[0]).toMatchObject({ mount: 'cloud', provider: 'tianyi', accessToken: 'test-token-123', rootDir: '-11' });
+    expect(mounts[0]).toMatchObject({ mount: 'cloud', provider: 'tianyi', username: '13800138000', password: 'test-password', rootDir: '-11' });
   });
 
-  it('accepts tianyi provider with appKey and appSecret', () => {
-    const mounts = parseMounts(JSON.stringify([{
-      mount: 'cloud', provider: 'tianyi', appKey: 'ak-test', appSecret: 'sk-test',
-    }]));
-    expect(mounts[0]).toMatchObject({ provider: 'tianyi', appKey: 'ak-test', appSecret: 'sk-test' });
-  });
-
-  it('rejects tianyi provider without any credentials', () => {
+  it('rejects tianyi provider without username and password', () => {
     expect(() => parseMounts(JSON.stringify([{
       mount: 'cloud', provider: 'tianyi',
-    }]))).toThrow('需要填写 accessToken 或 (appKey + appSecret)');
+    }]))).toThrow('需要填写用户名和密码');
   });
 
   it('accepts mixed provider types (r2 + s3 + tianyi)', () => {
     const mounts = parseMounts(JSON.stringify([
       { mount: 'r2mount', provider: 'r2', bindingName: 'BUCKET' },
       { mount: 's3mount', provider: 's3', endpoint: 'https://s3.us-east-1.amazonaws.com', bucket: 'b', region: 'us-east-1', accessKeyId: 'ak', secretAccessKey: 'sk' },
-      { mount: 'cloud', provider: 'tianyi', accessToken: 'token-123' },
+      { mount: 'cloud', provider: 'tianyi', username: '13800138000', password: 'test-pw' },
     ]));
     expect(mounts).toHaveLength(3);
     expect(mounts.map(m => m.provider)).toEqual(['r2', 's3', 'tianyi']);
@@ -898,7 +891,7 @@ describe('typecho-plugin-webdav admin panel', () => {
     const footer = hooks.get('admin:footer')!;
 
     const result = footer('', { activeMenu: 'manage-posts', user: { group: 'administrator' } });
-    expect(result).toContain('WebDav');
+    expect(result).toContain('WebDAV');
     expect(result).toContain('/admin/plugin/webdav');
     expect(result).toContain('<script>');
   });
@@ -922,7 +915,7 @@ describe('typecho-plugin-webdav admin panel', () => {
 
     const result = footer('existing-content', { activeMenu: 'manage-posts', user: { group: 'editor' } });
     expect(result).toBe('existing-content');
-    expect(result).not.toContain('WebDav');
+    expect(result).not.toContain('WebDAV');
   });
 
   it('adds focus class when webdav menu is active', () => {

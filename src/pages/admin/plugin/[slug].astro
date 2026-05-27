@@ -25,7 +25,7 @@ const pageContent = await applyFilterSafely('admin:page', '', {
 });
 ---
 
-<Admin title={slug ? `${slug} 插件页面` : '插件页面'} options={options} urls={urls} user={user!} activeMenu={slug ?? 'plugins'}>
+<Admin title={slug === 'webdav' ? 'WebDAV' : (slug ? `${slug} 插件页面` : '插件页面')} options={options} urls={urls} user={user!} activeMenu={slug ?? 'plugins'}>
   {pageContent ? (
     <Fragment set:html={pageContent} />
   ) : (

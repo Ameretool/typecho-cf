@@ -63,6 +63,12 @@
           "default": "900",
           "description": "触发阈值后的封禁持续时间。"
         },
+        "fileListPageSize": {
+          "type": "text",
+          "label": "文件列表每页数量",
+          "default": "50",
+          "description": "管理面板文件列表每页显示的文件数，默认 50，最大 200。"
+        },
         "mounts": {
           "type": "repeatable",
           "label": "后端存储挂载",
@@ -98,31 +104,21 @@
                 "tianyi": "天翼云盘"
               }
             },
-            "appKey": {
+            "username": {
               "type": "text",
-              "label": "App Key",
+              "label": "用户名",
               "default": "",
-              "description": "天翼云盘开放平台 App Key（AK）",
+              "description": "天翼云盘登录手机号",
               "showWhen": {
                 "field": "provider",
                 "value": "tianyi"
               }
             },
-            "appSecret": {
+            "password": {
               "type": "password",
-              "label": "App Secret",
+              "label": "密码",
               "default": "",
-              "description": "天翼云盘开放平台 App Secret（SK）",
-              "showWhen": {
-                "field": "provider",
-                "value": "tianyi"
-              }
-            },
-            "accessToken": {
-              "type": "password",
-              "label": "Access Token",
-              "default": "",
-              "description": "天翼云盘 OAuth Access Token。可直接填写已获取的 token，或留空通过 App Key/Secret 自动获取。",
+              "description": "天翼云盘登录密码",
               "showWhen": {
                 "field": "provider",
                 "value": "tianyi"
