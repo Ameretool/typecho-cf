@@ -1,7 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getDb } from '@/db';
 import { schema } from '@/db';
-import { loadOptions } from '@/lib/options';
+import { loadOptions, ensureSecret } from '@/lib/options';
 import { addHook, applyFilter, getRegisteredHooks, HookPoints, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
 import { applySecurityHeaders } from '@/lib/security-headers';
@@ -141,6 +141,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     options = await loadOptions(db);
     if (!options.installed) {
       return redirectToInstall(context.request);
+    }
+    // PHP-Typecho migrations import the options table without carrying the
+    // `secret` value (it used to live in config.inc.php). Bootstrap one
+    // synchronously the first time we see it missing, then reload options
+    // so the current request has the freshly-generated value.
+    if (!options.secret) {
+      await ensureSecret(db);
+      options = await loadOptions(db);
     }
   } catch {
     return redirectToInstall(context.request);

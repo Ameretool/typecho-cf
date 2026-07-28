@@ -122,3 +122,15 @@ export const fields = sqliteTable('typecho_fields', {
   index('typecho_fields_int_value').on(table.int_value),
   index('typecho_fields_float_value').on(table.float_value),
 ]);
+
+// ==================== Login failure tracker ====================
+// Persistent counter for the admin-login brute-force throttle. Keyed by
+// client IP; failures within a sliding window accumulate here rather than
+// in-isolate memory so an attacker cannot rotate isolates or spread load
+// across PoPs to reset the counter.
+export const loginFailures = sqliteTable('typecho_login_failures', {
+  ip: text('ip').primaryKey(),
+  failures: integer('failures').notNull().default(0),
+  windowStartedAt: integer('windowStartedAt').notNull().default(0),
+  bannedUntil: integer('bannedUntil').notNull().default(0),
+});

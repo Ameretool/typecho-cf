@@ -5,7 +5,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTestDb, type TestDatabase } from '../helpers';
 import { hashPassword, PBKDF2_ITERATIONS } from '@/lib/auth';
-import { resetLoginRateLimit } from '@/lib/login-rate-limit';
 import { schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
@@ -68,7 +67,6 @@ function makeRequest(opts: { ip?: string; origin?: string; body: Record<string, 
 describe('login security', () => {
   beforeEach(async () => {
     testDb = await createTestDb();
-    resetLoginRateLimit();
   });
 
   it('locks out after repeated wrong passwords from the same IP (G1-3)', async () => {

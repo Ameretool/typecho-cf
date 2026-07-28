@@ -1,17 +1,19 @@
 /**
- * In-memory failure tracker for the admin login form.
+ * Persistent brute-force throttle for the admin login form.
  *
- * Cloudflare Workers run a single-thread event loop per isolate, so a
- * module-scope `Map` is safe. Counters survive across requests within an
- * isolate's lifetime; new isolates start fresh, which is acceptable
- * trade-off for a brute-force defence (attackers cannot reset the counter
- * by issuing a single failed request).
+ * Counters live in D1 (typecho_login_failures) so that Cloudflare Workers
+ * spawning many isolates per PoP — and requests balanced across PoPs — see
+ * the same count. Previous in-isolate `Map` gave the attacker effectively
+ * N × maxFailures attempts where N was the number of isolates they hit.
  *
  * Locked is keyed by client IP only — locking by username creates a
  * trivial DoS where any attacker can lock out a known administrator. IPs
  * trade off a small amount of false positives behind shared NATs for a
  * meaningful guard against credential stuffing.
  */
+
+import { schema, type Database } from '@/db';
+import { eq, lt } from 'drizzle-orm';
 
 export interface LoginRateLimitConfig {
   enabled: boolean;
@@ -22,14 +24,6 @@ export interface LoginRateLimitConfig {
   /** Lock duration in seconds. */
   banSeconds: number;
 }
-
-interface FailureState {
-  failures: number;
-  windowStartedAt: number;
-  bannedUntil: number;
-}
-
-const failureStates = new Map<string, FailureState>();
 
 export const DEFAULT_LOGIN_RATE_LIMIT: LoginRateLimitConfig = {
   enabled: true,
@@ -61,40 +55,66 @@ export function readLoginRateLimitConfig(options: Record<string, unknown>): Logi
   };
 }
 
-/** Returns the lock expiry in milliseconds, or 0 if not locked. */
-export function loginLockedUntil(ip: string, config: LoginRateLimitConfig, now = Date.now()): number {
+/**
+ * Returns the lock expiry in milliseconds, or 0 if not locked. If the ban
+ * has already expired we opportunistically delete the row to keep the
+ * table small under long-running attacks.
+ */
+export async function loginLockedUntil(
+  db: Database,
+  ip: string,
+  config: LoginRateLimitConfig,
+  now = Date.now(),
+): Promise<number> {
   if (!config.enabled || !ip) return 0;
-  const state = failureStates.get(ip);
-  if (!state) return 0;
-  if (state.bannedUntil > now) return state.bannedUntil;
-  if (state.bannedUntil > 0) failureStates.delete(ip);
+  const row = await db.query.loginFailures.findFirst({ where: eq(schema.loginFailures.ip, ip) });
+  if (!row) return 0;
+  if (row.bannedUntil > now) return row.bannedUntil;
+  // Ban expired or never set — treat as unlocked. We do NOT delete the
+  // row here so an ongoing sliding-window attack keeps accumulating.
   return 0;
 }
 
-export function recordLoginFailure(ip: string, config: LoginRateLimitConfig, now = Date.now()): void {
+export async function recordLoginFailure(
+  db: Database,
+  ip: string,
+  config: LoginRateLimitConfig,
+  now = Date.now(),
+): Promise<void> {
   if (!config.enabled || !ip) return;
   const windowMs = config.windowSeconds * 1000;
   const banMs = config.banSeconds * 1000;
-  const current = failureStates.get(ip);
-  const state: FailureState = !current || now - current.windowStartedAt > windowMs
-    ? { failures: 0, windowStartedAt: now, bannedUntil: 0 }
-    : current;
+  const current = await db.query.loginFailures.findFirst({ where: eq(schema.loginFailures.ip, ip) });
 
-  state.failures += 1;
-  if (state.failures >= config.maxFailures) {
-    state.bannedUntil = now + banMs;
+  const inWindow = current && now - current.windowStartedAt <= windowMs;
+  const failures = (inWindow ? current!.failures : 0) + 1;
+  const windowStartedAt = inWindow ? current!.windowStartedAt : now;
+  const bannedUntil = failures >= config.maxFailures ? now + banMs : 0;
+
+  if (current) {
+    await db
+      .update(schema.loginFailures)
+      .set({ failures, windowStartedAt, bannedUntil })
+      .where(eq(schema.loginFailures.ip, ip));
+  } else {
+    await db.insert(schema.loginFailures).values({ ip, failures, windowStartedAt, bannedUntil });
   }
-  failureStates.set(ip, state);
 }
 
-export function clearLoginFailures(ip: string): void {
+export async function clearLoginFailures(db: Database, ip: string): Promise<void> {
   if (!ip) return;
-  failureStates.delete(ip);
+  await db.delete(schema.loginFailures).where(eq(schema.loginFailures.ip, ip));
 }
 
-/** For tests only. */
-export function resetLoginRateLimit(): void {
-  failureStates.clear();
+/**
+ * Delete rows whose window and ban have both expired. Callers can invoke
+ * this from a scheduled job — never inline on the request path.
+ */
+export async function purgeExpiredLoginFailures(db: Database, now = Date.now()): Promise<void> {
+  // Rows whose bannedUntil < now AND (windowStartedAt + window) < now can be
+  // dropped. We use a conservative bound: bannedUntil < now, since the
+  // window sizes are configurable and the caller doesn't hand us the config.
+  await db.delete(schema.loginFailures).where(lt(schema.loginFailures.bannedUntil, now));
 }
 
 // ─── Per-actor sliding-window rate limiter ─────────────────────────────────

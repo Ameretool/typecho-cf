@@ -2,17 +2,21 @@
  * Unit tests for src/lib/login-rate-limit.ts.
  * Covers sliding-window failure tracking and the lock/unlock lifecycle
  * used by /api/users/login (G1-3).
+ *
+ * State is now persisted in D1 rather than an in-isolate Map, so tests
+ * exercise a real SQLite database via the test-helper factory.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   DEFAULT_LOGIN_RATE_LIMIT,
   clearLoginFailures,
   loginLockedUntil,
   readLoginRateLimitConfig,
   recordLoginFailure,
-  resetLoginRateLimit,
+  purgeExpiredLoginFailures,
   type LoginRateLimitConfig,
 } from '@/lib/login-rate-limit';
+import { createTestDb, disposeTestDb, type TestDatabase } from '../helpers';
 
 const cfg: LoginRateLimitConfig = {
   enabled: true,
@@ -21,66 +25,80 @@ const cfg: LoginRateLimitConfig = {
   banSeconds: 30,
 };
 
+let db: TestDatabase;
+
 describe('login-rate-limit', () => {
-  beforeEach(() => {
-    resetLoginRateLimit();
+  beforeEach(async () => {
+    db = await createTestDb();
+  });
+  afterEach(async () => {
+    await disposeTestDb(db);
   });
 
-  it('does nothing when disabled', () => {
+  it('does nothing when disabled', async () => {
     const disabled: LoginRateLimitConfig = { ...cfg, enabled: false };
-    for (let i = 0; i < 100; i++) recordLoginFailure('1.2.3.4', disabled);
-    expect(loginLockedUntil('1.2.3.4', disabled)).toBe(0);
+    for (let i = 0; i < 100; i++) await recordLoginFailure(db, '1.2.3.4', disabled);
+    expect(await loginLockedUntil(db, '1.2.3.4', disabled)).toBe(0);
   });
 
-  it('does nothing for empty IP', () => {
-    recordLoginFailure('', cfg);
-    expect(loginLockedUntil('', cfg)).toBe(0);
+  it('does nothing for empty IP', async () => {
+    await recordLoginFailure(db, '', cfg);
+    expect(await loginLockedUntil(db, '', cfg)).toBe(0);
   });
 
-  it('does not lock until maxFailures is reached', () => {
-    recordLoginFailure('1.2.3.4', cfg);
-    recordLoginFailure('1.2.3.4', cfg);
-    expect(loginLockedUntil('1.2.3.4', cfg)).toBe(0);
+  it('does not lock until maxFailures is reached', async () => {
+    await recordLoginFailure(db, '1.2.3.4', cfg);
+    await recordLoginFailure(db, '1.2.3.4', cfg);
+    expect(await loginLockedUntil(db, '1.2.3.4', cfg)).toBe(0);
   });
 
-  it('locks after the configured number of failures', () => {
+  it('locks after the configured number of failures', async () => {
     const now = Date.now();
-    for (let i = 0; i < cfg.maxFailures; i++) recordLoginFailure('1.2.3.4', cfg, now);
-    const until = loginLockedUntil('1.2.3.4', cfg, now);
+    for (let i = 0; i < cfg.maxFailures; i++) await recordLoginFailure(db, '1.2.3.4', cfg, now);
+    const until = await loginLockedUntil(db, '1.2.3.4', cfg, now);
     expect(until).toBeGreaterThan(now);
     expect(until).toBeLessThanOrEqual(now + cfg.banSeconds * 1000 + 5);
   });
 
-  it('lock expires after banSeconds', () => {
+  it('lock expires after banSeconds', async () => {
     const start = Date.now();
-    for (let i = 0; i < cfg.maxFailures; i++) recordLoginFailure('1.2.3.4', cfg, start);
-    expect(loginLockedUntil('1.2.3.4', cfg, start)).toBeGreaterThan(start);
+    for (let i = 0; i < cfg.maxFailures; i++) await recordLoginFailure(db, '1.2.3.4', cfg, start);
+    expect(await loginLockedUntil(db, '1.2.3.4', cfg, start)).toBeGreaterThan(start);
     // Probe past the ban window — IP should be unlocked again.
-    expect(loginLockedUntil('1.2.3.4', cfg, start + cfg.banSeconds * 1000 + 1)).toBe(0);
+    expect(await loginLockedUntil(db, '1.2.3.4', cfg, start + cfg.banSeconds * 1000 + 1)).toBe(0);
   });
 
-  it('window resets after windowSeconds with intermittent failures', () => {
+  it('window resets after windowSeconds with intermittent failures', async () => {
     const t0 = Date.now();
-    recordLoginFailure('1.2.3.4', cfg, t0);
-    recordLoginFailure('1.2.3.4', cfg, t0 + 1000);
+    await recordLoginFailure(db, '1.2.3.4', cfg, t0);
+    await recordLoginFailure(db, '1.2.3.4', cfg, t0 + 1000);
     // Failure beyond window — counter starts over.
-    recordLoginFailure('1.2.3.4', cfg, t0 + cfg.windowSeconds * 1000 + 1);
-    expect(loginLockedUntil('1.2.3.4', cfg, t0 + cfg.windowSeconds * 1000 + 2)).toBe(0);
+    await recordLoginFailure(db, '1.2.3.4', cfg, t0 + cfg.windowSeconds * 1000 + 1);
+    expect(await loginLockedUntil(db, '1.2.3.4', cfg, t0 + cfg.windowSeconds * 1000 + 2)).toBe(0);
   });
 
-  it('clearLoginFailures resets the counter', () => {
-    recordLoginFailure('1.2.3.4', cfg);
-    recordLoginFailure('1.2.3.4', cfg);
-    clearLoginFailures('1.2.3.4');
+  it('clearLoginFailures resets the counter', async () => {
+    await recordLoginFailure(db, '1.2.3.4', cfg);
+    await recordLoginFailure(db, '1.2.3.4', cfg);
+    await clearLoginFailures(db, '1.2.3.4');
     // Should now require maxFailures fresh failures to lock.
-    recordLoginFailure('1.2.3.4', cfg);
-    expect(loginLockedUntil('1.2.3.4', cfg)).toBe(0);
+    await recordLoginFailure(db, '1.2.3.4', cfg);
+    expect(await loginLockedUntil(db, '1.2.3.4', cfg)).toBe(0);
   });
 
-  it('different IPs have independent counters', () => {
-    for (let i = 0; i < cfg.maxFailures; i++) recordLoginFailure('1.1.1.1', cfg);
-    expect(loginLockedUntil('1.1.1.1', cfg)).toBeGreaterThan(0);
-    expect(loginLockedUntil('2.2.2.2', cfg)).toBe(0);
+  it('different IPs have independent counters', async () => {
+    for (let i = 0; i < cfg.maxFailures; i++) await recordLoginFailure(db, '1.1.1.1', cfg);
+    expect(await loginLockedUntil(db, '1.1.1.1', cfg)).toBeGreaterThan(0);
+    expect(await loginLockedUntil(db, '2.2.2.2', cfg)).toBe(0);
+  });
+
+  it('purgeExpiredLoginFailures removes rows whose ban has passed', async () => {
+    const start = Date.now();
+    for (let i = 0; i < cfg.maxFailures; i++) await recordLoginFailure(db, '1.2.3.4', cfg, start);
+    // Fast-forward past the ban window and purge.
+    await purgeExpiredLoginFailures(db, start + cfg.banSeconds * 1000 + 1);
+    // Row is gone → next lookup returns 0 without special-casing.
+    expect(await loginLockedUntil(db, '1.2.3.4', cfg, start + cfg.banSeconds * 1000 + 1)).toBe(0);
   });
 });
 

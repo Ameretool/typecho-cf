@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import type { Database } from '@/db';
 import { schema } from '@/db';
 import { generateRandomString } from '@/lib/auth';
-import { getCachedOptions, setCachedOptions } from '@/lib/cache';
+import { getCachedOptions, setCachedOptions, purgeOptionsCache } from '@/lib/cache';
 
 export interface SiteOptions {
   theme: string;
@@ -134,7 +134,13 @@ const defaultOptions: Partial<SiteOptions> = {
 };
 
 /**
- * Load all global options from database (with Cache API caching)
+ * Load all global options from database (with Cache API caching).
+ *
+ * This is a pure loader — it never mutates the row set. Call
+ * `ensureSecret()` once at install time (or during migration) to
+ * bootstrap the `secret` option. A missing secret here surfaces as
+ * `opts.secret === undefined` so downstream code can fail fast rather
+ * than picking up a race-generated value that varies between requests.
  */
 export async function loadOptions(db: Database): Promise<SiteOptions> {
   // Try cache first
@@ -177,18 +183,28 @@ export async function loadOptions(db: Database): Promise<SiteOptions> {
     }
   }
 
-  // Auto-generate secret if missing (e.g. migrated from PHP Typecho where secret is in config.inc.php)
-  if (!opts.secret) {
-    const secret = generateRandomString(32);
-    opts.secret = secret;
-    // Persist to DB so it stays consistent across requests
-    await setOption(db, 'secret', secret);
-  }
-
   // Write to cache for subsequent requests
   await setCachedOptions(opts);
 
   return opts as unknown as SiteOptions;
+}
+
+/**
+ * Ensure the site has a `secret` option, generating one if missing. Kept
+ * out of loadOptions() so the read path stays free of writes — otherwise
+ * the very first request on a legacy PHP-Typecho migration would race
+ * multiple isolates each generating a different secret.
+ *
+ * Callers: install flow (on fresh setup) and a one-shot migration path
+ * for imported PHP databases where the secret used to live in
+ * config.inc.php.
+ */
+export async function ensureSecret(db: Database): Promise<string> {
+  const existing = await getOption(db, 'secret');
+  if (existing) return existing;
+  const secret = generateRandomString(32);
+  await setOption(db, 'secret', secret);
+  return secret;
 }
 
 /**
@@ -202,7 +218,9 @@ export async function getOption(db: Database, name: string, userId = 0): Promise
 }
 
 /**
- * Set an option value
+ * Set an option value. Invalidates the options cache so subsequent
+ * loadOptions() calls see the fresh value — callers no longer have to
+ * remember to purge separately.
  */
 export async function setOption(db: Database, name: string, value: string, userId = 0): Promise<void> {
   await db
@@ -212,15 +230,17 @@ export async function setOption(db: Database, name: string, value: string, userI
       target: [schema.options.name, schema.options.user],
       set: { value },
     });
+  await purgeOptionsCache();
 }
 
 /**
- * Delete an option
+ * Delete an option. Invalidates the options cache — see setOption().
  */
 export async function deleteOption(db: Database, name: string, userId = 0): Promise<void> {
   await db
     .delete(schema.options)
     .where(and(eq(schema.options.name, name), eq(schema.options.user, userId)));
+  await purgeOptionsCache();
 }
 
 /**

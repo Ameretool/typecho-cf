@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb } from '../helpers';
-import { loadOptions, getOption, setOption, deleteOption, computeUrls } from '@/lib/options';
+import { loadOptions, getOption, setOption, deleteOption, computeUrls, ensureSecret } from '@/lib/options';
 
 async function createOptionsTestDb() {
   return await createTestDb() as any;
@@ -39,15 +39,21 @@ describe('loadOptions()', () => {
     expect(opts.allowRegister).toBe(1);
   });
 
-  it('auto-generates secret when missing and persists it', async () => {
+  it('does not auto-generate secret in the read path', async () => {
+    // loadOptions is a pure read; secret bootstrap is now handled by
+    // ensureSecret() during install / by middleware for PHP migrations.
     const db = await createOptionsTestDb();
-    const opts1 = await loadOptions(db);
-    expect(opts1.secret).toBeTruthy();
-    expect(opts1.secret.length).toBeGreaterThan(0);
+    const opts = await loadOptions(db);
+    expect(opts.secret).toBeUndefined();
+  });
 
-    // Second load should return the same secret
-    const opts2 = await loadOptions(db);
-    expect(opts2.secret).toBe(opts1.secret);
+  it('ensureSecret generates and persists on first call, reuses on subsequent calls', async () => {
+    const db = await createOptionsTestDb();
+    const first = await ensureSecret(db);
+    expect(first).toBeTruthy();
+    expect(first.length).toBeGreaterThan(0);
+    const second = await ensureSecret(db);
+    expect(second).toBe(first);
   });
 });
 

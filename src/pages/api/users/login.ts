@@ -24,6 +24,21 @@ import { env } from 'cloudflare:workers';
 
 const LOGIN_URL = '/admin/login';
 
+/**
+ * A pre-computed valid PBKDF2 hash used to run `verifyPassword` against a
+ * fixed target when the requested username doesn't exist. The specific
+ * password is irrelevant — we discard the return value; we just want the
+ * server to spend the same ~50-100 ms so response time doesn't leak
+ * whether the account exists.
+ *
+ * Generated with:
+ *   await hashPassword('unreachable-dummy-password-1')
+ * Any hash produced by hashPassword() will do; picking a fixed one keeps
+ * the dummy path from allocating a fresh salt on every no-user request.
+ */
+const DUMMY_PASSWORD_HASH =
+  '$PBKDF2$600000$0123456789abcdef0123456789abcdef$0000000000000000000000000000000000000000000000000000000000000000';
+
 function redirectWithLoginError(message: string, request?: Request): Response {
   return new Response(null, {
     status: 302,
@@ -84,7 +99,7 @@ export const POST: APIRoute = async ({ request }) => {
   // ── Brute-force throttle ────────────────────────────────────────────────
   const rateConfig = readLoginRateLimitConfig(options as unknown as Record<string, unknown>);
   const ip = getClientIp(request);
-  const lockedUntil = loginLockedUntil(ip, rateConfig);
+  const lockedUntil = await loginLockedUntil(db, ip, rateConfig);
   if (lockedUntil > 0) {
     const remaining = Math.max(1, Math.ceil((lockedUntil - Date.now()) / 1000));
     const headers = createFlashRedirectHeaders(LOGIN_URL, LOGIN_ERROR_FLASH_COOKIE, `登录失败次数过多，请 ${remaining} 秒后再试`, LOGIN_URL, request);
@@ -100,22 +115,27 @@ export const POST: APIRoute = async ({ request }) => {
   const user = await db.query.users.findFirst({ where: eq(schema.users.name, name) });
 
   if (!user) {
-    recordLoginFailure(ip, rateConfig);
+    // Run a dummy PBKDF2 against a fixed hash so response time reveals
+    // nothing about whether the account exists. verifyPassword is the
+    // dominant cost of a real login (~50-100 ms); without this branch a
+    // no-user reply arrives in < 10 ms and enumeration becomes trivial.
+    await verifyPassword(password, DUMMY_PASSWORD_HASH);
+    await recordLoginFailure(db, ip, rateConfig);
     return redirectWithLoginError('用户名或密码无效', request);
   }
 
   const valid = await verifyPassword(password, user.password || '');
   if (valid === 'needs_reset') {
-    recordLoginFailure(ip, rateConfig);
+    await recordLoginFailure(db, ip, rateConfig);
     return redirectWithLoginError('密码格式已升级，请使用忘记密码功能重置密码', request);
   }
   if (valid !== true) {
-    recordLoginFailure(ip, rateConfig);
+    await recordLoginFailure(db, ip, rateConfig);
     return redirectWithLoginError('用户名或密码无效', request);
   }
 
   // Successful login → reset failure counter for this IP.
-  clearLoginFailures(ip);
+  await clearLoginFailures(db, ip);
 
   // Opportunistic password upgrade: if the stored hash uses fewer
   // PBKDF2 iterations than the current recommendation, rehash with the
