@@ -1,10 +1,7 @@
 allowBuilds:
-  better-sqlite3: true
   esbuild: true
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:
-  - '@astrojs/cloudflare@13.5.2'
-  - astro@6.3.5
-  - tsx@4.22.2
-nodeLinker: hoisted
+  - '@astrojs/cloudflare@14.1.5'
+  - astro@7.1.4
