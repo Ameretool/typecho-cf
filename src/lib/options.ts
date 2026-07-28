@@ -54,10 +54,8 @@ export interface SiteOptions {
   attachmentTypes: string;
   secret: string;
   installed: number;
-  allowXmlRpc: number;
   editorSize: number;
   autoSave: number;
-  xmlrpcMarkdown: number;
   cacheEnabled: number;
   cacheVersion: number;
   activatedPlugins: string;
@@ -122,10 +120,8 @@ const defaultOptions: Partial<SiteOptions> = {
   cacheEnabled: 1,
   cacheVersion: 0,
   installed: 0,
-  allowXmlRpc: 2,
   editorSize: 350,
   autoSave: 0,
-  xmlrpcMarkdown: 0,
   loginFailBanEnabled: 1,
   loginFailBanWindowSeconds: 300,
   loginFailBanMaxFailures: 5,
@@ -170,8 +166,8 @@ export async function loadOptions(db: Database): Promise<SiteOptions> {
     'commentsPageBreak', 'commentsThreaded', 'commentsPageSize',
     'commentsCheckReferer', 'commentsAutoClose', 'commentsPostIntervalEnable',
     'commentsPostInterval', 'commentsShowCommentOnly', 'commentsAvatar',
-    'commentsAntiSpam', 'installed', 'allowXmlRpc', 'editorSize', 'autoSave',
-    'xmlrpcMarkdown', 'gzip', 'cacheEnabled', 'cacheVersion',
+    'commentsAntiSpam', 'installed', 'editorSize', 'autoSave',
+    'gzip', 'cacheEnabled', 'cacheVersion',
     'loginFailBanEnabled', 'loginFailBanWindowSeconds',
     'loginFailBanMaxFailures', 'loginFailBanSeconds',
     'feedItems',
@@ -260,7 +256,6 @@ export function computeUrls(opts: SiteOptions) {
     commentsFeedUrl: `${siteUrl}/feed/comments`,
     commentsFeedRssUrl: `${siteUrl}/feed/rss/comments`,
     commentsFeedAtomUrl: `${siteUrl}/feed/atom/comments`,
-    xmlRpcUrl: `${siteUrl}/api/xmlrpc`,
     themeUrl: (file: string) => `${siteUrl}/themes/${opts.theme}/${file}`,
   };
 }

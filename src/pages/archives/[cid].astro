@@ -42,7 +42,7 @@ if (!contentRow) {
   const redirectPath = getRedirectPathIfDifferent(Astro.request.url, pageUrl);
   if (redirectPath) return Astro.redirect(redirectPath);
 
-  result = await preparePageData(ctx, contentRow.slug || String(contentRow.cid), Astro.request.url, suppliedPassword);
+  result = await preparePageData(ctx, contentRow.slug || String(contentRow.cid), Astro.request.url, suppliedPassword, contentRow);
   if (result instanceof Response) {
     if (result.status !== 404) return result;
     Astro.response.status = 404;
@@ -52,7 +52,7 @@ if (!contentRow) {
     Component = templates.Page ?? defaultTemplates.Page!;
   }
 } else {
-  result = await preparePostData(ctx, cidNum, Astro.request.url, suppliedPassword);
+  result = await preparePostData(ctx, cidNum, Astro.request.url, suppliedPassword, contentRow);
   if (result instanceof Response) {
     if (result.status !== 404) return result;
     Astro.response.status = 404;

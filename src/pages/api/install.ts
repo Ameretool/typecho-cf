@@ -231,10 +231,8 @@ export const POST: APIRoute = async ({ request }) => {
       attachmentTypes: '@image@',
       secret,
       installed: '1',
-      allowXmlRpc: '2',
       editorSize: '350',
       autoSave: '0',
-      xmlrpcMarkdown: '0',
     };
 
     for (const [key, value] of Object.entries(defaultOptions)) {

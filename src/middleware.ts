@@ -91,13 +91,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // ── Pagination URL Rewriting ──────────────────────────────────────────────
-  // Typecho uses /page/N/ suffix for pagination (e.g. /page/2/, /category/default/page/2/)
+  // Typecho uses /page/N/ suffix for pagination (e.g. /page/2/, /category/default/page/2/).
+  // We rewrite the request in place via next(payload) rather than
+  // context.rewrite(payload): the latter triggers a fresh rendering phase
+  // that re-executes this whole middleware (options load, plugin chain,
+  // permalink resolution, route:request filter — all doubled on every
+  // paginated URL). next(payload) preserves the existing pipeline.
   const paginationMatch = path.match(/^(.*)\/page\/(\d+)\/?$/);
   if (paginationMatch) {
     const basePath = paginationMatch[1] || '';
     const pageNum = parseInt(paginationMatch[2], 10);
     (context.locals as any)._page = pageNum;
-    return context.rewrite(basePath === '' ? '/' : basePath + '/');
+    return next(basePath === '' ? '/' : basePath + '/');
   }
 
   // Check installation status — redirect to /install if DB not ready.
@@ -119,18 +124,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  // G4-1: backfill any newly added indexes once per isolate. The
-  // statements are CREATE INDEX IF NOT EXISTS so this is a no-op for
-  // already-up-to-date schemas.
+  // Backfill any newly-added indexes exactly once per isolate — off the
+  // request path. CREATE INDEX IF NOT EXISTS is idempotent, so hooking
+  // this into waitUntil is safe: we don't need the result to reply, and
+  // isolates that already ran it (or that share a PoP with one that did)
+  // pay nothing extra. install.ts creates every index synchronously on
+  // fresh setups, so this is only a safety net for legacy migrations and
+  // newly added indexes.
   if (!indexEnsurePassed) {
     indexEnsurePassed = true;
-    try {
-      const indexStatements = generateIndexSQL();
-      if (indexStatements.length > 0) {
-        await d1.batch(indexStatements.map(sql => d1.prepare(sql)));
+    const indexStatements = generateIndexSQL();
+    if (indexStatements.length > 0) {
+      const backfill = d1
+        .batch(indexStatements.map(sql => d1.prepare(sql)))
+        .catch(err => console.warn('[middleware] ensureIndexes failed:', err));
+      if (typeof (context.locals as any).runtime?.ctx?.waitUntil === 'function') {
+        (context.locals as any).runtime.ctx.waitUntil(backfill);
       }
-    } catch (err) {
-      console.warn('[middleware] ensureIndexes failed:', err);
+      // If waitUntil isn't available (e.g. in tests), we still kicked off
+      // the promise; letting it run in the background is harmless.
     }
   }
 

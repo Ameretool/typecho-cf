@@ -300,10 +300,11 @@ export async function preparePostData(
   cidNum: number,
   requestUrl: string,
   suppliedPassword: string | null,
+  preloadedRow?: ContentRow | null,
 ): Promise<ThemePostProps | Response> {
   const { db, options, urls, user, isLoggedIn } = ctx;
 
-  const contentRow = await db.query.contents.findFirst({
+  const contentRow = preloadedRow ?? await db.query.contents.findFirst({
     where: eq(schema.contents.cid, cidNum),
   });
 
@@ -322,17 +323,46 @@ export async function preparePostData(
   const hasPassword = !!contentRow.password;
   const passwordVerified = hasPassword && suppliedPassword === contentRow.password;
 
-  // Author
-  const author = contentRow.authorId
-    ? await db.query.users.findFirst({ where: eq(schema.users.uid, contentRow.authorId) })
-    : null;
+  const commentsOrder = options.commentsOrder === 'DESC' ? desc(schema.comments.created) : asc(schema.comments.created);
 
-  // Categories & Tags
-  const relatedMetas = await db
-    .select({ name: schema.metas.name, slug: schema.metas.slug, type: schema.metas.type })
-    .from(schema.relationships)
-    .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
-    .where(eq(schema.relationships.cid, cidNum));
+  // Six independent D1 reads — fire them in parallel. Each hop is ~5-15 ms
+  // from a Worker; serialised this is 30-90 ms of unnecessary latency on
+  // every cache miss.
+  const [
+    author,
+    relatedMetas,
+    prevPostRows,
+    nextPostRows,
+    allComments,
+    common,
+  ] = await Promise.all([
+    contentRow.authorId
+      ? db.query.users.findFirst({ where: eq(schema.users.uid, contentRow.authorId) })
+      : Promise.resolve(null),
+    db
+      .select({ name: schema.metas.name, slug: schema.metas.slug, type: schema.metas.type })
+      .from(schema.relationships)
+      .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
+      .where(eq(schema.relationships.cid, cidNum)),
+    db
+      .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
+      .from(schema.contents)
+      .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), lt(schema.contents.created, contentRow.created || 0)))
+      .orderBy(desc(schema.contents.created))
+      .limit(1),
+    db
+      .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
+      .from(schema.contents)
+      .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), gt(schema.contents.created, contentRow.created || 0)))
+      .orderBy(asc(schema.contents.created))
+      .limit(1),
+    db
+      .select()
+      .from(schema.comments)
+      .where(and(eq(schema.comments.cid, cidNum), eq(schema.comments.status, 'approved')))
+      .orderBy(commentsOrder),
+    loadCommon(ctx, requestUrl),
+  ]);
 
   type MetaEntry = { name: string | null; slug: string | null; type: string | null };
   const categories = (relatedMetas as MetaEntry[]).filter(m => m.type === 'category').map(m => ({
@@ -345,29 +375,6 @@ export async function preparePostData(
     slug: m.slug || '',
     permalink: buildTagLink(m.slug || '', urls.siteUrl),
   }));
-
-  // Prev / Next
-  const prevPost = await db
-    .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
-    .from(schema.contents)
-    .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), lt(schema.contents.created, contentRow.created || 0)))
-    .orderBy(desc(schema.contents.created))
-    .limit(1);
-
-  const nextPost = await db
-    .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
-    .from(schema.contents)
-    .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), gt(schema.contents.created, contentRow.created || 0)))
-    .orderBy(asc(schema.contents.created))
-    .limit(1);
-
-  // Comments
-  const commentsOrder = options.commentsOrder === 'DESC' ? desc(schema.comments.created) : asc(schema.comments.created);
-  const allComments = await db
-    .select()
-    .from(schema.comments)
-    .where(and(eq(schema.comments.cid, cidNum), eq(schema.comments.status, 'approved')))
-    .orderBy(commentsOrder);
 
   const commentTree = buildCommentTree(allComments, options);
   const gravatarMap = await buildGravatarMap(allComments, options.commentsAvatarRating || 'G');
@@ -382,8 +389,6 @@ export async function preparePostData(
   const renderedContent = hasPassword && !passwordVerified
     ? '<p>此内容已加密，请输入密码访问。</p>'
     : await renderMarkdownFiltered(contentRow.text || '');
-
-  const common = await loadCommon(ctx, requestUrl);
 
   // Generate CSRF token for comment form, bound to cid so that pages
   // visited via email/RSS without a referer still validate.
@@ -410,13 +415,13 @@ export async function preparePostData(
     tags,
     comments: commentTree,
     commentOptions: { ...buildCommentOptions(options, securityToken), allowComment },
-    prevPost: prevPost[0] ? {
-      title: prevPost[0].title || '无标题',
-      permalink: buildPermalink(prevPost[0], urls.siteUrl, options.permalinkPattern as string | undefined),
+    prevPost: prevPostRows[0] ? {
+      title: prevPostRows[0].title || '无标题',
+      permalink: buildPermalink(prevPostRows[0], urls.siteUrl, options.permalinkPattern as string | undefined),
     } : null,
-    nextPost: nextPost[0] ? {
-      title: nextPost[0].title || '无标题',
-      permalink: buildPermalink(nextPost[0], urls.siteUrl, options.permalinkPattern as string | undefined),
+    nextPost: nextPostRows[0] ? {
+      title: nextPostRows[0].title || '无标题',
+      permalink: buildPermalink(nextPostRows[0], urls.siteUrl, options.permalinkPattern as string | undefined),
     } : null,
     gravatarMap,
   };
@@ -429,10 +434,11 @@ export async function preparePageData(
   cleanSlug: string,
   requestUrl: string,
   suppliedPassword: string | null,
+  preloadedRow?: ContentRow | null,
 ): Promise<ThemePageProps | Response> {
   const { db, options, urls, user, isLoggedIn } = ctx;
 
-  const pageRow = await db.query.contents.findFirst({
+  const pageRow = preloadedRow ?? await db.query.contents.findFirst({
     where: and(eq(schema.contents.slug, cleanSlug), eq(schema.contents.type, 'page')),
   });
 
@@ -455,13 +461,15 @@ export async function preparePageData(
   const hasPassword = !!pageRow.password;
   const passwordVerified = hasPassword && suppliedPassword === pageRow.password;
 
-  // Comments
   const commentsOrder = options.commentsOrder === 'DESC' ? desc(schema.comments.created) : asc(schema.comments.created);
-  const allComments = await db
-    .select()
-    .from(schema.comments)
-    .where(and(eq(schema.comments.cid, pageRow.cid), eq(schema.comments.status, 'approved')))
-    .orderBy(commentsOrder);
+  const [allComments, common] = await Promise.all([
+    db
+      .select()
+      .from(schema.comments)
+      .where(and(eq(schema.comments.cid, pageRow.cid), eq(schema.comments.status, 'approved')))
+      .orderBy(commentsOrder),
+    loadCommon(ctx, requestUrl),
+  ]);
 
   const commentTree = buildCommentTree(allComments, options);
   const gravatarMap = await buildGravatarMap(allComments, options.commentsAvatarRating || 'G');
@@ -470,8 +478,6 @@ export async function preparePageData(
   const renderedContent = hasPassword && !passwordVerified
     ? '<p>此内容已加密，请输入密码访问。</p>'
     : await renderMarkdownFiltered(pageRow.text || '');
-
-  const common = await loadCommon(ctx, requestUrl);
 
   // Generate CSRF token for comment form, bound to cid so that pages
   // visited via email/RSS without a referer still validate.
