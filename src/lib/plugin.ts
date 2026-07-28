@@ -91,6 +91,10 @@ export interface PluginInfo {
 export type CallHandler = (...args: any[]) => void | Promise<void>;
 export type FilterHandler = (value: any, ...args: any[]) => any | Promise<any>;
 
+export interface HookContext {
+  activatedPlugins: Set<string>;
+}
+
 export interface PluginInitContext {
   addHook: typeof addHook;
   HookPoints: typeof HookPoints;
@@ -219,8 +223,8 @@ export type HookPoint = typeof HookPoints[keyof typeof HookPoints];
  * 1. Workers are single-threaded: only one request executes at a time per isolate
  * 2. pluginRegistry and hookRegistry are populated once at module init (build time)
  *    and are effectively read-only at runtime
- * 3. activatedPlugins is re-initialized at the start of every request via
- *    setActivatedPlugins() called from context.ts
+ * 3. Per-request state (activatedPlugins) lives on RequestContext and is passed
+ *    explicitly as the first argument to hook functions.
  */
 
 /**
@@ -234,12 +238,6 @@ const pluginRegistry = new Map<string, PluginInfo>();
  * Key: hook point name, Value: sorted array of handlers
  */
 const hookRegistry = new Map<string, HookRegistration[]>();
-
-/**
- * Set of activated plugin IDs
- * Loaded from DB options at runtime
- */
-let activatedPlugins = new Set<string>();
 
 // ── Lazy initialiser table (G6-3) ────────────────────────────────────────
 // Populated at module load by plugin-loader's injected `registerPluginInit`
@@ -296,7 +294,7 @@ export function registerPlugin(
     id,
     packageName,
     manifest: { ...manifest, id },
-    isActive: activatedPlugins.has(id),
+    isActive: false,
   });
 }
 
@@ -308,12 +306,8 @@ export function registerPlugin(
  * that are never activated never have their init code run, which keeps
  * the per-isolate startup cost proportional to active plugin count.
  */
-export function setActivatedPlugins(ids: string[]): void {
-  activatedPlugins = new Set(ids);
-  // Update isActive flag on all registered plugins
-  for (const [id, info] of pluginRegistry) {
-    info.isActive = activatedPlugins.has(id);
-  }
+export function setActivatedPlugins(ctx: HookContext, ids: string[]): void {
+  ctx.activatedPlugins = new Set(ids);
   if (!pluginInitContext) return;
   for (const id of ids) {
     if (initialisedPlugins.has(id)) continue;
@@ -321,7 +315,15 @@ export function setActivatedPlugins(ids: string[]): void {
     if (!init) continue;
     initialisedPlugins.add(id);
     try {
-      init({ addHook: pluginInitContext.addHook, HookPoints: pluginInitContext.HookPoints, pluginId: id });
+      // Plugin init is documented as synchronous — see PluginInitFn.
+      // If a plugin author returns a promise anyway, at least catch its
+      // rejection so it doesn't become an unhandled rejection.
+      const maybe = init({ addHook: pluginInitContext.addHook, HookPoints: pluginInitContext.HookPoints, pluginId: id });
+      if (maybe && typeof (maybe as Promise<unknown>).then === 'function') {
+        (maybe as Promise<unknown>).catch(err => {
+          console.error(`[plugin] async init rejection for ${id}:`, err);
+        });
+      }
     } catch (err) {
       console.error(`[plugin] Failed to init ${id}:`, err);
     }
@@ -331,19 +333,19 @@ export function setActivatedPlugins(ids: string[]): void {
 /**
  * Check if a plugin is activated
  */
-export function isPluginActive(pluginId: string): boolean {
-  return activatedPlugins.has(pluginId);
+export function isPluginActive(ctx: HookContext, pluginId: string): boolean {
+  return ctx.activatedPlugins.has(pluginId);
 }
 
 /**
  * Get all available plugins
  */
-export function getAvailablePlugins(): PluginInfo[] {
+export function getAvailablePlugins(ctx: HookContext): PluginInfo[] {
   const plugins: PluginInfo[] = [];
   for (const [, info] of pluginRegistry) {
     plugins.push({
       ...info,
-      isActive: activatedPlugins.has(info.id),
+      isActive: ctx.activatedPlugins.has(info.id),
     });
   }
   return plugins;
@@ -424,11 +426,11 @@ export function removePluginHooks(pluginId: string): void {
  * @param hookPoint - The hook point name
  * @param args - Arguments to pass to handlers
  */
-export async function doHook(hookPoint: string, ...args: any[]): Promise<void> {
-  if (!hasHook(hookPoint)) return;
+export async function doHook(ctx: HookContext, hookPoint: string, ...args: any[]): Promise<void> {
+  if (!hasHook(ctx, hookPoint)) return;
 
   for (const reg of hookRegistry.get(hookPoint)!) {
-    if (!activatedPlugins.has(reg.pluginId)) continue;
+    if (!ctx.activatedPlugins.has(reg.pluginId)) continue;
     try {
       await (reg.handler as CallHandler)(...args);
     } catch (err) {
@@ -441,18 +443,19 @@ export async function doHook(hookPoint: string, ...args: any[]): Promise<void> {
  * Execute a "filter" hook - passes a value through all handlers.
  * Each handler receives the current value and must return the (possibly modified) value.
  * Only executes handlers from activated plugins.
- * 
+ *
+ * @param ctx - Request context (or minimal HookContext)
  * @param hookPoint - The hook point name
  * @param value - The initial value to filter
  * @param args - Additional arguments to pass to handlers
  * @returns The filtered value
  */
-export async function applyFilter(hookPoint: string, value: any, ...args: any[]): Promise<any> {
-  if (!hasHook(hookPoint)) return value;
+export async function applyFilter(ctx: HookContext, hookPoint: string, value: any, ...args: any[]): Promise<any> {
+  if (!hasHook(ctx, hookPoint)) return value;
 
   let result = value;
   for (const reg of hookRegistry.get(hookPoint)!) {
-    if (!activatedPlugins.has(reg.pluginId)) continue;
+    if (!ctx.activatedPlugins.has(reg.pluginId)) continue;
     try {
       result = await (reg.handler as FilterHandler)(result, ...args);
     } catch (err) {
@@ -468,12 +471,12 @@ export async function applyFilter(hookPoint: string, value: any, ...args: any[])
  * Use only for non-critical presentation hooks where missing plugin output is
  * preferable to failing the entire page.
  */
-export async function applyFilterSafely(hookPoint: string, value: any, ...args: any[]): Promise<any> {
-  if (!hasHook(hookPoint)) return value;
+export async function applyFilterSafely(ctx: HookContext, hookPoint: string, value: any, ...args: any[]): Promise<any> {
+  if (!hasHook(ctx, hookPoint)) return value;
 
   let result = value;
   for (const reg of hookRegistry.get(hookPoint)!) {
-    if (!activatedPlugins.has(reg.pluginId)) continue;
+    if (!ctx.activatedPlugins.has(reg.pluginId)) continue;
     try {
       result = await (reg.handler as FilterHandler)(result, ...args);
     } catch (err) {
@@ -486,10 +489,10 @@ export async function applyFilterSafely(hookPoint: string, value: any, ...args: 
 /**
  * Check if a hook point has any registered handlers
  */
-export function hasHook(hookPoint: string): boolean {
+export function hasHook(ctx: HookContext, hookPoint: string): boolean {
   const handlers = hookRegistry.get(hookPoint);
   if (!handlers) return false;
-  return handlers.some(h => activatedPlugins.has(h.pluginId));
+  return handlers.some(h => ctx.activatedPlugins.has(h.pluginId));
 }
 
 /**
@@ -511,8 +514,8 @@ export function getRegisteredHooks(): Map<string, { pluginId: string; priority: 
 /**
  * Serialize activated plugins list to string for DB storage
  */
-export function serializeActivatedPlugins(): string {
-  return JSON.stringify(Array.from(activatedPlugins));
+export function serializeActivatedPlugins(ctx: HookContext): string {
+  return JSON.stringify(Array.from(ctx.activatedPlugins));
 }
 
 /**
@@ -551,11 +554,12 @@ export interface PageContext {
 }
 
 export async function getClientSnippets(
+  ctx: HookContext,
   options: Record<string, any>,
   pageContext?: PageContext,
 ): Promise<{ headHtml: string; bodyHtml: string }> {
-  let headHtml = await applyFilterSafely('archive:header', '', { options, pageContext });
-  let bodyHtml = await applyFilterSafely('archive:footer', '', { options, pageContext });
+  let headHtml = await applyFilterSafely(ctx, 'archive:header', '', { options, pageContext });
+  let bodyHtml = await applyFilterSafely(ctx, 'archive:footer', '', { options, pageContext });
   return { headHtml, bodyHtml };
 }
 
@@ -734,5 +738,10 @@ export function getClientIp(request?: Request): string {
   const cfIp = request?.headers.get('cf-connecting-ip');
   if (cfIp) return cfIp.trim();
   const xff = request?.headers.get('x-forwarded-for');
-  return xff ? (xff.split(',')[0] ?? '').trim() : '';
+  if (!xff) return '';
+  for (const raw of xff.split(',')) {
+    const ip = raw.trim();
+    if (ip) return ip;
+  }
+  return '';
 }

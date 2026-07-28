@@ -4,7 +4,7 @@ import { loadOptions, computeUrls } from '@/lib/options';
 import { buildPermalink } from '@/lib/content';
 import { renderMarkdown, generateExcerpt } from '@/lib/markdown';
 import { generateRss2, generateAtom, generateRss1, type FeedItem } from '@/lib/feed';
-import { setActivatedPlugins, parseActivatedPlugins, applyFilterSafely } from '@/lib/plugin';
+import { setActivatedPlugins, parseActivatedPlugins, applyFilterSafely, type HookContext } from '@/lib/plugin';
 import { eq, and, desc, sql, or } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -18,8 +18,9 @@ export const GET: APIRoute = async ({ locals, params }) => {
   const urls = computeUrls(options);
 
   // Load activated plugins
+  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  setActivatedPlugins(pluginCtx, activatedIds);
 
   const type = params.type || '';
   const isComments = type.includes('comments');
@@ -115,7 +116,7 @@ export const GET: APIRoute = async ({ locals, params }) => {
       categories: cats,
     };
     // Apply feed:item filter — plugins can modify each feed item
-    item = await applyFilterSafely('feed:item', item);
+    item = await applyFilterSafely(pluginCtx, 'feed:item', item);
     items.push(item);
   }
 

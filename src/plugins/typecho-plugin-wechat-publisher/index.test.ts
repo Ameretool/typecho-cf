@@ -211,7 +211,7 @@ describe('typecho-plugin-wechat-publisher', () => {
       mode: 'created',
       uploadedImages: 1,
     });
-    expect(inserted.map(row => row.name)).toEqual([
+    expect(inserted.filter(row => row.name !== 'cacheVersion').map(row => row.name)).toEqual([
       'plugin:typecho-plugin-wechat-publisher:post:7',
     ]);
   });
@@ -282,7 +282,7 @@ describe('typecho-plugin-wechat-publisher', () => {
     });
     expect(bucketGet).toHaveBeenCalledWith('usr/uploads/a.jpg');
     expect(fetchMock).not.toHaveBeenCalledWith('https://blog.example/usr/uploads/a.jpg', expect.anything());
-    expect(inserted.map(row => row.name)).toEqual([
+    expect(inserted.filter(row => row.name !== 'cacheVersion').map(row => row.name)).toEqual([
       'plugin:typecho-plugin-wechat-publisher:post:7',
     ]);
   });
@@ -417,7 +417,7 @@ describe('typecho-plugin-wechat-publisher', () => {
       mediaId: 'existing-draft-media-id',
       mode: 'updated',
     });
-    expect(inserted.map(row => row.name)).toEqual([
+    expect(inserted.filter(row => row.name !== 'cacheVersion').map(row => row.name)).toEqual([
       'plugin:typecho-plugin-wechat-publisher:post:7',
     ]);
   });

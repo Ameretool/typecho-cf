@@ -2,7 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { getDb } from '@/db';
 import { schema } from '@/db';
 import { loadOptions, ensureSecret } from '@/lib/options';
-import { addHook, applyFilter, getRegisteredHooks, HookPoints, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
+import { addHook, applyFilter, getRegisteredHooks, HookPoints, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
 import { applySecurityHeaders } from '@/lib/security-headers';
 import { generateIndexSQL } from '@/lib/schema-sql';
@@ -22,9 +22,7 @@ let tableCheckPassed = false;
 let webDavRouteHookReady = false;
 // G4-1: brand-new indexes need to be backfilled into already-deployed D1
 // instances. We try once per isolate using CREATE INDEX IF NOT EXISTS so
-// the upgrade is automatic and idempotent. Failure (e.g. an index that
-// references a column that doesn't exist on a half-migrated DB) is
-// logged but non-fatal.
+// the upgrade is automatic and idempotent.
 let indexEnsurePassed = false;
 
 function ensureMiddlewareRouteHooks(activatedIds: string[]): void {
@@ -101,8 +99,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (paginationMatch) {
     const basePath = paginationMatch[1] || '';
     const pageNum = parseInt(paginationMatch[2], 10);
-    (context.locals as any)._page = pageNum;
-    return next(basePath === '' ? '/' : basePath + '/');
+    context.locals._page = pageNum;
+    // Preserve `?foo=bar` (search/filter/sort params etc.) — dropping the
+    // query string would break `/search/keyword/page/2/?sort=date` links.
+    const target = (basePath === '' ? '/' : basePath + '/') + url.search;
+    return next(target);
   }
 
   // Check installation status — redirect to /install if DB not ready.
@@ -138,8 +139,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const backfill = d1
         .batch(indexStatements.map(sql => d1.prepare(sql)))
         .catch(err => console.warn('[middleware] ensureIndexes failed:', err));
-      if (typeof (context.locals as any).runtime?.ctx?.waitUntil === 'function') {
-        (context.locals as any).runtime.ctx.waitUntil(backfill);
+      if (typeof context.locals.runtime?.ctx?.waitUntil === 'function') {
+        context.locals.runtime.ctx.waitUntil(backfill);
       }
       // If waitUntil isn't available (e.g. in tests), we still kicked off
       // the promise; letting it run in the background is harmless.
@@ -167,10 +168,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
+  setActivatedPlugins(pluginCtx, activatedIds);
   ensureMiddlewareRouteHooks(activatedIds);
 
-  const pluginRoute = await applyFilter('route:request', { handled: false }, {
+  const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
     request: context.request,
     url,
     path,
@@ -185,7 +187,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (isReservedCorePath(path)) {
       console.warn(`[middleware] plugin tried to claim reserved path ${path}; ignoring`);
     } else {
-      return await applySecurityHeaders(pluginRoute.response, { request: context.request });
+      return await applySecurityHeaders(pluginRoute.response, { request: context.request }, pluginCtx);
     }
   }
 
@@ -208,7 +210,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (cacheKey) {
     const cached = await caches.default.match(cacheKey);
     if (cached) {
-      return await applySecurityHeaders(cached, { request: context.request });
+      return await applySecurityHeaders(cached, { request: context.request }, pluginCtx);
     }
   }
 
@@ -343,7 +345,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Execute the route handler
   let response = await next();
 
-  response = await applySecurityHeaders(response, { request: context.request });
+  response = await applySecurityHeaders(response, { request: context.request }, pluginCtx);
 
   // ── Write response to edge cache ──────────────────────────────────────────
   if (cacheKey && response.status === 200) {

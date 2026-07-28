@@ -4,9 +4,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as schema from '@/db/schema';
 import { createTestDb, seedAdmin, disposeTestDb, makeAuthCookie, type TestDatabase } from '../helpers';
-import { registerPlugin, setActivatedPlugins } from '@/lib/plugin';
+import { registerPlugin, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 
 let testDb: TestDatabase;
+let mockPluginCtx: HookContext;
 
 vi.mock('@/db', async () => {
   const actual = await vi.importActual<typeof import('@/db')>('@/db');
@@ -40,7 +41,8 @@ beforeEach(async () => {
   await testDb.insert(schema.options).values({
     name: 'activatedPlugins', user: 0, value: JSON.stringify(['typecho-plugin-test']),
   });
-  setActivatedPlugins(['typecho-plugin-test']);
+  mockPluginCtx = { activatedPlugins: new Set<string>() };
+  setActivatedPlugins(mockPluginCtx, ['typecho-plugin-test']);
 });
 
 afterEach(async () => {

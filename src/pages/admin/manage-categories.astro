@@ -30,7 +30,7 @@ if (editMid) {
 
 const isDefault = (mid: number) => options.defaultCategory === mid;
 ---
-<Admin title="管理分类" options={options} urls={urls} user={user} activeMenu="manage-categories">
+<Admin title="管理分类" options={options} urls={urls} user={user} activeMenu="manage-categories" pluginCtx={ctx}>
   <div class="col-mb-12" role="main">
     <form method="post" name="manage_categories" class="operate-form">
       <input type="hidden" name="_" value={csrfToken} />

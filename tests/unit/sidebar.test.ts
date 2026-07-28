@@ -15,6 +15,7 @@ vi.mock('@/db', async () => {
 import { loadSidebarData, loadNavPages } from '@/lib/sidebar';
 
 const siteUrl = 'https://example.com';
+const mockPluginCtx = { activatedPlugins: new Set<string>() };
 
 beforeEach(async () => {
   testDb = await createTestDb();
@@ -26,7 +27,7 @@ afterEach(async () => {
 
 describe('loadSidebarData', () => {
   it('returns empty data when database has no content', async () => {
-    const data = await loadSidebarData(testDb, siteUrl);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl);
     expect(data.recentPosts).toEqual([]);
     expect(data.recentComments).toEqual([]);
     expect(data.categories).toEqual([]);
@@ -43,7 +44,7 @@ describe('loadSidebarData', () => {
       status: 'publish',
     });
 
-    const data = await loadSidebarData(testDb, siteUrl);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl);
     expect(data.recentPosts).toHaveLength(1);
     expect(data.recentPosts[0].title).toBe('Test Post');
     expect(data.recentPosts[0].permalink).toContain('/archives/');
@@ -58,7 +59,7 @@ describe('loadSidebarData', () => {
       title: 'Private', slug: 'private', created: now, type: 'post', status: 'private',
     });
 
-    const data = await loadSidebarData(testDb, siteUrl);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl);
     expect(data.recentPosts).toEqual([]);
   });
 
@@ -71,7 +72,7 @@ describe('loadSidebarData', () => {
       cid: post[0]!.cid, created: now, author: 'Commenter', text: 'Great post!', status: 'approved',
     });
 
-    const data = await loadSidebarData(testDb, siteUrl);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl);
     expect(data.recentComments).toHaveLength(1);
     expect(data.recentComments[0].author).toBe('Commenter');
     expect(data.recentComments[0].permalink).toContain('#comment-');
@@ -89,7 +90,7 @@ describe('loadSidebarData', () => {
       cid: post[0]!.cid, created: now, author: 'Pending', text: 'pending', status: 'waiting',
     });
 
-    const data = await loadSidebarData(testDb, siteUrl);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl);
     expect(data.recentComments).toEqual([]);
   });
 
@@ -101,7 +102,7 @@ describe('loadSidebarData', () => {
       name: 'Life', slug: 'life', type: 'category', order: 1, count: 3,
     });
 
-    const data = await loadSidebarData(testDb, siteUrl);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl);
     expect(data.categories).toHaveLength(2);
     expect(data.categories[0].name).toBe('Life');
     expect(data.categories[1].name).toBe('Tech');

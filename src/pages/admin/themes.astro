@@ -55,7 +55,7 @@ if (Astro.request.method === 'POST') {
 
 const themes = getAvailableThemes(options.theme || 'typecho-theme-minimal');
 ---
-<Admin title="外观" options={options} urls={urls} user={user} activeMenu="themes">
+<Admin title="外观" options={options} urls={urls} user={user} activeMenu="themes" pluginCtx={ctx}>
   <div class="col-mb-12" role="main">
     {message && (
       <div class={`typecho-option-tabs notice typecho-dismissible ${messageType === 'error' ? 'notice-error' : 'notice-success'}`}

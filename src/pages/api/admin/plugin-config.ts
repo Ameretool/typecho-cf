@@ -8,9 +8,8 @@ import { setOption } from '@/lib/options';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { applyFilter, getPlugin, pluginHasConfig, isPluginActive, loadPluginConfig, getPluginConfigDefaults, type PluginConfigField } from '@/lib/plugin';
 import { bumpCacheVersion, purgeSiteCache } from '@/lib/cache';
+import { PLUGIN_CONFIG_TIMEOUT_MS } from '@/lib/constants';
 import { withTimeout } from '@/lib/timeout';
-
-const PLUGIN_CONFIG_TIMEOUT_MS = 5_000;
 
 /**
  * Sentinel sent over the wire in place of password / hidden field values
@@ -151,7 +150,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    if (!isPluginActive(pluginId)) {
+    if (!isPluginActive(auth.pluginCtx, pluginId)) {
       return new Response(JSON.stringify({ error: '请先启用插件' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -185,7 +184,7 @@ export const POST: APIRoute = async ({ request }) => {
     const restored = restoreSecretsForWrite(configDef, sanitized, previousConfig);
 
     const validation = await withTimeout(
-      applyFilter('plugin:config:beforeSave', {
+      applyFilter(auth.pluginCtx, 'plugin:config:beforeSave', {
         success: true,
         settings: restored,
       }, {

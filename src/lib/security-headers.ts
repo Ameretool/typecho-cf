@@ -6,7 +6,7 @@
  * (install redirect, asset proxy) without each call site reinventing
  * directives.
  */
-import { applyFilterSafely } from '@/lib/plugin';
+import { applyFilterSafely, type HookContext } from '@/lib/plugin';
 
 /**
  * The default Content-Security-Policy. Tuned for the bundled minimal
@@ -72,20 +72,21 @@ export interface SecurityHeaderContext {
  */
 export async function applySecurityHeaders(
   response: Response,
-  ctx: SecurityHeaderContext = {},
+  secCtx: SecurityHeaderContext = {},
+  pluginCtx?: HookContext,
 ): Promise<Response> {
-  const proto = ctx.request ? safeProtocol(ctx.request.url) : 'https:';
+  const proto = secCtx.request ? safeProtocol(secCtx.request.url) : 'https:';
   const isHttps = proto === 'https:';
 
   // Build CSP — for upload responses use a locked-down policy; otherwise
   // start from defaults and let plugins extend via filter hook.
   let cspString: string;
-  if (ctx.upload) {
+  if (secCtx.upload) {
     cspString = "default-src 'none'; sandbox; style-src 'unsafe-inline'";
-  } else {
+  } else if (pluginCtx) {
     let directives = defaultCspDirectives();
     try {
-      const filtered = await applyFilterSafely('csp:directives', directives, { request: ctx.request });
+      const filtered = await applyFilterSafely(pluginCtx, 'csp:directives', directives, { request: secCtx.request });
       if (filtered && typeof filtered === 'object') {
         directives = filtered as CspDirectives;
       }
@@ -93,6 +94,8 @@ export async function applySecurityHeaders(
       // Plugin failures already logged by applyFilterSafely.
     }
     cspString = serializeCsp(directives);
+  } else {
+    cspString = serializeCsp(defaultCspDirectives());
   }
 
   const additions: Array<[string, string]> = [
@@ -101,7 +104,7 @@ export async function applySecurityHeaders(
     ['Referrer-Policy', 'strict-origin-when-cross-origin'],
     ['Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'],
     ['Cross-Origin-Opener-Policy', 'same-origin'],
-    ['Cross-Origin-Resource-Policy', ctx.upload ? 'same-origin' : 'same-site'],
+    ['Cross-Origin-Resource-Policy', secCtx.upload ? 'same-origin' : 'same-site'],
     ['Content-Security-Policy', cspString],
   ];
   if (isHttps) additions.push(['Strict-Transport-Security', 'max-age=31536000; includeSubDomains']);

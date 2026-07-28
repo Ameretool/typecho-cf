@@ -97,5 +97,15 @@ declare namespace App {
   interface Locals {
     // Execution context (replaces locals.runtime.ctx)
     cfContext?: ExecutionContext;
+    /**
+     * Pagination page number extracted from `/page/N/` URL suffixes by
+     * middleware.ts. Read by page-data prepareArchive* functions.
+     */
+    _page?: number;
+    /** Astro Cloudflare adapter attaches this at runtime. */
+    runtime?: {
+      ctx?: { waitUntil?(promise: Promise<unknown>): void };
+      env?: CloudflareEnv;
+    };
   }
 }

@@ -1,18 +1,32 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
-import { hasPermission } from '@/lib/auth';
+import { canManageResource } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { uploadToR2, deleteFromR2 } from '@/lib/upload';
-import { applyFilter, doHook, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
+import { applyFilter, doHook } from '@/lib/plugin';
 import { trackSlidingWindow } from '@/lib/login-rate-limit';
+import { UPLOAD_RATE_LIMIT } from '@/lib/constants';
+import { jsonError, jsonOk } from '@/lib/http';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
 /**
- * Per-user upload rate limit (G5-4). 60/min/uid is generous for human
- * editors but tightly bounds the blast radius of a stolen admin token.
+ * R2 attachment metadata JSON persisted in contents.text for type='attachment'.
+ * Written by POST /api/admin/upload; consumed by DELETE for cleanup.
  */
-const UPLOAD_RATE_LIMIT = { windowSeconds: 60, maxRequests: 60 };
+interface AttachmentMeta {
+  name: string;
+  path: string;
+  size: number;
+  type: string;
+  url: string;
+}
+
+/**
+ * Per-user upload rate limit (G5-4). See `src/lib/constants.ts` for values.
+ * Human editors won't hit this; it bounds the blast radius of a stolen admin
+ * token.
+ */
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
@@ -24,46 +38,36 @@ function isImageType(mime: string): boolean {
   return mime.startsWith('image/');
 }
 
-const jsonHeaders = { 'Content-Type': 'application/json' };
-
 function jsonAuthError(response: Response): Response {
-  return new Response(JSON.stringify({ error: response.status === 401 ? 'Unauthorized' : 'Forbidden' }), {
-    status: response.status,
-    headers: jsonHeaders,
-  });
+  return jsonError(response.status, response.status === 401 ? 'Unauthorized' : 'Forbidden');
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const ctx = await requireAdminAction(request, 'contributor');
   if (isAdminActionResponse(ctx)) return jsonAuthError(ctx);
-  const { db, options } = ctx;
+  const { db, options, pluginCtx } = ctx;
 
   // G5-4: cap per-user upload rate. Self-signed admin tokens that get
   // exfiltrated can otherwise rapidly exhaust the R2 bucket quota.
   if (!trackSlidingWindow(`upload:${ctx.uid}`, UPLOAD_RATE_LIMIT)) {
-    const headers = { ...jsonHeaders, 'Retry-After': String(UPLOAD_RATE_LIMIT.windowSeconds) };
-    return new Response(JSON.stringify({ error: '上传频率过高，请稍后再试' }), { status: 429, headers });
+    return jsonError(429, '上传频率过高，请稍后再试', { 'Retry-After': String(UPLOAD_RATE_LIMIT.windowSeconds) });
   }
-
-  // Activate plugins so the upload:* hooks fire for the registered set.
-  const activatedIds = parseActivatedPlugins(ctx.options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
 
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return new Response(JSON.stringify({ error: '没有上传文件' }), { status: 400, headers: jsonHeaders });
+      return jsonError(400, '没有上传文件');
     }
 
     // G5-5: upload:beforeUpload — plugins can reject the upload by
     // returning { rejected: 'reason' } in the filter result.
-    const beforeResult = await applyFilter('upload:beforeUpload', { rejected: null as string | null }, {
+    const beforeResult = await applyFilter(pluginCtx, 'upload:beforeUpload', { rejected: null as string | null }, {
       file, request, options, user: ctx.user,
     });
     if (beforeResult?.rejected) {
-      return new Response(JSON.stringify({ error: String(beforeResult.rejected) }), { status: 403, headers: jsonHeaders });
+      return jsonError(403, String(beforeResult.rejected));
     }
 
     const bucket = env.BUCKET;
@@ -96,9 +100,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const cid = inserted[0]?.cid;
 
     // G5-5: upload:upload — fire-and-forget post-upload notification.
-    await doHook('upload:upload', { ...result, cid }, { request, options, user: ctx.user });
+    await doHook(pluginCtx, 'upload:upload', { ...result, cid }, { request, options, user: ctx.user });
 
-    return new Response(JSON.stringify([
+    return jsonOk([
       result.url,
       {
         cid,
@@ -107,11 +111,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
         bytes: formatBytes(result.size),
         isImage: isImageType(result.type),
       },
-    ]), { status: 200, headers: jsonHeaders });
+    ]);
   } catch (error) {
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : '上传失败',
-    }), { status: 500, headers: jsonHeaders });
+    return jsonError(500, error instanceof Error ? error.message : '上传失败');
   }
 };
 
@@ -121,11 +123,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
 export const DELETE: APIRoute = async ({ request, locals, url }) => {
   const ctx = await requireAdminAction(request, 'contributor');
   if (isAdminActionResponse(ctx)) return jsonAuthError(ctx);
-  const { db } = ctx;
+  const { db, pluginCtx } = ctx;
 
   const cid = parseInt(url.searchParams.get('cid') || '0', 10);
   if (!cid) {
-    return new Response(JSON.stringify({ error: '缺少 cid 参数' }), { status: 400, headers: jsonHeaders });
+    return jsonError(400, '缺少 cid 参数');
   }
 
   try {
@@ -134,39 +136,39 @@ export const DELETE: APIRoute = async ({ request, locals, url }) => {
     });
 
     if (!attachment || attachment.type !== 'attachment') {
-      return new Response(JSON.stringify({ error: '附件不存在' }), { status: 404, headers: jsonHeaders });
+      return jsonError(404, '附件不存在');
     }
 
     // Check ownership: non-admins can only delete their own attachments
-    const isAdmin = hasPermission(ctx.user.group || 'visitor', 'administrator');
-    if (!isAdmin && attachment.authorId !== ctx.uid) {
-      return new Response(JSON.stringify({ error: '无权删除此附件' }), { status: 403, headers: jsonHeaders });
+    if (!canManageResource(ctx.user, attachment)) {
+      return jsonError(403, '无权删除此附件');
     }
 
     // Delete file from R2
-    let meta: any = null;
+    let meta: AttachmentMeta | null = null;
     try {
-      meta = JSON.parse(attachment.text || '{}');
+      meta = JSON.parse(attachment.text || '{}') as AttachmentMeta;
       if (meta.path) {
         const bucket = env.BUCKET;
         await deleteFromR2(bucket, meta.path);
       }
-    } catch {
-      // Ignore R2 deletion errors, still remove DB record
+    } catch (err) {
+      // Malformed metadata means we can't reach the R2 object → it will
+      // orphan when the DB row goes away. Surface it in logs so operators
+      // can reconcile, but still allow the DB row to be removed (blocking
+      // the delete would leave the admin unable to clean up either).
+      console.warn(`[upload] failed to reach R2 for attachment cid=${cid}; DB row will be removed but R2 object may orphan:`, err);
     }
 
     // G5-5: upload:delete fires before the DB row vanishes so plugins
     // can mirror the deletion (e.g. CDN purge, external storage).
-    setActivatedPlugins(parseActivatedPlugins(ctx.options.activatedPlugins as string | undefined));
-    await doHook('upload:delete', { cid, ...(meta || {}) }, { request, options: ctx.options, user: ctx.user });
+    await doHook(pluginCtx, 'upload:delete', { cid, ...(meta || {}) }, { request, options: ctx.options, user: ctx.user });
 
     // Delete DB record
     await db.delete(schema.contents).where(eq(schema.contents.cid, cid));
 
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: jsonHeaders });
+    return jsonOk({ success: true });
   } catch (error) {
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : '删除失败',
-    }), { status: 500, headers: jsonHeaders });
+    return jsonError(500, error instanceof Error ? error.message : '删除失败');
   }
 };

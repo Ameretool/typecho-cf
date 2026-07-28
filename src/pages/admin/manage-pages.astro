@@ -34,7 +34,7 @@ const authors = authorIds.length > 0
   : [];
 const authorMap = new Map(authors.map(a => [a.uid, a]));
 ---
-<Admin title="管理页面" options={options} urls={urls} user={user} activeMenu="manage-pages">
+<Admin title="管理页面" options={options} urls={urls} user={user} activeMenu="manage-pages" pluginCtx={ctx}>
   <div class="col-mb-12 typecho-list">
     <div class="typecho-list-operate clearfix">
       <form method="get">

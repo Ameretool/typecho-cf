@@ -84,7 +84,7 @@ function formatBytes(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 ---
-<Admin title="管理文件" options={options} urls={urls} user={user} activeMenu="manage-medias">
+<Admin title="管理文件" options={options} urls={urls} user={user} activeMenu="manage-medias" pluginCtx={ctx}>
   <div class="col-mb-12 typecho-list">
     <div class="typecho-list-operate clearfix">
       <form method="get">

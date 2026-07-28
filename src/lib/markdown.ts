@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
-import { applyFilter } from '@/lib/plugin';
+import { applyFilter, type HookContext } from '@/lib/plugin';
 import { escapeHtml as escapeHtmlShared } from '@/lib/escape';
 
 // ─── HTML escape helper ─────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export function renderCommentText(text: string, options: CommentRenderOptions = 
  * Render markdown to HTML with plugin filter hooks (async)
  * Use this for content display where plugins should be able to intercept
  */
-export async function renderMarkdownFiltered(text: string): Promise<string> {
+export async function renderMarkdownFiltered(ctx: HookContext, text: string): Promise<string> {
   if (!text) return '';
 
   let content = stripMarkdownPrefix(text);
@@ -123,13 +123,13 @@ export async function renderMarkdownFiltered(text: string): Promise<string> {
   content = content.replace(MORE_COMMENT_RE, '');
 
   // Apply content:markdown filter — plugins can modify the raw markdown
-  content = await applyFilter('content:markdown', content);
+  content = await applyFilter(ctx, 'content:markdown', content);
 
   const html = marked.parse(content, { async: false }) as string;
   let sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
 
   // Apply content:content filter — plugins can modify the rendered HTML
-  sanitized = await applyFilter('content:content', sanitized);
+  sanitized = await applyFilter(ctx, 'content:content', sanitized);
 
   return sanitized;
 }

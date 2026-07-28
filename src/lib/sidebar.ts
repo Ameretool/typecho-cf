@@ -7,7 +7,7 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 import type { Database } from '@/db';
 import { schema } from '@/db';
 import { buildPermalink, buildCategoryLink, buildDateLink } from '@/lib/content';
-import { applyFilterSafely } from '@/lib/plugin';
+import { applyFilterSafely, type HookContext } from '@/lib/plugin';
 
 type SidebarDatabase = Pick<Database, 'batch' | 'select'>;
 
@@ -18,7 +18,7 @@ export interface SidebarData {
   archives: Array<{ date: string; permalink: string }>;
 }
 
-export async function loadSidebarData(db: SidebarDatabase, siteUrl: string, permalinkPattern?: string | null, categoryPattern?: string | null): Promise<SidebarData> {
+export async function loadSidebarData(ctx: HookContext, db: SidebarDatabase, siteUrl: string, permalinkPattern?: string | null, categoryPattern?: string | null): Promise<SidebarData> {
   // Execute all 4 queries in a single D1 round-trip
   const [recentPostRows, recentCommentRows, categoryRows, archiveRows] = await db.batch([
     // Recent posts
@@ -115,7 +115,7 @@ export async function loadSidebarData(db: SidebarDatabase, siteUrl: string, perm
   const sidebarData = { recentPosts, recentComments, categories, archives };
 
   // Apply widget:sidebar filter — plugins can add/modify sidebar widgets
-  return await applyFilterSafely('widget:sidebar', sidebarData, db, siteUrl);
+  return await applyFilterSafely(ctx, 'widget:sidebar', sidebarData, db, siteUrl);
 }
 
 /**

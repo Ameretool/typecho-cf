@@ -4,10 +4,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as schema from '@/db/schema';
 import { createTestDb, seedAdmin, disposeTestDb, makeAuthCookie, type TestDatabase } from '../helpers';
-import { registerPlugin, setActivatedPlugins } from '@/lib/plugin';
+import { registerPlugin, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { eq } from 'drizzle-orm';
 
 let testDb: TestDatabase;
+let mockPluginCtx: HookContext;
 
 vi.mock('@/db', async () => {
   const actual = await vi.importActual<typeof import('@/db')>('@/db');
@@ -25,6 +26,7 @@ const AUTH_CODE = 'authcodeplug';
 
 beforeEach(async () => {
   testDb = await createTestDb();
+  mockPluginCtx = { activatedPlugins: new Set<string>() };
   await seedAdmin(testDb, { secret: SECRET, authCode: AUTH_CODE });
   await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: 'https://example.com' });
 
@@ -128,7 +130,7 @@ describe('POST /api/admin/plugin', () => {
     await testDb.insert(schema.options).values({
       name: 'activatedPlugins', user: 0, value: JSON.stringify(['typecho-plugin-test']),
     });
-    setActivatedPlugins(['typecho-plugin-test']);
+    setActivatedPlugins(mockPluginCtx, ['typecho-plugin-test']);
 
     const cookie = await makeAuthCookie(testDb, 1, AUTH_CODE, SECRET);
     const req = new Request('https://example.com/api/admin/plugin', {

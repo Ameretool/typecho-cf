@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
 import { getDb, schema } from '@/db';
-import { setOption, getOption } from '@/lib/options';
-import { hashPassword, generateRandomString } from '@/lib/auth';
+import { setOptionsBatch, deleteOption, getOption } from '@/lib/options';
+import { hashPassword, generateRandomString, timeSafeEqual } from '@/lib/auth';
 import { env } from 'cloudflare:workers';
 import { generateCreateSQL } from '@/lib/schema-sql';
+import { PASSWORD_MIN_LENGTH, SLUG_RESOLVE_MAX_SUFFIX } from '@/lib/constants';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -14,12 +15,14 @@ import { eq } from 'drizzle-orm';
 async function resolveSlug(db: ReturnType<typeof getDb>, base: string): Promise<string> {
   let candidate = base;
   let suffix = 1;
-  while (true) {
+  while (suffix < SLUG_RESOLVE_MAX_SUFFIX) {
     const existing = await db.query.contents.findFirst({ where: eq(schema.contents.slug, candidate) });
     if (!existing) return candidate;
     suffix += 1;
     candidate = `${base}-${suffix}`;
   }
+  // Fallback: timestamp suffix if we somehow hit the cap on pathological data.
+  return `${base}-${Date.now().toString(36)}`;
 }
 
 /**
@@ -43,13 +46,6 @@ async function ensureTables(d1: D1Database): Promise<void> {
 function expectedInstallToken(): string {
   const e = env as unknown as { INSTALL_TOKEN?: string };
   return typeof e.INSTALL_TOKEN === 'string' ? e.INSTALL_TOKEN : '';
-}
-
-function timingSafeEqualString(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -82,7 +78,7 @@ export const POST: APIRoute = async ({ request }) => {
   // Gate the install window with a deploy-time secret if configured.
   const expected = expectedInstallToken();
   if (expected) {
-    if (!timingSafeEqualString(installToken, expected)) {
+    if (!timeSafeEqual(installToken, expected)) {
       return new Response('安装令牌无效', { status: 403 });
     }
   } else {
@@ -93,8 +89,8 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('请填写完整信息', { status: 400 });
   }
 
-  if (userPassword.length < 6) {
-    return new Response('密码长度至少6位', { status: 400 });
+  if (userPassword.length < PASSWORD_MIN_LENGTH) {
+    return new Response(`密码长度至少${PASSWORD_MIN_LENGTH}位`, { status: 400 });
   }
 
   try {
@@ -105,6 +101,24 @@ export const POST: APIRoute = async ({ request }) => {
     const installed = await getOption(db, 'installed');
     if (installed === '1') {
       return new Response('Site already installed', { status: 403 });
+    }
+
+    // Race-lock: try to claim an exclusive `installing` row backed by the
+    // unique `typecho_options_name_user` index. If the row already
+    // exists another isolate is mid-install; back off with 409 so they
+    // can finish.
+    const stampToken = generateRandomString(24);
+    const existingLock = await db.query.options.findFirst({
+      where: (t, { and, eq }) => and(eq(t.name, 'installing'), eq(t.user, 0)),
+    });
+    if (existingLock) {
+      return new Response('Site install already in progress', { status: 409 });
+    }
+    try {
+      await db.insert(schema.options).values({ name: 'installing', user: 0, value: stampToken });
+    } catch {
+      // Unique-index collision → another isolate raced us to the insert.
+      return new Response('Site install already in progress', { status: 409 });
     }
 
     // Create admin user
@@ -235,9 +249,13 @@ export const POST: APIRoute = async ({ request }) => {
       autoSave: '0',
     };
 
-    for (const [key, value] of Object.entries(defaultOptions)) {
-      await setOption(db, key, value);
-    }
+    // Write all default options in one batch — a single cacheVersion
+    // bump at the end instead of ~40 (once per setOption call).
+    await setOptionsBatch(db, defaultOptions);
+
+    // Release the install lock. If it's already gone (retry, manual
+    // cleanup) the delete is a no-op.
+    await deleteOption(db, 'installing');
 
     return new Response(null, {
       status: 302,
@@ -245,6 +263,13 @@ export const POST: APIRoute = async ({ request }) => {
     });
   } catch (error) {
     console.error('Installation error:', error);
+    // Best-effort lock release so a transient failure doesn't wedge the
+    // install form permanently.
+    try {
+      await deleteOption(db, 'installing');
+    } catch {
+      // If we can't reach D1 at all, there is nothing more we can do here.
+    }
     return new Response('安装失败，请检查数据库配置', {
       status: 500,
     });

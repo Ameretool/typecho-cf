@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
 import { type SiteOptions } from '@/lib/options';
-import { hasPermission } from '@/lib/auth';
+import { canManageResource } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { buildAuthorLink, buildCategoryLink, buildPermalink, buildTagLink, generateSlug } from '@/lib/content';
-import { setActivatedPlugins, parseActivatedPlugins, applyFilter, doHook } from '@/lib/plugin';
+import { applyFilter, doHook } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
 import { eq, and, sql } from 'drizzle-orm';
 
@@ -106,11 +106,28 @@ async function purgeContentAndRelatedCache(
   options: SiteOptions,
   cid: number,
   fallbackContent?: typeof schema.contents.$inferSelect,
+  /**
+   * Extra category/tag URLs to purge — used when a piece of content is
+   * being reassigned so the OLD categories/tags see their post lists
+   * refresh alongside the new ones.
+   */
+  extraUrls?: { categoryUrls?: string[]; tagUrls?: string[] },
 ) {
-  await bumpCacheVersion(db);
   const content = fallbackContent || await db.query.contents.findFirst({
     where: eq(schema.contents.cid, cid),
   });
+
+  // Skip cache work for drafts — they never appear on public pages, so
+  // purging index/feed/category URLs is pure waste. If we can't find
+  // the content at all we still purge the specific /archives/{cid}
+  // entry (safety net for edge cases).
+  const isDraft = content?.type?.endsWith('_draft') || content?.status === 'draft';
+  if (isDraft) {
+    return;
+  }
+
+  await bumpCacheVersion(db);
+
   if (!content) {
     await purgeContentCache(options.siteUrl || '', cid);
     return;
@@ -137,10 +154,13 @@ async function purgeContentAndRelatedCache(
     options.pagePattern as string | undefined,
   );
 
+  const categoryUrls = categories.map((m: any) => buildCategoryLink(m.slug, options.siteUrl || '', options.categoryPattern as string | undefined));
+  const tagUrls = tags.map((m: any) => buildTagLink(m.slug, options.siteUrl || ''));
+
   await purgeContentCache(options.siteUrl || '', cid, {
     contentUrl,
-    categoryUrls: categories.map((m: any) => buildCategoryLink(m.slug, options.siteUrl || '', options.categoryPattern as string | undefined)),
-    tagUrls: tags.map((m: any) => buildTagLink(m.slug, options.siteUrl || '')),
+    categoryUrls: extraUrls?.categoryUrls ? [...categoryUrls, ...extraUrls.categoryUrls] : categoryUrls,
+    tagUrls: extraUrls?.tagUrls ? [...tagUrls, ...extraUrls.tagUrls] : tagUrls,
     authorUrl: content.authorId ? buildAuthorLink(content.authorId, options.siteUrl || '') : null,
   });
 }
@@ -151,10 +171,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const db = admin.db;
   const options = admin.options;
   const auth = { uid: admin.uid, user: admin.user };
-
-  // Load activated plugins
-  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  const pluginCtx = admin.pluginCtx;
 
   const formData = await request.formData();
   const action = formData.get('do')?.toString() || 'create';
@@ -207,7 +224,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     // Apply post:write or page:write filter
     const hookName = type === 'page' ? 'page:write' : 'post:write';
-    contentData = await applyFilter(hookName, contentData);
+    contentData = await applyFilter(pluginCtx, hookName, contentData);
 
     const result = await db.insert(schema.contents).values(contentData as any).returning({ cid: schema.contents.cid });
 
@@ -225,12 +242,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       await db.insert(schema.relationships).values(
         categoryIds.map((mid) => ({ cid: newCid, mid }))
       );
-      // Update category count
-      for (const mid of categoryIds) {
-        await db.update(schema.metas)
-          .set({ count: sql`${schema.metas.count} + 1` })
-          .where(eq(schema.metas.mid, mid));
-      }
+      // Update category count in a single UPDATE (was one query per mid)
+      await db.update(schema.metas)
+        .set({ count: sql`${schema.metas.count} + 1` })
+        .where(sql`${schema.metas.mid} IN (${sql.join(categoryIds.map(id => sql`${id}`), sql`, `)})`);
     }
 
     // Add tags
@@ -241,9 +256,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // Trigger post/page finish hooks
     const finishData = { ...contentData, cid: newCid };
     if (!isDraft) {
-      await doHook(type === 'page' ? 'page:finishPublish' : 'post:finishPublish', finishData);
+      await doHook(pluginCtx, type === 'page' ? 'page:finishPublish' : 'post:finishPublish', finishData);
     }
-    await doHook(type === 'page' ? 'page:finishSave' : 'post:finishSave', finishData);
+    await doHook(pluginCtx, type === 'page' ? 'page:finishSave' : 'post:finishSave', finishData);
 
     await purgeContentAndRelatedCache(db, options, newCid);
 
@@ -261,8 +276,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
     if (!existing) return new Response('Not Found', { status: 404 });
 
-    const isAdmin = hasPermission(auth.user.group || 'visitor', 'administrator');
-    if (!isAdmin && existing.authorId !== auth.uid) {
+    if (!canManageResource(auth.user, existing)) {
       return new Response('Forbidden', { status: 403 });
     }
 
@@ -286,23 +300,40 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // Save custom fields
     await saveCustomFields(db, cid, formData);
 
-    // Update categories: remove old, add new
-    const oldRels = await db.select({ mid: schema.relationships.mid })
+    // Update categories: remove old, add new. Snapshot old category/tag
+    // slugs first so we can purge their archive pages after the writes —
+    // otherwise a re-categorised post keeps showing up on its previous
+    // category page until the cacheVersion bumps invalidate everything.
+    const oldRelMetas = await db.select({
+      mid: schema.relationships.mid,
+      type: schema.metas.type,
+      slug: schema.metas.slug,
+    })
       .from(schema.relationships)
+      .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
       .where(eq(schema.relationships.cid, cid));
-    const oldMids = oldRels.map(r => r.mid);
+    const oldMids = oldRelMetas.map((r: any) => r.mid);
+    const oldCategoryUrls = oldRelMetas
+      .filter((m: any) => m.type === 'category' && m.slug)
+      .map((m: any) => buildCategoryLink(m.slug, options.siteUrl || '', options.categoryPattern as string | undefined));
+    const oldTagUrls = oldRelMetas
+      .filter((m: any) => m.type === 'tag' && m.slug)
+      .map((m: any) => buildTagLink(m.slug, options.siteUrl || ''));
 
     // Delete old relationships
     await db.delete(schema.relationships).where(eq(schema.relationships.cid, cid));
 
-    // Decrement old category counts
-    for (const mid of oldMids) {
-      const meta = await db.query.metas.findFirst({ where: eq(schema.metas.mid, mid) });
-      if (meta?.type === 'category' || meta?.type === 'tag') {
-        await db.update(schema.metas)
-          .set({ count: sql`MAX(0, ${schema.metas.count} - 1)` })
-          .where(eq(schema.metas.mid, mid));
-      }
+    // Decrement old category/tag counts in a single UPDATE. Restricted
+    // to category/tag metas so that if a future feature links a post to
+    // some other meta type (badge, series, etc.), its count column
+    // isn't silently touched.
+    if (oldMids.length > 0) {
+      await db.update(schema.metas)
+        .set({ count: sql`MAX(0, ${schema.metas.count} - 1)` })
+        .where(and(
+          sql`${schema.metas.mid} IN (${sql.join(oldMids.map(id => sql`${id}`), sql`, `)})`,
+          sql`${schema.metas.type} IN ('category', 'tag')`,
+        ));
     }
 
     // Add new categories
@@ -310,11 +341,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       await db.insert(schema.relationships).values(
         categoryIds.map((mid) => ({ cid, mid }))
       );
-      for (const mid of categoryIds) {
-        await db.update(schema.metas)
-          .set({ count: sql`${schema.metas.count} + 1` })
-          .where(eq(schema.metas.mid, mid));
-      }
+      await db.update(schema.metas)
+        .set({ count: sql`${schema.metas.count} + 1` })
+        .where(sql`${schema.metas.mid} IN (${sql.join(categoryIds.map(id => sql`${id}`), sql`, `)})`);
     }
 
     // Add tags
@@ -322,7 +351,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       await attachTags(db, cid, tags);
     }
 
-    await purgeContentAndRelatedCache(db, options, cid);
+    await purgeContentAndRelatedCache(db, options, cid, undefined, {
+      categoryUrls: oldCategoryUrls,
+      tagUrls: oldTagUrls,
+    });
 
     const editUrl = type === 'page' ? `/admin/write-page?cid=${cid}` : `/admin/write-post?cid=${cid}`;
     return new Response(null, {
@@ -337,24 +369,28 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
     if (!existing) return new Response('Not Found', { status: 404 });
 
-    const isAdmin = hasPermission(auth.user.group || 'visitor', 'administrator');
-    if (!isAdmin && existing.authorId !== auth.uid) {
+    if (!canManageResource(auth.user, existing)) {
       return new Response('Forbidden', { status: 403 });
     }
 
     // Trigger pre-delete hook
     const isPage = existing.type?.startsWith('page');
-    await doHook(isPage ? 'page:delete' : 'post:delete', existing);
-    await purgeContentAndRelatedCache(db, options, cid, existing);
+    await doHook(pluginCtx, isPage ? 'page:delete' : 'post:delete', existing);
 
-    // Decrement meta counts before deleting relationships
+    // Decrement meta counts before deleting relationships (single UPDATE
+    // over all mids linked to this content, restricted to category/tag
+    // metas since those are the only rows whose count column is meaningful).
     const rels = await db.select({ mid: schema.relationships.mid })
       .from(schema.relationships)
       .where(eq(schema.relationships.cid, cid));
-    for (const rel of rels) {
+    if (rels.length > 0) {
+      const mids = rels.map(r => r.mid);
       await db.update(schema.metas)
         .set({ count: sql`MAX(0, ${schema.metas.count} - 1)` })
-        .where(eq(schema.metas.mid, rel.mid));
+        .where(and(
+          sql`${schema.metas.mid} IN (${sql.join(mids.map(id => sql`${id}`), sql`, `)})`,
+          sql`${schema.metas.type} IN ('category', 'tag')`,
+        ));
     }
     // Delete relationships and comments
     await db.delete(schema.relationships).where(eq(schema.relationships.cid, cid));
@@ -362,8 +398,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     await db.delete(schema.fields).where(eq(schema.fields.cid, cid));
     await db.delete(schema.contents).where(eq(schema.contents.cid, cid));
 
+    // Purge cache AFTER the row is gone. If we bump cacheVersion before
+    // the delete, a concurrent public GET between bump and delete would
+    // re-read the still-present row from D1 and cache it under the
+    // fresh version — that cached corpse would then serve forever.
+    await purgeContentAndRelatedCache(db, options, cid, existing);
+
     // Trigger post-delete hook
-    await doHook(isPage ? 'page:finishDelete' : 'post:finishDelete', existing);
+    await doHook(pluginCtx, isPage ? 'page:finishDelete' : 'post:finishDelete', existing);
 
     const redirectTo = isPage ? '/admin/manage-pages' : '/admin/manage-posts';
     return new Response(null, {

@@ -96,7 +96,7 @@ describe('login-rate-limit', () => {
     const start = Date.now();
     for (let i = 0; i < cfg.maxFailures; i++) await recordLoginFailure(db, '1.2.3.4', cfg, start);
     // Fast-forward past the ban window and purge.
-    await purgeExpiredLoginFailures(db, start + cfg.banSeconds * 1000 + 1);
+    await purgeExpiredLoginFailures(db, undefined, start + cfg.banSeconds * 1000 + 1);
     // Row is gone → next lookup returns 0 without special-casing.
     expect(await loginLockedUntil(db, '1.2.3.4', cfg, start + cfg.banSeconds * 1000 + 1)).toBe(0);
   });

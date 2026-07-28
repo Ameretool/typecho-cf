@@ -40,7 +40,7 @@ vi.mock('@/lib/plugin', async () => {
       catch { return {}; }
     },
     getPluginConfigDefaults: () => ({ token: '', public: '' }),
-    applyFilter: async (_hook: string, value: any) => value,
+    applyFilter: async (_ctx: any, _hook: string, value: any) => value,
   };
 });
 

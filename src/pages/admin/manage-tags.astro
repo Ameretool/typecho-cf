@@ -29,7 +29,7 @@ if (editMid) {
   });
 }
 ---
-<Admin title="管理标签" options={options} urls={urls} user={user} activeMenu="manage-tags">
+<Admin title="管理标签" options={options} urls={urls} user={user} activeMenu="manage-tags" pluginCtx={ctx}>
   <div class="col-mb-12 col-tb-8" role="main">
     <form method="post" name="manage_tags" class="operate-form">
       <input type="hidden" name="_" value={csrfToken} />

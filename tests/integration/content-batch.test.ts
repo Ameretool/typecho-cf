@@ -24,7 +24,7 @@ vi.mock('@/lib/auth', async () => {
 vi.mock('@/lib/plugin', () => ({
   parseActivatedPlugins: () => [],
   setActivatedPlugins: () => {},
-  applyFilter: async (_hook: string, data: any) => data,
+  applyFilter: async (_ctx: any, _hook: string, data: any) => data,
   doHook: async () => {},
 }));
 

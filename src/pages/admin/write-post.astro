@@ -61,7 +61,7 @@ const isMarkdown = !post || (post.text && post.text.indexOf('<!--markdown-->') >
 
 // Build preview URL using permalink pattern
 const previewUrl = isEdit && post ? buildPermalink(post, urls.siteUrl, options.permalinkPattern) : '';
-const writePostBottomHtml = await applyFilterSafely('admin:writePost:bottom', '', { options, post, user, isEdit });
+const writePostBottomHtml = await applyFilterSafely(ctx, 'admin:writePost:bottom', '', { options, post, user, isEdit });
 
 // Fetch existing attachments for this post
 let attachments: any[] = [];
@@ -89,6 +89,7 @@ if (isEdit && post) {
   user={user}
   activeMenu={isEdit ? 'manage-posts' : 'write-post'}
   bodyClass="typecho-post-area"
+  pluginCtx={ctx}
 >
   <form action="/api/admin/content" method="post" name="write_post">
     <input type="hidden" name="_" value={csrfToken} />

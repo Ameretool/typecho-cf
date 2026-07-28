@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const comment = await getModeratableComment(auth.db, coid, auth.user);
   if (comment instanceof Response) return comment;
 
-  await applyCommentAction(auth.db, comment, action, auth.options);
+  await applyCommentAction(auth.pluginCtx, auth.db, comment, action, auth.options);
   await purgeCommentModerationCache(auth.db, auth.options, comment.cid);
 
   const referer = safeAdminRedirectUrl(

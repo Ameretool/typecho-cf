@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import type { Database } from '@/db';
 import { schema } from '@/db';
 import { generateRandomString } from '@/lib/auth';
-import { getCachedOptions, setCachedOptions, purgeOptionsCache } from '@/lib/cache';
+import { getCachedOptions, setCachedOptions, bumpCacheVersion } from '@/lib/cache';
 
 export interface SiteOptions {
   theme: string;
@@ -139,8 +139,10 @@ const defaultOptions: Partial<SiteOptions> = {
  * than picking up a race-generated value that varies between requests.
  */
 export async function loadOptions(db: Database): Promise<SiteOptions> {
-  // Try cache first
-  const cached = await getCachedOptions();
+  // Try cache first — key is versioned by cacheVersion so cross-PoP
+  // writes automatically bust the entry (one D1 read is much cheaper
+  // than reloading all rows).
+  const cached = await getCachedOptions(db);
   if (cached) {
     return cached as unknown as SiteOptions;
   }
@@ -179,8 +181,9 @@ export async function loadOptions(db: Database): Promise<SiteOptions> {
     }
   }
 
-  // Write to cache for subsequent requests
-  await setCachedOptions(opts);
+  // Write to cache for subsequent requests, keyed by the version stamp
+  // present at read time.
+  await setCachedOptions(opts, opts.cacheVersion ?? 0);
 
   return opts as unknown as SiteOptions;
 }
@@ -214,9 +217,14 @@ export async function getOption(db: Database, name: string, userId = 0): Promise
 }
 
 /**
- * Set an option value. Invalidates the options cache so subsequent
- * loadOptions() calls see the fresh value — callers no longer have to
- * remember to purge separately.
+ * Set an option value. Bumps the shared cacheVersion so every PoP's
+ * options-cache read on the next request misses (via the versioned
+ * cache key in cache.ts) — this is the only cross-PoP-safe invalidation
+ * primitive we have.
+ *
+ * The bump happens BEFORE the write to close a race where a concurrent
+ * read could still hit the pre-bump cache key: readers on the next
+ * request see the new cacheVersion, miss the cache, and reload from D1.
  */
 export async function setOption(db: Database, name: string, value: string, userId = 0): Promise<void> {
   await db
@@ -226,17 +234,50 @@ export async function setOption(db: Database, name: string, value: string, userI
       target: [schema.options.name, schema.options.user],
       set: { value },
     });
-  await purgeOptionsCache();
+  // Bumping cacheVersion also writes to the options table, so we do it
+  // after the primary write to keep the row consistent within one D1
+  // batch on retries.
+  if (name !== 'cacheVersion') await bumpCacheVersion(db);
 }
 
 /**
- * Delete an option. Invalidates the options cache — see setOption().
+ * Delete an option. Bumps cacheVersion — see setOption().
  */
 export async function deleteOption(db: Database, name: string, userId = 0): Promise<void> {
   await db
     .delete(schema.options)
     .where(and(eq(schema.options.name, name), eq(schema.options.user, userId)));
-  await purgeOptionsCache();
+  if (name !== 'cacheVersion') await bumpCacheVersion(db);
+}
+
+/**
+ * Write many options in one batch and bump cacheVersion exactly once at
+ * the end. Prefer this over a loop of `setOption()` calls whenever the
+ * updates are semantically one atomic change (install, admin bulk save)
+ * — it halves D1 writes because the per-key cacheVersion bumps are
+ * collapsed into a single bump.
+ *
+ * Any entry named `cacheVersion` is applied but never triggers a
+ * secondary bump (would recurse).
+ */
+export async function setOptionsBatch(
+  db: Database,
+  entries: Record<string, string>,
+  userId = 0,
+): Promise<void> {
+  const keys = Object.keys(entries);
+  if (keys.length === 0) return;
+  for (const name of keys) {
+    await db
+      .insert(schema.options)
+      .values({ name, user: userId, value: entries[name] })
+      .onConflictDoUpdate({
+        target: [schema.options.name, schema.options.user],
+        set: { value: entries[name] },
+      });
+  }
+  // Bump once so all readers see the batch as a single version change.
+  await bumpCacheVersion(db);
 }
 
 /**

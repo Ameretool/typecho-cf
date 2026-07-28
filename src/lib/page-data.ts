@@ -38,16 +38,16 @@ type AuthorMap = Map<number, UserRow>;
 async function loadCommon(ctx: RequestContext, requestUrl: string) {
   const { db, options, urls, user, isLoggedIn } = ctx;
   const [sidebarData, pages] = await Promise.all([
-    loadSidebarData(db, urls.siteUrl, options.permalinkPattern as string | undefined, options.categoryPattern as string | undefined),
+    loadSidebarData(ctx, db, urls.siteUrl, options.permalinkPattern as string | undefined, options.categoryPattern as string | undefined),
     loadNavPages(db, urls.siteUrl, options.pagePattern as string | undefined),
   ]);
   const currentPath = new URL(requestUrl).pathname;
-  return { options, urls, user, isLoggedIn, pages, sidebarData, currentPath };
+  return { options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx: ctx };
 }
 
 function getPage(locals: Record<string, unknown>, url: URL): number {
-  const pageParam = (locals._page as number | undefined) ?? url.searchParams.get('page');
-  return pageParam ? (typeof pageParam === 'number' ? pageParam : parseInt(pageParam, 10) || 1) : 1;
+  const raw = (locals as { _page?: number })._page ?? url.searchParams.get('page');
+  return raw ? (typeof raw === 'number' ? raw : parseInt(raw, 10) || 1) : 1;
 }
 
 function buildCommentTree(allComments: CommentRow[], options: SiteOptions): CommentNode[] {
@@ -388,7 +388,7 @@ export async function preparePostData(
   const allowComment = contentRow.allowComment === '1';
   const renderedContent = hasPassword && !passwordVerified
     ? '<p>此内容已加密，请输入密码访问。</p>'
-    : await renderMarkdownFiltered(contentRow.text || '');
+    : await renderMarkdownFiltered(ctx, contentRow.text || '');
 
   // Generate CSRF token for comment form, bound to cid so that pages
   // visited via email/RSS without a referer still validate.
@@ -477,7 +477,7 @@ export async function preparePageData(
 
   const renderedContent = hasPassword && !passwordVerified
     ? '<p>此内容已加密，请输入密码访问。</p>'
-    : await renderMarkdownFiltered(pageRow.text || '');
+    : await renderMarkdownFiltered(ctx, pageRow.text || '');
 
   // Generate CSRF token for comment form, bound to cid so that pages
   // visited via email/RSS without a referer still validate.

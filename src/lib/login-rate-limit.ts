@@ -13,7 +13,7 @@
  */
 
 import { schema, type Database } from '@/db';
-import { eq, lt } from 'drizzle-orm';
+import { and, eq, lt } from 'drizzle-orm';
 
 export interface LoginRateLimitConfig {
   enabled: boolean;
@@ -109,11 +109,25 @@ export async function clearLoginFailures(db: Database, ip: string): Promise<void
 /**
  * Delete rows whose window and ban have both expired. Callers can invoke
  * this from a scheduled job — never inline on the request path.
+ *
+ * Pass `windowSeconds` (from the current LoginRateLimitConfig) to also
+ * clean up rows whose sliding window has aged out even though a ban was
+ * never issued. Without this, an IP that got 1 failure and then vanished
+ * leaves a permanent row.
  */
-export async function purgeExpiredLoginFailures(db: Database, now = Date.now()): Promise<void> {
-  // Rows whose bannedUntil < now AND (windowStartedAt + window) < now can be
-  // dropped. We use a conservative bound: bannedUntil < now, since the
-  // window sizes are configurable and the caller doesn't hand us the config.
+export async function purgeExpiredLoginFailures(
+  db: Database,
+  windowSeconds?: number,
+  now = Date.now(),
+): Promise<void> {
+  if (windowSeconds && windowSeconds > 0) {
+    const windowExpiry = now - windowSeconds * 1000;
+    await db.delete(schema.loginFailures).where(and(
+      lt(schema.loginFailures.bannedUntil, now),
+      lt(schema.loginFailures.windowStartedAt, windowExpiry),
+    ));
+    return;
+  }
   await db.delete(schema.loginFailures).where(lt(schema.loginFailures.bannedUntil, now));
 }
 

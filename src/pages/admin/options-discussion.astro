@@ -23,7 +23,7 @@ const commentsPostIntervalMinutes = options.commentsPostInterval
   ? Math.round(Number(options.commentsPostInterval) / 60)
   : 1;
 ---
-<Admin title="评论设置" options={options} urls={urls} user={user} activeMenu="options-discussion">
+<Admin title="评论设置" options={options} urls={urls} user={user} activeMenu="options-discussion" pluginCtx={ctx}>
   <div class="col-mb-12 col-tb-8 col-tb-offset-2" role="form">
     <form method="post" action="/api/admin/options">
       <input type="hidden" name="_" value={csrfToken} />

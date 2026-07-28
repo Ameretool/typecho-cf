@@ -20,8 +20,7 @@ import {
   type PluginConfigField,
 } from '@/lib/plugin';
 import { withTimeout } from '@/lib/timeout';
-
-const PLUGIN_CONFIG_TIMEOUT_MS = 5_000;
+import { PLUGIN_CONFIG_TIMEOUT_MS } from '@/lib/constants';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const authCheck = requireAuth(ctx);
@@ -42,7 +41,7 @@ if (!plugin || !pluginHasConfig(pluginId)) {
   return Astro.redirect('/admin/plugins');
 }
 
-if (!isPluginActive(pluginId)) {
+if (!isPluginActive(ctx, pluginId)) {
   return Astro.redirect('/admin/plugins');
 }
 
@@ -64,7 +63,7 @@ if (Astro.request.method === 'POST') {
     const settings = parsePluginConfigFormData(configDef, formData);
 
     const validation = await withTimeout(
-      applyFilter('plugin:config:beforeSave', {
+      applyFilter(ctx, 'plugin:config:beforeSave', {
         success: true,
         settings,
       }, {
@@ -176,7 +175,7 @@ function selectedAttr(actual: unknown, expected: unknown): true | undefined {
   return fieldValueForOption(actual) === String(expected) ? true : undefined;
 }
 ---
-<Admin title={pageTitle} options={options} urls={urls} user={user} activeMenu="plugins">
+<Admin title={pageTitle} options={options} urls={urls} user={user} activeMenu="plugins" pluginCtx={ctx}>
   <div class="col-mb-12 col-tb-8 col-tb-offset-2" role="form">
     {message && (
       <div class={`typecho-option-tabs notice typecho-dismissible ${messageType === 'error' ? 'notice-error' : 'notice-success'}`}

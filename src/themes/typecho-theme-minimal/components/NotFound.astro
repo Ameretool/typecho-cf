@@ -17,6 +17,7 @@ const {
   pages,
   sidebarData,
   currentPath,
+  pluginCtx,
   errorTitle,
 } = Astro.props;
 
@@ -28,6 +29,7 @@ const isIndex = currentPath === '/';
   urls={urls}
   user={user}
   isLoggedIn={isLoggedIn}
+  pluginCtx={pluginCtx}
 >
   <header id="header" class="clearfix">
     <div class="container">

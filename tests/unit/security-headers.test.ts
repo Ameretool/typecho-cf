@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { applySecurityHeaders, defaultCspDirectives, addCspSource, serializeCsp } from '@/lib/security-headers';
 
 vi.mock('@/lib/plugin', () => ({
-  applyFilterSafely: vi.fn(async (_hook: string, value: any) => value),
+  applyFilterSafely: vi.fn(async (_ctx: any, _hook: string, value: any) => value),
 }));
 
 describe('CSP directive helpers', () => {
@@ -79,13 +79,13 @@ describe('applySecurityHeaders', () => {
 
   it('lets plugins extend the CSP via csp:directives', async () => {
     const { applyFilterSafely } = await import('@/lib/plugin');
-    (applyFilterSafely as any).mockImplementationOnce(async (_hook: string, directives: any) => {
+    (applyFilterSafely as any).mockImplementationOnce(async (_ctx: any, _hook: string, directives: any) => {
       addCspSource(directives, 'img-src', ['https://my-cdn.example']);
       return directives;
     });
     const response = await applySecurityHeaders(new Response('ok'), {
       request: new Request('https://example.com/'),
-    });
+    }, { activatedPlugins: new Set<string>() });
     const csp = response.headers.get('Content-Security-Policy') || '';
     expect(csp).toContain('https://my-cdn.example');
   });

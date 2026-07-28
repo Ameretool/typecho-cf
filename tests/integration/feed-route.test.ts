@@ -16,8 +16,8 @@ vi.mock('@/db', async () => {
 vi.mock('@/lib/plugin', () => ({
   parseActivatedPlugins: () => [],
   setActivatedPlugins: () => {},
-  applyFilter: async (_hook: string, data: any) => data,
-  applyFilterSafely: async (_hook: string, data: any) => data,
+  applyFilter: async (_ctx: any, _hook: string, data: any) => data,
+  applyFilterSafely: async (_ctx: any, _hook: string, data: any) => data,
 }));
 
 import { GET } from '@/pages/feed/[...type]';

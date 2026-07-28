@@ -10,7 +10,7 @@ import {
   passwordHashNeedsRehash,
 } from '@/lib/auth';
 import { LOGIN_ERROR_FLASH_COOKIE, createFlashRedirectHeaders } from '@/lib/flash';
-import { applyFilter, setActivatedPlugins, parseActivatedPlugins } from '@/lib/plugin';
+import { applyFilter, setActivatedPlugins, parseActivatedPlugins, type HookContext } from '@/lib/plugin';
 import {
   clearLoginFailures,
   loginLockedUntil,
@@ -71,8 +71,9 @@ function isSameOriginRequest(request: Request, siteUrl: string): boolean {
 export const POST: APIRoute = async ({ request }) => {
   const db = getDb(env.DB);
   const options = await loadOptions(db);
+  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  setActivatedPlugins(pluginCtx, activatedIds);
 
   if (!isSameOriginRequest(request, options.siteUrl)) {
     return new Response('Forbidden', { status: 403 });
@@ -107,7 +108,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(null, { status: 302, headers });
   }
 
-  const loginContext = await applyFilter('user:login', {}, { request, formData, options });
+  const loginContext = await applyFilter(pluginCtx, 'user:login', {}, { request, formData, options });
   if (loginContext._rejected) {
     return redirectWithLoginError(String(loginContext._rejected), request);
   }

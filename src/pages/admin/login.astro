@@ -6,6 +6,8 @@ import { safeAdminRedirectUrl } from '@/lib/admin-auth';
 
 let options: any = { title: 'Blog', charset: 'UTF-8', lang: 'zh_CN', description: '' };
 let urls: any = { siteUrl: '' };
+let loginHeadHtml = '';
+let loginFormHtml = '';
 
 try {
   const ctx = await createContext(Astro.locals, Astro.request);
@@ -16,6 +18,11 @@ try {
   if (ctx.isLoggedIn) {
     return Astro.redirect('/admin/');
   }
+
+  [loginHeadHtml, loginFormHtml] = await Promise.all([
+    applyFilterSafely(ctx, 'admin:loginHead', '', { options }),
+    applyFilterSafely(ctx, 'admin:loginForm', '', { options }),
+  ]);
 } catch {
   // DB not initialized - redirect to install
   return Astro.redirect('/install');
@@ -39,11 +46,6 @@ const refererAbsolute = (() => {
   try { return new URL(redirectInput, urls.siteUrl || Astro.url.origin).toString(); } catch { return urls.siteUrl || '/admin/'; }
 })();
 const refererValue = safeAdminRedirectUrl(refererAbsolute, urls.siteUrl || Astro.url.origin, '/admin/');
-
-const [loginHeadHtml, loginFormHtml] = await Promise.all([
-  applyFilterSafely('admin:loginHead', '', { options }),
-  applyFilterSafely('admin:loginForm', '', { options }),
-]);
 ---
 <!DOCTYPE html>
 <html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>

@@ -134,11 +134,11 @@ const waitingCount = await db.select({ count: sql<number>`count(*)` }).from(sche
 const titleActionHtml = new Map<number, string>(
   await Promise.all(posts.map(async (post) => [
     post.cid,
-    await applyFilterSafely('admin:managePosts:titleActions', '', { post, options, urls, user }),
+    await applyFilterSafely(ctx, 'admin:managePosts:titleActions', '', { post, options, urls, user }),
   ] as [number, string]))
 );
 ---
-<Admin title="管理文章" options={options} urls={urls} user={user} activeMenu="manage-posts">
+<Admin title="管理文章" options={options} urls={urls} user={user} activeMenu="manage-posts" pluginCtx={ctx}>
   <div class="col-mb-12 typecho-list">
     <div class="clearfix">
       <ul class="typecho-option-tabs">

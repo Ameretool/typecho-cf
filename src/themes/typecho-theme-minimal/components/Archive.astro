@@ -12,7 +12,7 @@ import { formatDate, buildAuthorLink } from '@/lib/content';
 type Props = ThemeArchiveProps;
 
 const {
-  options, urls, user, isLoggedIn, pages, sidebarData, currentPath,
+  options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
   archiveTitle, archiveType, posts, pagination,
 } = Astro.props;
 
@@ -24,6 +24,7 @@ const isIndex = currentPath === '/';
   urls={urls}
   user={user}
   isLoggedIn={isLoggedIn}
+  pluginCtx={pluginCtx}
 >
   <header id="header" class="clearfix">
     <div class="container">

@@ -7,14 +7,12 @@ import { setOption, deleteOption } from '@/lib/options';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { pluginExists, parseActivatedPlugins, setActivatedPlugins, getAvailablePlugins, pluginHasConfig, getPluginConfigDefaults } from '@/lib/plugin';
 import { bumpCacheVersion, purgeSiteCache } from '@/lib/cache';
+import { jsonError, jsonOk } from '@/lib/http';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await requireAdminAction(request, 'administrator');
   if (isAdminActionResponse(auth)) {
-    return new Response(JSON.stringify({ error: '权限不足' }), {
-      status: auth.status === 401 ? 401 : 403,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError(auth.status === 401 ? 401 : 403, '权限不足');
   }
 
   try {
@@ -23,24 +21,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const action = body.action; // 'activate' or 'deactivate'
 
     if (!pluginId || typeof pluginId !== 'string') {
-      return new Response(JSON.stringify({ error: '请指定插件标识' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError(400, '请指定插件标识');
     }
 
     if (action !== 'activate' && action !== 'deactivate') {
-      return new Response(JSON.stringify({ error: '无效的操作，请使用 activate 或 deactivate' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError(400, '无效的操作，请使用 activate 或 deactivate');
     }
 
     if (!pluginExists(pluginId)) {
-      return new Response(JSON.stringify({ error: `插件 "${pluginId}" 不存在，请先通过 npm 安装` }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError(404, `插件 "${pluginId}" 不存在，请先通过 npm 安装`);
     }
 
     // Get current activated list
@@ -69,28 +58,22 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     // Save to DB and update runtime state
     const newIds = Array.from(idSet);
-    setActivatedPlugins(newIds);
+    setActivatedPlugins(auth.pluginCtx, newIds);
     await setOption(auth.db, 'activatedPlugins', JSON.stringify(newIds));
 
     // Plugin changes affect page rendering
     await bumpCacheVersion(auth.db);
     await purgeSiteCache(auth.options.siteUrl || '');
 
-    return new Response(JSON.stringify({
+    return jsonOk({
       success: true,
       message: action === 'activate' ? `插件 "${pluginId}" 已启用` : `插件 "${pluginId}" 已禁用`,
       plugin: pluginId,
       action,
       activatedPlugins: newIds,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: '请求格式错误' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError(400, '请求格式错误');
   }
 };
 
@@ -98,21 +81,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
  * GET: List all available plugins and their activation status
  */
 export const GET: APIRoute = async ({ request, locals }) => {
-  const auth = await requireAdminAction(request, 'administrator', { csrf: false });
+  const auth = await requireAdminAction(request, 'administrator', { csrf: false, plugins: true });
   if (isAdminActionResponse(auth)) {
-    return new Response(JSON.stringify({ error: '权限不足' }), {
-      status: auth.status === 401 ? 401 : 403,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError(auth.status === 401 ? 401 : 403, '权限不足');
   }
 
-  // Ensure activated state is loaded
   const activatedIds = parseActivatedPlugins(auth.options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  const plugins = getAvailablePlugins(auth.pluginCtx);
 
-  const plugins = getAvailablePlugins();
-
-  return new Response(JSON.stringify({
+  return jsonOk({
     plugins: plugins.map(p => ({
       id: p.id,
       name: p.manifest.name,
@@ -124,8 +101,5 @@ export const GET: APIRoute = async ({ request, locals }) => {
       packageName: p.packageName,
     })),
     activatedPlugins: activatedIds,
-  }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
   });
 };

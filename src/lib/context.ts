@@ -6,7 +6,7 @@
 import { getDb, type Database } from '@/db';
 import { loadOptions, type SiteOptions, computeUrls } from '@/lib/options';
 import { getAuthCookies, validateAuthToken, hasPermission, generateSecurityToken } from '@/lib/auth';
-import { setActivatedPlugins, parseActivatedPlugins, doHook } from '@/lib/plugin';
+import { setActivatedPlugins, parseActivatedPlugins, doHook, type HookContext } from '@/lib/plugin';
 import { schema } from '@/db';
 import { env } from 'cloudflare:workers';
 
@@ -26,9 +26,12 @@ export function getClientIp(request: Request): string {
 
   const xff = request.headers.get('x-forwarded-for');
   if (xff) {
-    // X-Forwarded-For: clientIP, proxy1, proxy2 — only the first entry is the real client
-    const firstIp = xff.split(',')[0];
-    return firstIp ? firstIp.trim() : '';
+    // X-Forwarded-For: clientIP, proxy1, proxy2 — only the first entry is the real client.
+    // Filter out empty segments so a leading comma (", 1.2.3.4") doesn't yield the empty string.
+    for (const raw of xff.split(',')) {
+      const ip = raw.trim();
+      if (ip) return ip;
+    }
   }
 
   return '';
@@ -37,7 +40,7 @@ export function getClientIp(request: Request): string {
 /** Drizzle-inferred user row type */
 export type UserRow = typeof schema.users.$inferSelect;
 
-export interface RequestContext {
+export interface RequestContext extends HookContext {
   db: Database;
   options: SiteOptions;
   urls: ReturnType<typeof computeUrls>;
@@ -62,30 +65,29 @@ export async function createContext(locals: App.Locals, request: Request): Promi
   // keywords cannot register hooks without a deliberate admin action.
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
 
-  setActivatedPlugins(activatedIds);
+  const activatedPlugins = new Set<string>();
+  const ctx: RequestContext = { db, options, urls, user: null, isLoggedIn: false, csrfToken: null, activatedPlugins };
+
+  setActivatedPlugins(ctx, activatedIds);
 
   // Check auth
   const cookieHeader = request.headers.get('cookie');
   const { token } = getAuthCookies(cookieHeader);
-  let user: UserRow | null = null;
-  let isLoggedIn = false;
 
   if (token && options.secret) {
     const result = await validateAuthToken(token, options.secret, db);
     if (result) {
-      user = result.user;
-      isLoggedIn = true;
+      ctx.user = result.user;
+      ctx.isLoggedIn = true;
     }
   }
 
-  const csrfToken = (user && options.secret)
-    ? await generateSecurityToken(options.secret as string, user.authCode!, user.uid)
+  ctx.csrfToken = (ctx.user && options.secret)
+    ? await generateSecurityToken(options.secret as string, ctx.user.authCode!, ctx.user.uid)
     : null;
 
-  const ctx = { db, options, urls, user, isLoggedIn, csrfToken };
-
   // Trigger system:begin hook
-  await doHook('system:begin', ctx);
+  await doHook(ctx, 'system:begin', ctx);
 
   return ctx;
 }

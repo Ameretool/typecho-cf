@@ -24,11 +24,11 @@ vi.mock('@/lib/plugin', async () => {
     ...actual,
     parseActivatedPlugins: () => [],
     setActivatedPlugins: () => {},
-    applyFilter: async (hook: string, value: any, ...args: any[]) => {
+    applyFilter: async (_ctx: any, hook: string, value: any, ...args: any[]) => {
       if (hook === 'upload:beforeUpload') return await beforeUploadHook(value, ...args);
       return value;
     },
-    doHook: async (hook: string, ...args: any[]) => {
+    doHook: async (_ctx: any, hook: string, ...args: any[]) => {
       if (hook === 'upload:upload') await uploadHook(...args);
       else if (hook === 'upload:delete') await deleteHook(...args);
     },

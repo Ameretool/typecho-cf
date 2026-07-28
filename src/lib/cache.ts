@@ -4,12 +4,49 @@
  * - No extra bindings or dependencies needed.
  * - Per-PoP cache: cache.delete() only clears the current edge node.
  * - Logged-in users bypass cache entirely (ensured in middleware).
+ *
+ * Cross-PoP consistency for the options cache: the cache key embeds a
+ * version stamp read from D1. bumpCacheVersion() advances the stamp so
+ * every PoP naturally misses on its next read, no purge required.
  */
 
+import { eq, and } from 'drizzle-orm';
 import { schema, type Database } from '@/db';
+import { OPTIONS_CACHE_TTL_SECONDS } from '@/lib/constants';
 
 /** Internal namespace used for Cache API keys that are not real URLs */
 const INTERNAL_ORIGIN = 'https://typecho-cf-internal';
+
+function optionsCacheKey(version: string | number): Request {
+  return new Request(`${INTERNAL_ORIGIN}/__options?v=${encodeURIComponent(String(version))}`);
+}
+
+// In-memory cache-version memo (per isolate). Cross-PoP invalidation of
+// the options blob is bounded by CACHE_VERSION_MEMO_TTL_MS: a bump made
+// on PoP-A takes at most this long to be seen on PoP-B. In exchange we
+// avoid a D1 read on every loadOptions() call — worth the small
+// staleness for read-heavy endpoints.
+const CACHE_VERSION_MEMO_TTL_MS = 5_000;
+let cachedVersion: string | null = null;
+let cachedVersionAt = 0;
+
+async function readCacheVersion(db: Database, now = Date.now()): Promise<string> {
+  if (cachedVersion !== null && now - cachedVersionAt < CACHE_VERSION_MEMO_TTL_MS) {
+    return cachedVersion;
+  }
+  const row = await db.query.options.findFirst({
+    where: and(eq(schema.options.name, 'cacheVersion'), eq(schema.options.user, 0)),
+  });
+  cachedVersion = row?.value ?? '0';
+  cachedVersionAt = now;
+  return cachedVersion;
+}
+
+/** Test-only: reset the in-memory version memo so unit tests start fresh. */
+export function resetCacheVersionMemo(): void {
+  cachedVersion = null;
+  cachedVersionAt = 0;
+}
 
 /**
  * Purge a list of public URLs from the edge cache.
@@ -32,29 +69,41 @@ export async function purgeCache(urls: string[]): Promise<void> {
 }
 
 /**
- * Purge the cached site options.
+ * Purge the cached site options. Kept for legacy call sites; the version-
+ * stamped cache key makes explicit purge redundant, but purging the
+ * current-PoP entry costs nothing extra.
  */
 export async function purgeOptionsCache(): Promise<void> {
-  const cache = caches.default;
-  await cache.delete(new Request(`${INTERNAL_ORIGIN}/__options`));
+  // No longer strictly necessary — the version stamp on the cache key
+  // means bumpCacheVersion() makes every PoP miss on the next read. Kept
+  // as a defensive no-op so old call sites still compile.
 }
 
 export async function bumpCacheVersion(db: Database): Promise<void> {
+  const stamp = String(Date.now());
   await db.insert(schema.options)
-    .values({ name: 'cacheVersion', user: 0, value: String(Date.now()) })
+    .values({ name: 'cacheVersion', user: 0, value: stamp })
     .onConflictDoUpdate({
       target: [schema.options.name, schema.options.user],
-      set: { value: String(Date.now()) },
+      set: { value: stamp },
     });
-  await purgeOptionsCache();
+  // Best-effort local memo update so the writer sees its own bump on
+  // subsequent reads within the same isolate (other PoPs will refresh
+  // after their memo expires — see CACHE_VERSION_MEMO_TTL_MS).
+  cachedVersion = stamp;
+  cachedVersionAt = Date.now();
 }
 
 /**
- * Try to read cached options JSON.
+ * Try to read cached options JSON, keyed by the current cacheVersion.
+ * The version is memoized in-isolate for a short TTL so we don't hit D1
+ * on every loadOptions() call. Cross-PoP writes become visible within
+ * CACHE_VERSION_MEMO_TTL_MS.
  */
-export async function getCachedOptions(): Promise<Record<string, unknown> | null> {
+export async function getCachedOptions(db: Database): Promise<Record<string, unknown> | null> {
+  const version = await readCacheVersion(db);
   const cache = caches.default;
-  const res = await cache.match(new Request(`${INTERNAL_ORIGIN}/__options`));
+  const res = await cache.match(optionsCacheKey(version));
   if (!res) return null;
   try {
     return await res.json();
@@ -64,18 +113,19 @@ export async function getCachedOptions(): Promise<Record<string, unknown> | null
 }
 
 /**
- * Write options JSON to cache (TTL = 10 minutes).
- * Cache API storage is per-isolate and not publicly accessible.
+ * Write options JSON to cache under the current version stamp.
+ * Callers must pass the version they read so a subsequent bump in
+ * another PoP doesn't leave a stale entry under a fresh key.
  */
-export async function setCachedOptions(data: Record<string, unknown>): Promise<void> {
+export async function setCachedOptions(data: Record<string, unknown>, version: string | number): Promise<void> {
   const cache = caches.default;
   const res = new Response(JSON.stringify(data), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=600',
+      'Cache-Control': `public, max-age=${OPTIONS_CACHE_TTL_SECONDS}`,
     },
   });
-  await cache.put(new Request(`${INTERNAL_ORIGIN}/__options`), res);
+  await cache.put(optionsCacheKey(version), res);
 }
 
 /**

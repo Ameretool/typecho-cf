@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { schema } from '@/db';
 import { hasPermission } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction, safeAdminRedirectUrl } from '@/lib/admin-auth';
-import { setActivatedPlugins, parseActivatedPlugins, doHook } from '@/lib/plugin';
+import { doHook } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
 import { eq, sql } from 'drizzle-orm';
 
@@ -12,8 +12,7 @@ async function handler({ request, locals, url }: { request: Request; locals: App
   const auth = await requireAdminAction(request, 'contributor');
   if (isAdminActionResponse(auth)) return auth;
 
-  const activatedIds = parseActivatedPlugins(auth.options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  const pluginCtx = auth.pluginCtx;
 
   const isAdmin = hasPermission(auth.user.group || 'visitor', 'administrator');
   const isEditor = hasPermission(auth.user.group || 'visitor', 'editor');
@@ -62,7 +61,7 @@ async function handler({ request, locals, url }: { request: Request; locals: App
     // ordering and on the row still being present).
     for (const content of allowedContents) {
       const isPage = content.type?.startsWith('page');
-      await doHook(isPage ? 'page:delete' : 'post:delete', content);
+      await doHook(pluginCtx, isPage ? 'page:delete' : 'post:delete', content);
     }
 
     // Decrement meta counts in one pass: collect all (cid -> [mid]) and
@@ -104,7 +103,7 @@ async function handler({ request, locals, url }: { request: Request; locals: App
     // Post-delete hooks
     for (const content of allowedContents) {
       const isPage = content.type?.startsWith('page');
-      await doHook(isPage ? 'page:finishDelete' : 'post:finishDelete', content);
+      await doHook(pluginCtx, isPage ? 'page:finishDelete' : 'post:finishDelete', content);
     }
   } else if (action === 'mark' && markStatus) {
     if (!isEditor) {

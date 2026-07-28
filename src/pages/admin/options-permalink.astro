@@ -27,7 +27,7 @@ const isCustomPost = !postPatterns.some(p => p.value === currentPostPattern);
 const currentPagePattern = (options.pagePattern as string) || '/{slug}.html';
 const currentCategoryPattern = (options.categoryPattern as string) || '/category/{slug}/';
 ---
-<Admin title="永久链接设置" options={options} urls={urls} user={user} activeMenu="options-permalink">
+<Admin title="永久链接设置" options={options} urls={urls} user={user} activeMenu="options-permalink" pluginCtx={ctx}>
   <div class="col-mb-12 col-tb-8 col-tb-offset-2" role="form">
     <form method="post" action="/api/admin/options">
       <input type="hidden" name="_" value={csrfToken} />

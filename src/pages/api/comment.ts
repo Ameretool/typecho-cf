@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getDb, schema } from '@/db';
 import { loadOptions } from '@/lib/options';
-import { getAuthCookies, validateAuthToken, validateCommentToken } from '@/lib/auth';
-import { setActivatedPlugins, parseActivatedPlugins, applyFilter, doHook } from '@/lib/plugin';
+import { getAuthCookies, validateAuthToken, validateCommentToken, timeSafeEqual } from '@/lib/auth';
+import { setActivatedPlugins, parseActivatedPlugins, applyFilter, doHook, type HookContext } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
 import { getClientIp } from '@/lib/context';
 import { buildPermalink } from '@/lib/content';
@@ -15,8 +15,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const options = await loadOptions(db);
 
   // Load activated plugins
+  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
+  setActivatedPlugins(pluginCtx, activatedIds);
 
   const formData = await request.formData();
   const cid = parseInt(formData.get('cid')?.toString() || '0', 10);
@@ -55,9 +56,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response('评论已关闭', { status: 403 });
   }
 
-  // Check if content has password protection
+  // Encrypted-post gate: allow commenting only when the submitter has
+  // presented the correct password. The frontend post/page form injects
+  // a hidden `password` field on the comment form so the same value that
+  // decrypted the post authenticates the comment. Use a constant-time
+  // comparator so response latency doesn't leak the stored password.
   if (content.password) {
-    return new Response('不能对加密文章评论', { status: 403 });
+    const suppliedPassword = formData.get('password')?.toString() || '';
+    if (!timeSafeEqual(suppliedPassword, content.password)) {
+      return new Response('评论加密文章需要正确密码', { status: 403 });
+    }
   }
 
   // Check if comments are auto-closed due to age
@@ -208,7 +216,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // G6-5: catch plugin failures and convert to a 403 reject reason
   // rather than letting them surface as a 500 to the commenter.
   try {
-    commentData = await applyFilter('feedback:comment', commentData, {
+    commentData = await applyFilter(pluginCtx, 'feedback:comment', commentData, {
       request, formData, db, options, isLoggedIn: !!userId,
     });
   } catch (err) {
@@ -236,7 +244,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   // Trigger feedback:finishComment hook — plugins can act after comment saved
-  await doHook('feedback:finishComment', commentData);
+  await doHook(pluginCtx, 'feedback:finishComment', commentData);
 
   const contentUrl = buildPermalink(
     { cid: content.cid, slug: content.slug, type: content.type, created: content.created },

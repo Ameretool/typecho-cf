@@ -56,7 +56,7 @@ const groupNames: Record<string, string> = {
   visitor: '访问者',
 };
 ---
-<Admin title="用户" options={options} urls={urls} user={user} activeMenu="manage-users">
+<Admin title="用户" options={options} urls={urls} user={user} activeMenu="manage-users" pluginCtx={ctx}>
   <div class="col-mb-12 typecho-list">
     <div class="typecho-list-operate clearfix">
       <form method="get">

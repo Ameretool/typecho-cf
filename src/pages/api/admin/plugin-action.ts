@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { applyFilter, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
+import { applyFilter, parseActivatedPlugins } from '@/lib/plugin';
 import { hasPermission } from '@/lib/auth';
 import { withTimeout } from '@/lib/timeout';
 
@@ -44,8 +44,8 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: '缺少插件或操作参数' }, 400);
   }
 
+  const pluginCtx = auth.pluginCtx;
   const activatedIds = parseActivatedPlugins(auth.options.activatedPlugins as string | undefined);
-  setActivatedPlugins(activatedIds);
   if (!activatedIds.includes(pluginId)) {
     return json({ error: '插件未启用' }, 403);
   }
@@ -56,7 +56,7 @@ export const POST: APIRoute = async ({ request }) => {
   // opted in fails closed. Handlers return the plain group string.
   let requiredGroup = DEFAULT_ACTION_ROLE;
   try {
-    const declared = await applyFilter(`plugin:${pluginId}:action:auth`, DEFAULT_ACTION_ROLE, {
+    const declared = await applyFilter(pluginCtx, `plugin:${pluginId}:action:auth`, DEFAULT_ACTION_ROLE, {
       action,
       payload: body.payload || {},
       user: auth.user,
@@ -71,7 +71,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     const result = await withTimeout(
-      applyFilter(`plugin:${pluginId}:action`, { handled: false }, {
+      applyFilter(pluginCtx, `plugin:${pluginId}:action`, { handled: false }, {
         action,
         payload: body.payload || {},
         db: auth.db,

@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb, schema } from '@/db';
 import { loadOptions } from '@/lib/options';
 import { hashPassword, generateRandomString } from '@/lib/auth';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { REGISTER_NOTICE_FLASH_COOKIE, createFlashRedirectHeaders } from '@/lib/flash';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
@@ -54,8 +55,8 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('用户名长度需在2-32个字符之间', { status: 400 });
   }
 
-  if (password.length < 6) {
-    return new Response('密码长度至少6个字符', { status: 400 });
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return new Response(`密码长度至少${PASSWORD_MIN_LENGTH}个字符`, { status: 400 });
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {

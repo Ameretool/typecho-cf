@@ -69,7 +69,7 @@ if (Astro.request.method === 'POST') {
 
         // Save to DB
         const newIds = Array.from(idSet);
-        setActivatedPlugins(newIds);
+        setActivatedPlugins(ctx, newIds);
         const serialized = JSON.stringify(newIds);
         await setOption(db, 'activatedPlugins', serialized);
         (options as any).activatedPlugins = serialized;
@@ -86,10 +86,10 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const plugins = getAvailablePlugins();
+const plugins = getAvailablePlugins(ctx);
 const pluginCount = getPluginCount();
 ---
-<Admin title="插件管理" options={options} urls={urls} user={user} activeMenu="plugins">
+<Admin title="插件管理" options={options} urls={urls} user={user} activeMenu="plugins" pluginCtx={ctx}>
   <div class="col-mb-12" role="main">
     {message && (
       <div class={`typecho-option-tabs notice typecho-dismissible ${messageType === 'error' ? 'notice-error' : 'notice-success'}`}

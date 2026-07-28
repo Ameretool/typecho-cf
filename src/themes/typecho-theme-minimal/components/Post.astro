@@ -13,7 +13,7 @@ import { formatDate, buildAuthorLink } from '@/lib/content';
 type Props = ThemePostProps;
 
 const {
-  options, urls, user, isLoggedIn, pages, sidebarData, currentPath,
+  options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
   post, author, categories, tags, comments, commentOptions,
   prevPost, nextPost, gravatarMap,
 } = Astro.props;
@@ -36,6 +36,7 @@ const totalComments = countAll(comments);
   urls={urls}
   user={user}
   isLoggedIn={isLoggedIn}
+  pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'post' }}
 >
   <header id="header" class="clearfix">
@@ -146,6 +147,9 @@ const totalComments = countAll(comments);
                   <form method="post" action="/api/comment" id="comment-form" role="form">
                     <input type="hidden" name="cid" value={String(post.cid)} />
                     <input type="hidden" name="parent" id="comment-parent" value="0" />
+                    {post.hasPassword && post.passwordVerified && (
+                      <input type="hidden" name="password" value={Astro.url.searchParams.get('password') || ''} />
+                    )}
                     {commentOptions.securityToken && (
                       <input type="hidden" name="_" value={commentOptions.securityToken} />
                     )}

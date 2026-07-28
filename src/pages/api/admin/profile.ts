@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
 import { hashPassword } from '@/lib/auth';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { normalizeHttpUrl } from '@/lib/url';
 import { eq, and, ne } from 'drizzle-orm';
@@ -49,8 +50,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (password !== passwordConfirm) {
       return new Response('两次输入的密码不一致', { status: 400 });
     }
-    if (password.length < 6) {
-      return new Response('密码长度至少6位', { status: 400 });
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      return new Response(`密码长度至少${PASSWORD_MIN_LENGTH}位`, { status: 400 });
     }
     updateData.password = await hashPassword(password);
   }

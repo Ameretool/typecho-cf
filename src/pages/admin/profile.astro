@@ -23,7 +23,7 @@ const catCount = await db.select({ count: sql<number>`count(*)` }).from(schema.m
 
 const gravatarUrl = await buildGravatarUrl(user!.mail, { size: 220, defaultImage: 'mp' });
 ---
-<Admin title="个人设置" options={options} urls={urls} user={user} activeMenu="profile">
+<Admin title="个人设置" options={options} urls={urls} user={user} activeMenu="profile" pluginCtx={ctx}>
   <div class="col-mb-12 col-tb-3">
     <p>
       <a href="https://gravatar.com/emails/" title="在 Gravatar 上修改头像">

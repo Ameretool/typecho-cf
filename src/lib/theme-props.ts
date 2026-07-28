@@ -9,6 +9,7 @@ import type { SiteOptions, computeUrls } from '@/lib/options';
 import type { SidebarData } from '@/lib/sidebar';
 import type { PaginationInfo } from '@/lib/pagination';
 import type { UserRow } from '@/lib/context';
+import type { HookContext } from '@/lib/plugin';
 
 // ─── Base Props (shared by all theme components) ────────────────────────
 
@@ -27,6 +28,8 @@ export interface ThemeBaseProps {
   sidebarData: SidebarData;
   /** Current request path */
   currentPath: string;
+  /** Plugin context for hook execution in theme layouts */
+  pluginCtx: HookContext;
 }
 
 // ─── Post list item (used by Index & Archive) ───────────────────────────

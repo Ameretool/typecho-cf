@@ -1,6 +1,7 @@
 import { getDb, schema, type Database } from '@/db';
 import { loadOptions, type SiteOptions } from '@/lib/options';
 import { getAuthCookies, hasPermission, requireAdminCSRF, validateAuthToken } from '@/lib/auth';
+import { parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { env } from 'cloudflare:workers';
 
 export interface AdminActionContext {
@@ -8,10 +9,19 @@ export interface AdminActionContext {
   options: SiteOptions;
   uid: number;
   user: typeof schema.users.$inferSelect;
+  /** Activated plugin set for firing hooks from this request. */
+  pluginCtx: HookContext;
 }
 
 interface RequireAdminActionOptions {
   csrf?: boolean;
+  /**
+   * Load and activate the plugin set for this request. Defaults to
+   * `csrf` (i.e. state-changing POST routes get plugins for free, read
+   * routes stay lean). Pass `true` explicitly for GET routes that need
+   * to fire hooks (e.g. plugin config listing).
+   */
+  plugins?: boolean;
 }
 
 /**
@@ -44,7 +54,7 @@ export function isSameOriginRequest(request: Request, siteUrl: string): boolean 
 export async function requireAdminAction(
   request: Request,
   requiredGroup: string,
-  { csrf = true }: RequireAdminActionOptions = {},
+  { csrf = true, plugins }: RequireAdminActionOptions = {},
 ): Promise<AdminActionContext | Response> {
   const db = getDb(env.DB);
   const options = await loadOptions(db);
@@ -69,7 +79,17 @@ export async function requireAdminAction(
     if (csrfError) return csrfError;
   }
 
-  return { db, options, uid: auth.uid, user: auth.user };
+  // Activate the plugin set only when the route actually fires hooks —
+  // reads (csrf=false) that don't ask for plugins skip the parse and
+  // pluginInits loop entirely. Callers that DO need hooks on a GET can
+  // opt in with `plugins: true`.
+  const wantsPlugins = plugins ?? csrf;
+  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
+  if (wantsPlugins) {
+    setActivatedPlugins(pluginCtx, parseActivatedPlugins(options.activatedPlugins as string | undefined));
+  }
+
+  return { db, options, uid: auth.uid, user: auth.user, pluginCtx };
 }
 
 export function isAdminActionResponse(value: AdminActionContext | Response): value is Response {

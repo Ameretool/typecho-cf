@@ -9,11 +9,18 @@ import {
   hasHook,
   setActivatedPlugins,
   registerPluginInit,
+  type HookContext,
 } from '@/lib/plugin';
 
+function mockCtx(): HookContext {
+  return { activatedPlugins: new Set<string>() };
+}
+
 describe('addHook deduplication (G6-1)', () => {
+  let ctx: HookContext;
   beforeEach(() => {
-    setActivatedPlugins(['p-dedupe']);
+    ctx = mockCtx();
+    setActivatedPlugins(ctx, ['p-dedupe']);
   });
 
   it('does not register the same handler twice for the same plugin', async () => {
@@ -21,8 +28,8 @@ describe('addHook deduplication (G6-1)', () => {
     const handler = () => { calls.push('hit'); };
     addHook('post:finishPublish', 'p-dedupe', handler);
     addHook('post:finishPublish', 'p-dedupe', handler);
-    expect(hasHook('post:finishPublish')).toBe(true);
-    await doHook('post:finishPublish', { cid: 1 });
+    expect(hasHook(ctx, 'post:finishPublish')).toBe(true);
+    await doHook(ctx, 'post:finishPublish', { cid: 1 });
     expect(calls).toEqual(['hit']);
   });
 
@@ -30,7 +37,7 @@ describe('addHook deduplication (G6-1)', () => {
     const calls: string[] = [];
     addHook('post:finishSave', 'p-dedupe', () => calls.push('a'));
     addHook('post:finishSave', 'p-dedupe', () => calls.push('b'));
-    await doHook('post:finishSave', {});
+    await doHook(ctx, 'post:finishSave', {});
     expect(calls.sort()).toEqual(['a', 'b']);
   });
 });
@@ -43,17 +50,18 @@ describe('lazy plugin init (G6-3)', () => {
     };
     registerPluginInit(inits, { addHook, HookPoints: {} as any });
 
-    setActivatedPlugins(['lazy-a']);
+    const ctx = mockCtx();
+    setActivatedPlugins(ctx, ['lazy-a']);
     expect(inits['lazy-a']).toHaveBeenCalledTimes(1);
     expect(inits['lazy-b']).not.toHaveBeenCalled();
 
     // Reactivating the same plugin must not run init twice — the
     // module is already side-effected.
-    setActivatedPlugins(['lazy-a']);
+    setActivatedPlugins(ctx, ['lazy-a']);
     expect(inits['lazy-a']).toHaveBeenCalledTimes(1);
 
     // Activating a previously dormant plugin runs its init now.
-    setActivatedPlugins(['lazy-a', 'lazy-b']);
+    setActivatedPlugins(ctx, ['lazy-a', 'lazy-b']);
     expect(inits['lazy-b']).toHaveBeenCalledTimes(1);
   });
 
@@ -62,7 +70,8 @@ describe('lazy plugin init (G6-3)', () => {
     const good = vi.fn();
     const bad = vi.fn(() => { throw new Error('boom'); });
     registerPluginInit({ 'lazy-good': good, 'lazy-bad': bad }, { addHook, HookPoints: {} as any });
-    expect(() => setActivatedPlugins(['lazy-bad', 'lazy-good'])).not.toThrow();
+    const ctx = mockCtx();
+    expect(() => setActivatedPlugins(ctx, ['lazy-bad', 'lazy-good'])).not.toThrow();
     expect(good).toHaveBeenCalled();
     expect(bad).toHaveBeenCalled();
     expect(errSpy).toHaveBeenCalled();

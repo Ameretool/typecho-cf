@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb, schema } from '@/db';
 import { hashPassword, generateRandomString } from '@/lib/auth';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { normalizeHttpUrl } from '@/lib/url';
 import { and, eq, ne, sql } from 'drizzle-orm';
@@ -34,8 +35,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (!name || !mail || !password) {
       return new Response('请填写完整信息', { status: 400 });
     }
-    if (password.length < 6) {
-      return new Response('密码长度至少6位', { status: 400 });
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      return new Response(`密码长度至少${PASSWORD_MIN_LENGTH}位`, { status: 400 });
     }
     if (password !== confirm) {
       return new Response('两次输入的密码不一致', { status: 400 });
@@ -132,8 +133,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     };
 
     if (password) {
-      if (password.length < 6) {
-        return new Response('密码长度至少6位', { status: 400 });
+      if (password.length < PASSWORD_MIN_LENGTH) {
+        return new Response(`密码长度至少${PASSWORD_MIN_LENGTH}位`, { status: 400 });
       }
       if (password !== confirm) {
         return new Response('两次输入的密码不一致', { status: 400 });
