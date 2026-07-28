@@ -128,4 +128,53 @@ describe('POST /api/admin/plugin-action', () => {
     const res = await POST({ request: req } as any);
     expect(res.status).toBe(400);
   });
+
+  it('rejects contributor by default even if plugin is activated', async () => {
+    // Seed a contributor user (uid 2) alongside the seeded admin (uid 1).
+    // The plugin declares no auth filter → default requires administrator.
+    await testDb.insert(schema.users).values({
+      uid: 2, name: 'contrib', password: 'x', mail: 'c@example.com',
+      url: '', screenName: 'Contrib', created: 0, activated: 0, logged: 0,
+      group: 'contributor', authCode: 'authcodecontrib',
+    });
+    addHook('plugin:typecho-plugin-test:action', 'typecho-plugin-test', async () => ({
+      handled: true, success: true,
+    }));
+
+    const cookie = await makeAuthCookie(testDb, 2, 'authcodecontrib', SECRET);
+    const req = new Request('https://example.com/api/admin/plugin-action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, origin: 'https://example.com' },
+      body: JSON.stringify({ plugin: 'typecho-plugin-test', action: 'sync', payload: {} }),
+    });
+    const res = await POST({ request: req } as any);
+    expect(res.status).toBe(403);
+  });
+
+  it('allows contributor when plugin auth filter declares contributor role', async () => {
+    await testDb.insert(schema.users).values({
+      uid: 3, name: 'contrib2', password: 'x', mail: 'c2@example.com',
+      url: '', screenName: 'Contrib2', created: 0, activated: 0, logged: 0,
+      group: 'contributor', authCode: 'authcodecontrib2',
+    });
+    addHook(
+      'plugin:typecho-plugin-test:action:auth',
+      'typecho-plugin-test',
+      (_defaultRole: string, extra: any) => (extra?.action === 'draft' ? 'contributor' : _defaultRole),
+    );
+    addHook('plugin:typecho-plugin-test:action', 'typecho-plugin-test', async () => ({
+      handled: true, success: true, message: 'ok',
+    }));
+
+    const cookie = await makeAuthCookie(testDb, 3, 'authcodecontrib2', SECRET);
+    const req = new Request('https://example.com/api/admin/plugin-action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, origin: 'https://example.com' },
+      body: JSON.stringify({ plugin: 'typecho-plugin-test', action: 'draft', payload: {} }),
+    });
+    const res = await POST({ request: req } as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
 });

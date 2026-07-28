@@ -1444,6 +1444,18 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
   );
 
   addHook(
+    `plugin:${pluginId}:action:auth`,
+    pluginId,
+    (defaultRole: string, extra?: { action?: string }) => {
+      // AI writing helpers write into the current editor session, so
+      // contributor-level authors need to reach them. Restricting to
+      // administrator would lock non-admin authors out of the feature.
+      if (['generate', 'polish', 'correct'].includes(extra?.action || '')) return 'contributor';
+      return defaultRole;
+    },
+  );
+
+  addHook(
     `plugin:${pluginId}:action`,
     pluginId,
     async (

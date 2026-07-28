@@ -56,6 +56,21 @@ export const POST: APIRoute = async ({ request }) => {
   const d1 = env.DB;
   const db = getDb(d1);
 
+  // Refuse the install endpoint outright once installed=1. The 302 to /admin/
+  // that used to sit further down would let an attacker at least confirm the
+  // site was already provisioned; a flat 403 gives them nothing to work with.
+  //
+  // We probe options before touching formData so a hostile POST can't force
+  // table creation to fail early and mask the check.
+  try {
+    const installed = await getOption(db, 'installed');
+    if (installed === '1') {
+      return new Response('Site already installed', { status: 403 });
+    }
+  } catch {
+    // Tables not yet created → the install window is still open, fall through.
+  }
+
   const formData = await request.formData();
   const siteTitle = formData.get('siteTitle')?.toString() || 'Hello World';
   const siteDescription = formData.get('siteDescription')?.toString() || '';
@@ -86,13 +101,10 @@ export const POST: APIRoute = async ({ request }) => {
     // Auto-create tables if they don't exist
     await ensureTables(d1);
 
-    // Check if already installed
+    // Re-check after table creation in case another concurrent install races us.
     const installed = await getOption(db, 'installed');
     if (installed === '1') {
-      return new Response(null, {
-        status: 302,
-        headers: { Location: '/admin/' },
-      });
+      return new Response('Site already installed', { status: 403 });
     }
 
     // Create admin user

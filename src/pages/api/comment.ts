@@ -190,15 +190,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     parent,
   };
 
-  // Anti-spam: CSRF token check (matches Typecho's Security::protect())
-  // Token is bound to the target cid so users coming from email/RSS without
-  // a referer can still post; legacy referer-bound tokens still verify
-  // until cached HTML rolls over.
-  if (options.commentsAntiSpam && !userId) {
+  // CSRF: token must be present, cid-bound, and valid for the target
+  // post — for both anonymous and logged-in commenters. The token is
+  // generated per-cid at page render time, so cached HTML still works
+  // as long as it belongs to the same post.
+  if (options.commentsAntiSpam) {
     const submittedToken = formData.get('_')?.toString() || '';
-    const refererUrl = (request.headers.get('referer') || '').split('#')[0];
     const valid = submittedToken
-      ? await validateCommentToken(submittedToken, options.secret as string, cid, refererUrl || undefined)
+      ? await validateCommentToken(submittedToken, options.secret as string, cid)
       : false;
     if (!valid) {
       return new Response('评论来源验证失败', { status: 403 });

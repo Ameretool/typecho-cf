@@ -637,6 +637,18 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
   );
 
   addHook(
+    `plugin:${pluginId}:action:auth`,
+    pluginId,
+    (defaultRole: string, extra?: { action?: string }) => {
+      // Sync-to-WeChat writes back to a third-party account and modifies
+      // the post's meta. Only editors (or higher) should be able to
+      // trigger it — contributor is too permissive.
+      if (extra?.action === 'sync') return 'editor';
+      return defaultRole;
+    },
+  );
+
+  addHook(
     `plugin:${pluginId}:action`,
     pluginId,
     async (

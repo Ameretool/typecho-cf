@@ -32,16 +32,17 @@ async function seedContent(
   db: TestDatabase,
   overrides: Partial<typeof schema.contents.$inferInsert> = {},
 ) {
+  const slug = String(overrides.slug || 'test-post');
   await db.insert(schema.contents).values({
     title: 'Test Post',
-    slug: 'test-post',
+    slug,
     created: Math.floor(Date.now() / 1000) - 100,
     type: 'post',
     status: 'publish',
     allowComment: '1',
     ...overrides,
   });
-  const row = await db.query.contents.findFirst();
+  const row = await db.query.contents.findFirst({ where: (c, { eq }) => eq(c.slug, slug) });
   return row!;
 }
 
@@ -532,21 +533,22 @@ describe('POST /api/comment', () => {
     expect(res.status).toBe(403);
   });
 
-  it('accepts comment when commentsAntiSpam is enabled and token is correct', async () => {
+  it('accepts comment when commentsAntiSpam is enabled and cid-bound token is correct', async () => {
     await seedOptions(testDb, { commentsAntiSpam: '1' });
     const content = await seedContent(testDb);
-    const requestUrl = 'https://example.com/';
-    const token = await generateCommentToken('test-secret', requestUrl);
+    const token = await generateCommentToken('test-secret', content.cid);
     const req = makeCommentRequest({ cid: String(content.cid), text: 'Legit comment', author: 'Alice', _: token });
     const res = await POST({ request: req, locals: {} } as any);
     expect(res.status).toBe(302);
   });
 
-  it('rejects anti-spam token generated for API URL instead of referer page', async () => {
+  it('rejects a cid-bound token replayed against another post', async () => {
     await seedOptions(testDb, { commentsAntiSpam: '1' });
-    const content = await seedContent(testDb);
-    const token = await generateCommentToken('test-secret', 'https://example.com/api/comment');
-    const req = makeCommentRequest({ cid: String(content.cid), text: 'Wrong URL token', author: 'Alice', _: token });
+    const content1 = await seedContent(testDb);
+    const content2 = await seedContent(testDb, { slug: 'test-post-2' });
+    // Token issued for post 1 must not be accepted on post 2.
+    const token = await generateCommentToken('test-secret', content1.cid);
+    const req = makeCommentRequest({ cid: String(content2.cid), text: 'Cross-post replay', author: 'Mallory', _: token });
     const res = await POST({ request: req, locals: {} } as any);
     expect(res.status).toBe(403);
   });

@@ -1,12 +1,29 @@
 import type { APIRoute } from 'astro';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { applyFilter, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
+import { hasPermission } from '@/lib/auth';
 import { withTimeout } from '@/lib/timeout';
 
 const PLUGIN_ACTION_TIMEOUT_MS = 60_000;
 
+/**
+ * Minimum group required to call this endpoint at all. We still call the
+ * plugin's own auth filter below to pick the *action*-specific role — but the
+ * outer gate keeps unauthenticated / visitor callers out even if a plugin
+ * forgets to declare a role.
+ */
+const BASE_REQUIRED_GROUP = 'contributor';
+
+/**
+ * Default role required to invoke a plugin action when the plugin has not
+ * declared one via the `plugin:<id>:action:auth` filter. Kept at
+ * administrator so a plugin that ships a new action without updating its
+ * auth filter fails closed rather than open.
+ */
+const DEFAULT_ACTION_ROLE = 'administrator';
+
 export const POST: APIRoute = async ({ request }) => {
-  const auth = await requireAdminAction(request, 'contributor');
+  const auth = await requireAdminAction(request, BASE_REQUIRED_GROUP);
   if (isAdminActionResponse(auth)) {
     return new Response(JSON.stringify({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden' }), {
       status: auth.status,
@@ -31,6 +48,25 @@ export const POST: APIRoute = async ({ request }) => {
   setActivatedPlugins(activatedIds);
   if (!activatedIds.includes(pluginId)) {
     return json({ error: '插件未启用' }, 403);
+  }
+
+  // Ask the plugin what role it wants for this action. Plugins can inspect
+  // action + payload and return a group name; anything else (or no handler)
+  // means "unspecified" → treated as administrator so a plugin that hasn't
+  // opted in fails closed. Handlers return the plain group string.
+  let requiredGroup = DEFAULT_ACTION_ROLE;
+  try {
+    const declared = await applyFilter(`plugin:${pluginId}:action:auth`, DEFAULT_ACTION_ROLE, {
+      action,
+      payload: body.payload || {},
+      user: auth.user,
+    });
+    if (typeof declared === 'string' && declared) requiredGroup = declared;
+  } catch {
+    // Filter threw → keep the safe default.
+  }
+  if (!hasPermission(auth.user.group || 'visitor', requiredGroup)) {
+    return json({ error: 'Forbidden' }, 403);
   }
 
   try {

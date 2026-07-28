@@ -449,15 +449,9 @@ describe('generateCommentToken() / validateCommentToken()', () => {
     expect(await validateCommentToken('not-a-token', 'mysecret', 42)).toBe(false);
   });
 
-  it('accepts legacy referer-bound token via fallback', async () => {
-    // Backwards compatibility for HTML cached before the upgrade.
-    const legacyToken = await generateCommentToken('mysecret', 'https://example.com/post/');
-    expect(await validateCommentToken(legacyToken, 'mysecret', 42, 'https://example.com/post/')).toBe(true);
-  });
-
-  it('rejects legacy referer-bound token if referer is missing', async () => {
-    const legacyToken = await generateCommentToken('mysecret', 'https://example.com/post/');
-    expect(await validateCommentToken(legacyToken, 'mysecret', 42)).toBe(false);
+  it('rejects a token issued for another cid (no referer fallback)', async () => {
+    const foreignToken = await generateCommentToken('mysecret', 41);
+    expect(await validateCommentToken(foreignToken, 'mysecret', 42)).toBe(false);
   });
 
   it('different cids produce different tokens', async () => {

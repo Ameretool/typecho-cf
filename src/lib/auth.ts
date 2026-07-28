@@ -238,41 +238,26 @@ async function extractAdminCSRFToken(request: Request): Promise<string | null> {
 }
 
 /**
- * Generate a comment-form CSRF token bound to the target content ID rather
- * than the (often missing) referer URL. This lets the form survive being
- * rendered in cached HTML and lets users coming from email/RSS still post
- * comments. Token = sha256(secret + '&cid=' + cid).
- *
- * The legacy referer-based form is preserved on the verify path for
- * cached pages still in the wild.
+ * Generate a comment-form CSRF token bound to the target content ID.
+ * Token = sha256(secret + '&cid=' + cid). Same-page cached HTML is fine
+ * because the token depends only on the cid the form targets.
  */
-export async function generateCommentToken(secret: string, cidOrRefererUrl: string | number): Promise<string> {
-  const subject = typeof cidOrRefererUrl === 'number'
-    ? `&cid=${cidOrRefererUrl}`
-    : `&${cidOrRefererUrl}`;
-  return await sha256(`${secret}${subject}`);
+export async function generateCommentToken(secret: string, cid: number): Promise<string> {
+  return await sha256(`${secret}&cid=${cid}`);
 }
 
 /**
- * Validate a comment form CSRF token.
- *
- * Accepts either the new cid-bound token or, for short-term backwards
- * compatibility, the legacy referer-bound token. Pages cached before the
- * upgrade still validate; new pages always emit cid-bound tokens.
+ * Validate a comment form CSRF token. Rejects if it doesn't match the
+ * cid-bound expected value — no referer fallback, so an attacker cannot
+ * reuse a token issued for /archives/1/ to post on /archives/2/.
  */
 export async function validateCommentToken(
   token: string,
   secret: string,
   cid: number,
-  refererUrl?: string,
 ): Promise<boolean> {
-  const expectedCid = await generateCommentToken(secret, cid);
-  if (timeSafeEqual(token, expectedCid)) return true;
-  if (refererUrl) {
-    const expectedReferer = await generateCommentToken(secret, refererUrl);
-    if (timeSafeEqual(token, expectedReferer)) return true;
-  }
-  return false;
+  const expected = await generateCommentToken(secret, cid);
+  return timeSafeEqual(token, expected);
 }
 
 // ---- Utilities ----

@@ -4,10 +4,9 @@
  */
 
 import { getDb, type Database } from '@/db';
-import { loadOptions, type SiteOptions, computeUrls, setOption } from '@/lib/options';
+import { loadOptions, type SiteOptions, computeUrls } from '@/lib/options';
 import { getAuthCookies, validateAuthToken, hasPermission, generateSecurityToken } from '@/lib/auth';
-import { setActivatedPlugins, parseActivatedPlugins, doHook, getAvailablePlugins } from '@/lib/plugin';
-import { purgeOptionsCache } from '@/lib/cache';
+import { setActivatedPlugins, parseActivatedPlugins, doHook } from '@/lib/plugin';
 import { schema } from '@/db';
 import { env } from 'cloudflare:workers';
 
@@ -57,20 +56,11 @@ export async function createContext(locals: App.Locals, request: Request): Promi
   const options = await loadOptions(db);
   const urls = computeUrls(options);
 
-  // Load activated plugins from DB options
+  // Load activated plugins from DB options. Nothing is auto-activated: an
+  // operator must explicitly turn plugins on from /admin/plugin. This means a
+  // hostile package that happens to land in node_modules with typecho/plugin
+  // keywords cannot register hooks without a deliberate admin action.
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-
-  // Fresh-install and legacy-upgrade: auto-activate all discovered plugins
-  if (activatedIds.length === 0 && options.installed) {
-    const availableIds = getAvailablePlugins().map(p => p.id);
-    if (availableIds.length > 0) {
-      activatedIds.push(...availableIds);
-      await Promise.all([
-        setOption(db, 'activatedPlugins', JSON.stringify(activatedIds)),
-        purgeOptionsCache(),
-      ]);
-    }
-  }
 
   setActivatedPlugins(activatedIds);
 
