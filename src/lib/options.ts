@@ -127,6 +127,9 @@ const defaultOptions: Partial<SiteOptions> = {
   loginFailBanMaxFailures: 5,
   loginFailBanSeconds: 900,
   feedItems: 10,
+  mailEnabled: 0,
+  commentEmailEnabled: 0,
+  commentEmailReplyEnabled: 1,
 };
 
 /**
@@ -172,7 +175,8 @@ export async function loadOptions(db: Database): Promise<SiteOptions> {
     'gzip', 'cacheEnabled', 'cacheVersion',
     'loginFailBanEnabled', 'loginFailBanWindowSeconds',
     'loginFailBanMaxFailures', 'loginFailBanSeconds',
-    'feedItems',
+    'feedItems', 'mailEnabled', 'commentEmailEnabled',
+    'commentEmailReplyEnabled',
   ];
 
   for (const key of numericKeys) {

@@ -162,12 +162,18 @@ if (isEdit && post) {
 
         <section class="typecho-post-option">
           <label for="token-input-tags" class="typecho-label">标签</label>
-          <p><input id="tags" name="tags" type="text" value={postTags.join(',')} class="w-100 text" /></p>
+          <div data-tags-input data-tags-api="/api/admin/tags-suggest">
+            <input type="hidden" name="tags" value={postTags.join(',')} />
+          </div>
         </section>
 
         <section class="typecho-post-option">
           <label for="schedule-date" class="typecho-label">发布时间</label>
-          <p><input type="datetime-local" id="schedule-date" name="date" value={post?.created ? new Date(post.created * 1000).toISOString().slice(0, 16) : ''} class="w-100 text" /></p>
+          <p style="display:flex;gap:6px">
+            <input type="datetime-local" id="schedule-date" name="date" value={post?.created ? new Date(post.created * 1000).toISOString().slice(0, 16) : ''} class="text" style="flex:1" />
+            <button type="button" class="btn btn-xs" onclick="var d=new Date();this.form.date.value=d.toISOString().slice(0,16)">现在</button>
+            <button type="button" class="btn btn-xs" onclick="this.form.date.value=''">清除</button>
+          </p>
           <small class="typecho-option-hint">留空立即发布；填写未来时间自动定时发布</small>
         </section>
 
@@ -279,6 +285,7 @@ if (isEdit && post) {
     <script is:inline src="/vendor/pagedown.js"></script>
     <script is:inline src="/vendor/paste.js"></script>
     <script is:inline src="/vendor/purify.js"></script>
+    <script is:inline src="/vendor/typecho-tags.js"></script>
     <script is:inline>
     $(document).ready(function () {
       var textarea = $('#text'),

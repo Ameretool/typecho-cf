@@ -71,6 +71,36 @@ const { options, urls, user, csrfToken } = ctx;
           <p class="description">启用后，未登录用户访问的页面将在边缘节点缓存 5 分钟，可大幅减少数据库查询。管理员操作（发布、编辑、评论等）会自动清除相关缓存</p>
         </li>
       </ul>
+
+      <ul class="typecho-option">
+        <li>
+          <label class="typecho-label">邮件设置</label>
+          <ul>
+            <li>
+              <input type="checkbox" id="mailEnabled" name="mailEnabled" value="1" checked={!!options.mailEnabled && options.mailEnabled !== 0} />
+              <label for="mailEnabled">启用邮件发送</label>
+              <p class="description">需要安装邮件适配器插件才能实际发送（密码重置、评论通知依赖此开关）</p>
+            </li>
+            <li>
+              <label for="mailFrom" class="typecho-label">发件邮箱</label>
+              <p><input type="email" id="mailFrom" name="mailFrom" class="text w-100" value={options.mailFrom || ''} /></p>
+            </li>
+            <li>
+              <label for="mailFromName" class="typecho-label">发件人名称</label>
+              <p><input type="text" id="mailFromName" name="mailFromName" class="text w-100" value={options.mailFromName || ''} /></p>
+            </li>
+          </ul>
+        </li>
+      </ul>
+
+      <ul class="typecho-option">
+        <li>
+          <label for="robotsTxt" class="typecho-label">robots.txt 内容</label>
+          <p><textarea id="robotsTxt" name="robotsTxt" class="w-100" rows="5">{options.robotsTxt || ''}</textarea></p>
+          <p class="description">留空使用默认规则（Allow / Disallow /admin/ /api/ Sitemap）</p>
+        </li>
+      </ul>
+
       <ul class="typecho-option typecho-option-submit">
         <li>
           <button type="submit" class="btn primary">保存设置</button>

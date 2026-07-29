@@ -298,7 +298,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // Execute the route handler
-  let response = await next();
+  let response: Response;
+  try {
+    response = await next();
+  } catch (err) {
+    console.error('[middleware] next() threw:', path, err);
+    return new Response('Server error', { status: 500 });
+  }
+  if (response.status === 404) {
+    console.warn('[middleware] route 404:', { path, method: context.request.method });
+  }
 
   response = await applySecurityHeaders(response, { request: context.request }, pluginCtx);
 

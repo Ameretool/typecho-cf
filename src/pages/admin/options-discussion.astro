@@ -170,6 +170,26 @@ const commentsPostIntervalMinutes = options.commentsPostInterval
         </li>
       </ul>
 
+      <ul class="typecho-option">
+        <li>
+          <label class="typecho-label">邮件通知</label>
+          <ul>
+            <li>
+              <input type="checkbox" id="commentEmailEnabled" name="commentEmailEnabled" value="1"
+                checked={!!options.commentEmailEnabled && options.commentEmailEnabled !== 0} />
+              <label for="commentEmailEnabled">有新评论时发送邮件通知</label>
+              <p class="description">通知文章作者和父评论作者（需先在基本设置中启用邮件发送）</p>
+            </li>
+            <li>
+              <input type="checkbox" id="commentEmailReplyEnabled" name="commentEmailReplyEnabled" value="1"
+                checked={!options.commentEmailReplyEnabled || options.commentEmailReplyEnabled !== 0} />
+              <label for="commentEmailReplyEnabled">包含评论回复通知</label>
+              <p class="description">当有人回复评论时，通知被回复者</p>
+            </li>
+          </ul>
+        </li>
+      </ul>
+
       <ul class="typecho-option typecho-option-submit">
         <li>
           <button type="submit" class="btn primary">保存设置</button>
