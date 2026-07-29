@@ -6,6 +6,7 @@ import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { buildAuthorLink, buildCategoryLink, buildPermalink, buildTagLink, generateSlug } from '@/lib/content';
 import { applyFilter, doHook } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
+import { jsonError, jsonOk } from '@/lib/http';
 import { eq, and, sql } from 'drizzle-orm';
 
 // Typecho convention: visibility dropdown maps to db status column.
@@ -201,14 +202,56 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const order = parseInt(formData.get('order')?.toString() || '0', 10) || 0;
 
   const now = Math.floor(Date.now() / 1000);
+
+  // ── Schedule: accept optional datetime from the editor ──
+  const scheduleDate = formData.get('date')?.toString()?.trim();
+  let created = now;
+  if (scheduleDate) {
+    const parsed = Math.floor(new Date(scheduleDate).getTime() / 1000);
+    if (Number.isFinite(parsed) && parsed > 0) created = Math.max(parsed, 1);
+  }
+
+  // ── Autosave: only allowed for draft-mode content ──
+  const isAutosave = formData.get('autosave') === '1';
   const contentType = isDraft ? `${type}_draft` : type;
+
+  if (isAutosave) {
+    // Autosave rejection: cannot autosave published content
+    if (cid) {
+      const existing = await db.query.contents.findFirst({ where: eq(schema.contents.cid, cid) });
+      if (!existing) return new Response('not-found', { status: 404 });
+      if (existing.status === 'publish') return jsonError(400, 'autosave-not-allowed-for-published');
+      if (!canManageResource(auth.user, existing)) return new Response('Forbidden', { status: 403 });
+      await db.update(schema.contents).set({
+        title: title || existing.title,
+        text: text || existing.text,
+        modified: now,
+      } satisfies Record<string, unknown>).where(eq(schema.contents.cid, cid));
+      return jsonOk({ cid, autosaved: true });
+    }
+    // New draft: create a post_draft row
+    const inserted = await db.insert(schema.contents).values({
+      title,
+      slug: `autosave-${Date.now()}`,
+      created,
+      modified: now,
+      text,
+      order: 0,
+      authorId: auth.uid,
+      type: type === 'page' ? 'page_draft' : 'post_draft',
+      status: 'draft',
+    } satisfies Record<string, unknown>).returning({ cid: schema.contents.cid });
+    if (!inserted.length) return new Response('创建失败', { status: 500 });
+    const newCid = inserted[0].cid;
+    return jsonOk({ cid: newCid, autosaved: true });
+  }
 
   if (action === 'create') {
     // Build content data — slug will be backfilled with cid if empty
     let contentData: Record<string, unknown> = {
       title,
       slug: slugInput || `temp-${Date.now().toString(36)}`,
-      created: now,
+      created,
       modified: now,
       text,
       order,
@@ -285,6 +328,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     await db.update(schema.contents).set({
       title,
       slug: finalSlug,
+      created,
       modified: now,
       text,
       order,

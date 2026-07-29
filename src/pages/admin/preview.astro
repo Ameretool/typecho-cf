@@ -1,0 +1,48 @@
+---
+import Base from '@/layouts/Base.astro';
+import { themeTemplates } from 'virtual:theme-templates';
+import { createContext, requireAuth } from '@/lib/context';
+import { hasPermission } from '@/lib/auth';
+import { schema } from '@/db';
+import { preparePostData } from '@/lib/page-data';
+import { getDb } from '@/db';
+import { eq } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const authCheck = requireAuth(ctx);
+if (authCheck) return authCheck;
+
+const cid = parseInt(Astro.url.searchParams.get('cid') || '0', 10);
+if (!cid) return new Response('missing cid', { status: 400 });
+
+const db = getDb(env.DB);
+const row = await db.query.contents.findFirst({
+  where: eq(schema.contents.cid, cid),
+});
+
+if (!row) return new Response('Not Found', { status: 404 });
+
+// Permission: contributors preview their own; editors+ preview any
+if (!hasPermission(ctx.user!.group || 'visitor', 'editor') && row.authorId !== ctx.user!.uid) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const activeTheme = (ctx.options.theme as string) || 'typecho-theme-minimal';
+const templates = themeTemplates[activeTheme] ?? {};
+const defaults = themeTemplates['typecho-theme-minimal']!;
+
+const isPage = row.type === 'page' || row.type === 'page_draft';
+const Template = isPage
+  ? (templates.Page ?? defaults.Page!)
+  : (templates.Post ?? defaults.Post!);
+
+const data = await preparePostData(ctx, row, { previewMode: true });
+---
+
+<Base seo={{ canonical: '' }}>
+  <Fragment slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+  </Fragment>
+  <Template {...data} />
+</Base>

@@ -24,6 +24,8 @@ export default defineConfig({
       ...sharedAliases,
       // Stub Cloudflare-specific modules not available in Node.js test env
       'cloudflare:workers': path.resolve(__dirname, './tests/__mocks__/cloudflare-workers.ts'),
+      // Stub Astro virtual modules
+      'astro:middleware': path.resolve(__dirname, './tests/__mocks__/astro-middleware.ts'),
     },
   },
 });

@@ -212,6 +212,9 @@ export const HookPoints = {
 
   // --- Security headers ---
   'csp:directives': 'csp:directives',                // Filter: CSP directives map (G3-5)
+
+  // --- Mail ---
+  'mail:send': 'mail:send',                          // Filter: mail sending (plugin adapter)
 } as const;
 
 export type HookPoint = typeof HookPoints[keyof typeof HookPoints];

@@ -16,7 +16,8 @@ const isEditor = hasPermission(user!.group || 'visitor', 'editor');
 
 // Check if editing existing post
 const cid = Astro.url.searchParams.get('cid');
-let post: any = null;
+type ContentRow = typeof schema.contents.$inferSelect;
+let post: ContentRow | null = null;
 let isEdit = false;
 let postCategories: number[] = [];
 let postTags: string[] = [];
@@ -64,20 +65,22 @@ const previewUrl = isEdit && post ? buildPermalink(post, urls.siteUrl, options.p
 const writePostBottomHtml = await applyFilterSafely(ctx, 'admin:writePost:bottom', '', { options, post, user, isEdit });
 
 // Fetch existing attachments for this post
-let attachments: any[] = [];
+interface PostAttachmentMeta { url?: string; size?: number; type?: string; }
+interface PostAttachmentItem { cid: number; title: string | null; url: string; size: number; isImage: boolean; }
+let attachments: PostAttachmentItem[] = [];
 if (isEdit && post) {
   const rows = await db.select().from(schema.contents)
     .where(and(eq(schema.contents.type, 'attachment'), eq(schema.contents.parent, post.cid)))
     .orderBy(schema.contents.created);
   attachments = rows.map(row => {
-    let meta: any = {};
+    let meta: Record<string, unknown> = {};
     try { meta = JSON.parse(row.text || '{}'); } catch {}
     return {
       cid: row.cid,
       title: row.title,
-      url: meta.url || '',
-      size: meta.size || 0,
-      isImage: (meta.type || '').startsWith('image/'),
+      url: (meta.url as string) || '',
+      size: (meta.size as number) || 0,
+      isImage: ((meta.type as string) || '').startsWith('image/'),
     };
   });
 }
@@ -160,6 +163,12 @@ if (isEdit && post) {
         <section class="typecho-post-option">
           <label for="token-input-tags" class="typecho-label">标签</label>
           <p><input id="tags" name="tags" type="text" value={postTags.join(',')} class="w-100 text" /></p>
+        </section>
+
+        <section class="typecho-post-option">
+          <label for="schedule-date" class="typecho-label">发布时间</label>
+          <p><input type="datetime-local" id="schedule-date" name="date" value={post?.created ? new Date(post.created * 1000).toISOString().slice(0, 16) : ''} class="w-100 text" /></p>
+          <small class="typecho-option-hint">留空立即发布；填写未来时间自动定时发布</small>
         </section>
 
         <button type="button" id="advance-panel-btn" class="btn btn-xs">高级选项 <i class="i-caret-down"></i></button>
@@ -266,10 +275,10 @@ if (isEdit && post) {
   </form>
 
   <Fragment slot="footer">
-    <script is:inline src="/js/hyperdown.js"></script>
-    <script is:inline src="/js/pagedown.js"></script>
-    <script is:inline src="/js/paste.js"></script>
-    <script is:inline src="/js/purify.js"></script>
+    <script is:inline src="/vendor/hyperdown.js"></script>
+    <script is:inline src="/vendor/pagedown.js"></script>
+    <script is:inline src="/vendor/paste.js"></script>
+    <script is:inline src="/vendor/purify.js"></script>
     <script is:inline>
     $(document).ready(function () {
       var textarea = $('#text'),

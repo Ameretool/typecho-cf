@@ -158,7 +158,7 @@ See [Theme Development Guide](src/themes/README.md).
 
 | Component | Technology |
 |-----------|------------|
-| Framework | [Astro](https://astro.build) 6.x (SSR) |
+| Framework | [Astro](https://astro.build) 7.x (SSR) |
 | Runtime | [Cloudflare Workers](https://workers.cloudflare.com) |
 | Database | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) |
 | ORM | [Drizzle ORM](https://orm.drizzle.team) |

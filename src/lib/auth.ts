@@ -147,6 +147,9 @@ export async function validateAuthToken(
 
   if (!user || !user.authCode) return null;
 
+  // Reject reset tokens during normal auth — they can't be valid sessions
+  if (user.authCode.startsWith('reset:')) return null;
+
   const expected = await sha256(secret + `${uid}:${user.authCode}`);
   if (!timeSafeEqual(hash, expected)) return null;
 
@@ -433,4 +436,47 @@ export function clearAuthCookieHeaders(request?: Request): string[] {
     `${AUTH_COOKIE_NAME}=; ${opts}`,
     `${AUTH_CODE_COOKIE_NAME}=; ${opts}`,
   ];
+}
+
+// ── Password reset tokens ─────────────────────────────────────────────
+
+const RESET_TOKEN_PREFIX = 'reset:';
+const RESET_TOKEN_EXPIRY_SEC = 3600; // 1 hour
+
+export function generateResetToken(expirySec = RESET_TOKEN_EXPIRY_SEC): string {
+  const hex = generateRandomString(32);
+  const exp = Math.floor(Date.now() / 1000) + expirySec;
+  return `${RESET_TOKEN_PREFIX}${hex}:${exp}`;
+}
+
+export interface ResetToken {
+  valid: boolean;
+  uid?: number;
+  error?: 'expired' | 'malformed' | 'consumed';
+}
+
+export async function parseResetToken(
+  token: string,
+  db: Database,
+): Promise<ResetToken> {
+  if (!token.startsWith(RESET_TOKEN_PREFIX)) return { valid: false, error: 'malformed' };
+  const body = token.slice(RESET_TOKEN_PREFIX.length);
+  const colonIdx = body.lastIndexOf(':');
+  if (colonIdx === -1) return { valid: false, error: 'malformed' };
+
+  const hex = body.slice(0, colonIdx);
+  const exp = parseInt(body.slice(colonIdx + 1), 10);
+
+  if (hex.length !== 32 || !/^[a-fA-F0-9]+$/.test(hex)) return { valid: false, error: 'malformed' };
+  if (!Number.isFinite(exp)) return { valid: false, error: 'malformed' };
+  if (Date.now() / 1000 > exp) return { valid: false, error: 'expired' };
+
+  // Find user by authCode (exact match, timing-safe)
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.authCode, token),
+    columns: { uid: true },
+  });
+  if (!user) return { valid: false, error: 'consumed' };
+
+  return { valid: true, uid: user.uid };
 }

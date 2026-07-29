@@ -5,10 +5,13 @@
 /.wrangler
 /drizzle
 /public/themes
+/public/js
+/public/plugin-assets
 .DS_Store
 *.log
 wrangler.toml
 /.claude
 /.env
 /.pnpm-store
+/docs
 

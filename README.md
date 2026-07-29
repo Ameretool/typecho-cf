@@ -158,7 +158,7 @@ pnpm run reset-password:cloudflare
 
 | 组件 | 技术 |
 |------|------|
-| 框架 | [Astro](https://astro.build) 6.x (SSR) |
+| 框架 | [Astro](https://astro.build) 7.x (SSR) |
 | 运行时 | [Cloudflare Workers](https://workers.cloudflare.com) |
 | 数据库 | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) |
 | ORM | [Drizzle ORM](https://orm.drizzle.team) |

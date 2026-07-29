@@ -5,6 +5,7 @@ import { getAuthCookies, validateAuthToken, validateCommentToken, timeSafeEqual 
 import { setActivatedPlugins, parseActivatedPlugins, applyFilter, doHook, type HookContext } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
 import { getClientIp } from '@/lib/context';
+import { notifyOnComment } from '@/lib/comment-email';
 import { buildPermalink } from '@/lib/content';
 import { normalizeHttpUrl } from '@/lib/url';
 import { eq, and, sql } from 'drizzle-orm';
@@ -231,7 +232,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(reason, { status: 403 });
   }
 
-  await db.insert(schema.comments).values(commentData as any);
+  const inserted = await db.insert(schema.comments).values(commentData as any).returning({ coid: schema.comments.coid });
+  if (!inserted.length) return new Response('评论保存失败', { status: 500 });
+  const newCoid = inserted[0].coid;
+  commentData.coid = newCoid;
 
   // Update comment count if approved
   if (status === 'approved') {
@@ -245,6 +249,39 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   // Trigger feedback:finishComment hook — plugins can act after comment saved
   await doHook(pluginCtx, 'feedback:finishComment', commentData);
+
+  // Email notification (fire-and-forget via waitUntil)
+  if (status === 'approved') {
+    const notifyP = notifyOnComment({
+      pluginCtx,
+      db,
+      options,
+      siteUrl: (options.siteUrl as string) || '',
+      permalinkPattern: options.permalinkPattern as string | undefined,
+      pagePattern: options.pagePattern as string | undefined,
+      comment: {
+        coid: newCoid,
+        cid,
+        author: commentData.author as string | null ?? null,
+        mail: commentData.mail as string | null ?? null,
+        text: commentData.text as string | null ?? null,
+        parent: commentData.parent as number,
+        authorId: commentData.authorId as number | null ?? null,
+      },
+      content: {
+        cid: content.cid,
+        title: content.title,
+        slug: content.slug,
+        type: content.type,
+        created: content.created,
+        authorId: content.authorId,
+      },
+      request,
+    });
+    if (locals.cfContext?.waitUntil) {
+      locals.cfContext.waitUntil(notifyP);
+    }
+  }
 
   const contentUrl = buildPermalink(
     { cid: content.cid, slug: content.slug, type: content.type, created: content.created },

@@ -270,7 +270,7 @@ export async function tianyiEnsureSession(mount: StorageMount): Promise<string> 
 
 // --- Tianyi API Client ---
 
-function safeParseJSON(text: string): Record<string, unknown> {
+export function safeParseJSON(text: string): Record<string, unknown> {
   const fixed = text.replace(/([:\[,]\s*)(-?\d{16,})(\s*[,}\]])/g, '$1"$2"$3');
   return JSON.parse(fixed);
 }
@@ -506,7 +506,7 @@ function toHex(bytes: Uint8Array): string {
   return Array.from(bytes).map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function canonicalQuery(params: Record<string, string>): string {
+export function canonicalQuery(params: Record<string, string>): string {
   return Object.entries(params)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${encodePathSegment(key)}=${encodePathSegment(value)}`)
@@ -515,11 +515,11 @@ function canonicalQuery(params: Record<string, string>): string {
 
 // --- S3 Signing ---
 
-function shortDate(date: Date): string {
+export function shortDate(date: Date): string {
   return date.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
-function amzDate(date: Date): string {
+export function amzDate(date: Date): string {
   return date.toISOString().replace(/[:-]|\.\d{3}/g, '');
 }
 

@@ -62,15 +62,25 @@ describe('admin plugin config page', () => {
     expect(source).toContain("select.value = select.getAttribute('data-current-value') || ''");
   });
 
-  it('loads WebDAV middleware hooks from the source plugin, not the stale file dependency copy', () => {
-    const source = readFileSync(
+  it('registers WebDAV route:request via lazy init, not hardcoded import', () => {
+    const middlewareSource = readFileSync(
       join(process.cwd(), 'src/middleware.ts'),
       'utf-8',
     );
+    const pluginSource = readFileSync(
+      join(process.cwd(), 'src/lib/plugin.ts'),
+      'utf-8',
+    );
 
-    expect(source).toContain("from '@/plugins/typecho-plugin-webdav/index'");
-    expect(source).not.toContain("from 'typecho-plugin-webdav/index.ts'");
-    expect(source).toContain("hook.pluginId === 'typecho-plugin-webdav'");
+    // middleware.ts must NOT hardcode any WebDAV import
+    expect(middlewareSource).not.toContain("from '@/plugins/typecho-plugin-webdav/index'");
+    expect(middlewareSource).not.toContain("from 'typecho-plugin-webdav");
+
+    // middleware.ts uses setActivatedPlugins which triggers lazy init
+    expect(middlewareSource).toContain('setActivatedPlugins');
+
+    // plugin.ts filters hooks by ctx.activatedPlugins (lazy-init safety net)
+    expect(pluginSource).toContain('ctx.activatedPlugins.has(reg.pluginId)');
   });
 
   it('bumps cache version when legacy Astro admin pages save config-like choices', () => {

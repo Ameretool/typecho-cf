@@ -134,3 +134,8 @@ export const loginFailures = sqliteTable('typecho_login_failures', {
   windowStartedAt: integer('windowStartedAt').notNull().default(0),
   bannedUntil: integer('bannedUntil').notNull().default(0),
 });
+
+export const passwordResetThrottle = sqliteTable('typecho_password_reset_throttle', {
+  email: text('email').primaryKey(),
+  lastSentAt: integer('lastSentAt').notNull().default(0),
+});

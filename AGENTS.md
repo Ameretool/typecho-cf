@@ -21,15 +21,15 @@
 
 | 层 | 技术 | 版本约束 |
 |----|------|---------|
-| 框架 | Astro (SSR mode) | 6.x |
-| 适配器 | @astrojs/cloudflare | 13.x |
+| 框架 | Astro (SSR mode) | 7.x |
+| 适配器 | @astrojs/cloudflare | 14.x |
 | 运行时 | Cloudflare Workers | — |
 | 数据库 | Cloudflare D1 (SQLite) | — |
 | ORM | Drizzle ORM | 0.45.x |
 | 文件存储 | Cloudflare R2 | — |
 | 密码哈希 | PBKDF2-SHA256 | 600,000 迭代 + 16B salt（旧 100k hash 自动重哈希） |
 | 测试 | Vitest | 4.x |
-| 语言 | TypeScript | 6.x |
+| 语言 | TypeScript | 7.x |
 
 ---
 
@@ -82,13 +82,15 @@ src/lib/theme.ts        — 主题系统
 src/integrations/theme-loader.ts   — 构建时发现主题包 → 虚拟模块
 src/integrations/plugin-loader.ts  — 构建时发现插件包 → 注入注册表
 src/lib/schema-sql.ts   — 运行时从 Drizzle schema 反射生成建表 SQL
+src/lib/http.ts        — 标准化 HTTP 错误/成功响应（textError / jsonError / jsonOk）
+src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上限、上传限速、缓存 TTL 等）
 ```
 
 ---
 
 ## 4. 数据库
 
-### 4.1 表结构（7 张表，与 PHP Typecho 兼容）
+### 4.1 表结构（8 张表，与 PHP Typecho 兼容）
 
 | 表名 | 用途 | 主键 |
 |------|------|------|
@@ -99,6 +101,7 @@ src/lib/schema-sql.ts   — 运行时从 Drizzle schema 反射生成建表 SQL
 | `typecho_relationships` | 内容-元数据关联 | (cid, mid) |
 | `typecho_options` | 站点配置（KV 结构） | (name, user) |
 | `typecho_fields` | 扩展字段 | (cid, name) |
+| `typecho_login_failures` | 登录限速（D1 持久化） | ip |
 
 **不可变约束**：
 - 表名必须保持 `typecho_*` 前缀，**不可重命名**
@@ -106,7 +109,7 @@ src/lib/schema-sql.ts   — 运行时从 Drizzle schema 反射生成建表 SQL
 - Schema 定义在 `src/db/schema.ts`，修改后必须运行 `pnpm run db:generate`
 - **禁止手动修改 `drizzle/` 目录下的迁移文件**
 - 建表 SQL 由 `src/lib/schema-sql.ts` 在运行时从 Drizzle schema 反射生成（`generateCreateSQL()` 同时输出 CREATE TABLE 与 CREATE INDEX；中间件首次命中时会在后台幂等地补齐生产库索引）
-- D1 不支持真实事务（旧的 `db-transaction.ts` 已废弃）；批量改写应使用 `db.batch([...])` 单次往返
+- D1 不支持真实事务；批量改写应使用 `db.batch([...])` 单次往返
 - 评论的「能否审核」必须查 `contents.authorId`，禁止以 `comments.ownerId` 作为权限判定来源（ownerId 仅是历史快照，G7-4）
 
 ### 4.2 关键枚举
@@ -321,13 +324,13 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 
 ### 8.4 登录限速
 
-- `src/lib/login-rate-limit.ts` 提供按 IP 的滑动窗口限流（仅在单 isolate 内存里，跨 isolate 不持久）
+- `src/lib/login-rate-limit.ts` 提供 D1 持久化的按 IP 登录限流（`typecho_login_failures` 表），跨 isolate/PoP 共享计数
 - 由 `options.loginFailBan*` 配置（管理后台「登录设置」可调）：
   - `loginFailBanEnabled`（默认 1）
   - `loginFailBanWindowSeconds`（默认 300）
   - `loginFailBanMaxFailures`（默认 5）
   - `loginFailBanSeconds`（默认 900）
-- 上传端点 `src/pages/api/admin/upload.ts` 复用同一份 `trackSlidingWindow` 工具
+- 上传端点 `src/pages/api/admin/upload.ts` 复用 `trackSlidingWindow` 工具做按用户滑动窗口限流（内存级，仅本 isolate）
 
 ### 8.5 安全响应头
 
@@ -383,7 +386,7 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的：
 - `src/lib/plugin.ts`：`pluginRegistry`、`hookRegistry`（构建时写入，运行时只读；`pendingPluginInits` 用于懒初始化）
 - `src/lib/cache.ts`：options 查询缓存
-- `src/lib/login-rate-limit.ts`：登录失败滑动窗口（仅本 isolate，跨 isolate 不持久）
+- `src/lib/login-rate-limit.ts`：登录限流（D1 持久化） + 上传限流（`trackSlidingWindow`，内存级滑动窗口）
 - `src/middleware.ts`：`regexCache`、`tableCheckPassed`、`indexCheckPassed`
 
 ### 9.4 插件配置表单类型
@@ -472,6 +475,8 @@ src/
 │   ├── theme-props.ts               # 主题 Props 类型定义
 │   ├── security-headers.ts          # 安全响应头（CSP、HSTS、X-Frame 等）+ csp:directives filter
 │   ├── markdown.ts                  # Markdown 渲染 + HTML 净化
+│   ├── http.ts                      # 标准化 HTTP 响应（textError / jsonError / jsonOk）
+│   ├── constants.ts                 # 跨模块常量（密码、限速、缓存 TTL）
 │   └── url.ts                       # URL 规范化与校验
 ├── integrations/
 │   ├── plugin-loader.ts             # 构建时插件发现
@@ -497,8 +502,8 @@ tests/
 ├── setup.ts                         # 全局测试 setup
 ├── helpers.ts                       # 测试工具函数 (createTestDb, seedAdmin, makeAuthCookie)
 ├── __mocks__/cloudflare-workers.ts  # cloudflare:workers stub + caches mock
-├── unit/                            # 单元测试 (25 个文件)
-└── integration/                     # 集成测试 (17 个文件)
+├── unit/                            # 单元测试 (33 个文件)
+└── integration/                     # 集成测试 (29 个文件)
 scripts/
 ├── migrate.ts                       # PHP Typecho 数据迁移
 └── reset-password.ts                # 密码重置工具

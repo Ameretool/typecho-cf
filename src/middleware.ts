@@ -2,11 +2,10 @@ import { defineMiddleware } from 'astro:middleware';
 import { getDb } from '@/db';
 import { schema } from '@/db';
 import { loadOptions, ensureSecret } from '@/lib/options';
-import { addHook, applyFilter, getRegisteredHooks, HookPoints, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
+import { applyFilter, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
 import { applySecurityHeaders } from '@/lib/security-headers';
-import { generateIndexSQL } from '@/lib/schema-sql';
-import initWebDavPlugin from '@/plugins/typecho-plugin-webdav/index';
+import { ensureTablesReady, ensureIndexes, TablesMissingError } from '@/lib/isolate-boot';
 import { eq, and } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -15,27 +14,6 @@ const redirectToInstall = (request: Request) =>
 
 // ── Module-level caches (persist across requests within the same isolate) ──
 const regexCache = new Map<string, RegExp | null>();
-
-// Once we confirm the DB tables exist, skip the sqlite_master check on subsequent requests.
-// Negative results are NOT cached — each request retries until installation succeeds.
-let tableCheckPassed = false;
-let webDavRouteHookReady = false;
-// G4-1: brand-new indexes need to be backfilled into already-deployed D1
-// instances. We try once per isolate using CREATE INDEX IF NOT EXISTS so
-// the upgrade is automatic and idempotent.
-let indexEnsurePassed = false;
-
-function ensureMiddlewareRouteHooks(activatedIds: string[]): void {
-  if (webDavRouteHookReady) return;
-  if (!activatedIds.includes('typecho-plugin-webdav')) return;
-  const routeHooks = getRegisteredHooks().get('route:request') || [];
-  if (routeHooks.some(hook => hook.pluginId === 'typecho-plugin-webdav')) {
-    webDavRouteHookReady = true;
-    return;
-  }
-  webDavRouteHookReady = true;
-  initWebDavPlugin({ addHook, HookPoints, pluginId: 'typecho-plugin-webdav' });
-}
 
 /**
  * Build a regex from a permalink pattern to match incoming URLs.
@@ -82,6 +60,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     path.startsWith('/js/') ||
     path.startsWith('/img/') ||
     path.startsWith('/themes/') ||
+    path.startsWith('/vendor/') ||
+    path.startsWith('/plugin-assets/') ||
     path === '/install' ||
     path === '/api/install'
   ) {
@@ -106,46 +86,21 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next(target);
   }
 
-  // Check installation status — redirect to /install if DB not ready.
-  // Once tables are confirmed, skip the check for the isolate's lifetime.
   const d1 = env.DB;
 
-  if (!tableCheckPassed) {
-    try {
-      const tableCheck = await d1
-        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='typecho_options'")
-        .first<{ name: string }>();
-
-      if (!tableCheck) {
-        return redirectToInstall(context.request);
-      }
-      tableCheckPassed = true;
-    } catch {
+  try {
+    await ensureTablesReady(d1);
+  } catch (err) {
+    if (err instanceof TablesMissingError) {
       return redirectToInstall(context.request);
     }
+    // D1 unreachable or other unexpected error — fail open with 500
+    // rather than redirecting to /install (which would try D1 again).
+    console.error('[middleware] ensureTablesReady failed:', err);
+    return new Response('Service unavailable', { status: 500 });
   }
 
-  // Backfill any newly-added indexes exactly once per isolate — off the
-  // request path. CREATE INDEX IF NOT EXISTS is idempotent, so hooking
-  // this into waitUntil is safe: we don't need the result to reply, and
-  // isolates that already ran it (or that share a PoP with one that did)
-  // pay nothing extra. install.ts creates every index synchronously on
-  // fresh setups, so this is only a safety net for legacy migrations and
-  // newly added indexes.
-  if (!indexEnsurePassed) {
-    indexEnsurePassed = true;
-    const indexStatements = generateIndexSQL();
-    if (indexStatements.length > 0) {
-      const backfill = d1
-        .batch(indexStatements.map(sql => d1.prepare(sql)))
-        .catch(err => console.warn('[middleware] ensureIndexes failed:', err));
-      if (typeof context.locals.runtime?.ctx?.waitUntil === 'function') {
-        context.locals.runtime.ctx.waitUntil(backfill);
-      }
-      // If waitUntil isn't available (e.g. in tests), we still kicked off
-      // the promise; letting it run in the background is harmless.
-    }
-  }
+  ensureIndexes(d1, context.locals.cfContext?.waitUntil);
 
   const db = getDb(d1);
 
@@ -163,14 +118,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
       await ensureSecret(db);
       options = await loadOptions(db);
     }
-  } catch {
-    return redirectToInstall(context.request);
+  } catch (err) {
+    console.error('[middleware] loadOptions failed:', err);
+    return new Response('Service unavailable', { status: 500 });
   }
 
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
   const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
   setActivatedPlugins(pluginCtx, activatedIds);
-  ensureMiddlewareRouteHooks(activatedIds);
 
   const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
     request: context.request,

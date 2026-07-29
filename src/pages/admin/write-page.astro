@@ -16,7 +16,8 @@ if (!hasPermission(ctx.user!.group || 'visitor', 'editor')) {
 
 const { db, options, urls, user, csrfToken } = ctx;
 const cid = Astro.url.searchParams.get('cid');
-let page: any = null;
+type ContentRow = typeof schema.contents.$inferSelect;
+let page: ContentRow | null = null;
 let isEdit = false;
 let customFields: { name: string; type: string; value: string }[] = [];
 
@@ -45,20 +46,22 @@ const previewUrl = isEdit && page ? buildPermalink(page, urls.siteUrl, options.p
 const writePageBottomHtml = await applyFilterSafely(ctx, 'admin:writePage:bottom', '', { options, page, user, isEdit });
 
 // Fetch existing attachments for this page
-let attachments: any[] = [];
+interface AttachmentMeta { url?: string; size?: number; type?: string; }
+interface AttachmentItem { cid: number; title: string | null; url: string; size: number; isImage: boolean; }
+let attachments: AttachmentItem[] = [];
 if (isEdit && page) {
   const rows = await db.select().from(schema.contents)
     .where(and(eq(schema.contents.type, 'attachment'), eq(schema.contents.parent, page.cid)))
     .orderBy(schema.contents.created);
   attachments = rows.map(row => {
-    let meta: any = {};
+    let meta: Record<string, unknown> = {};
     try { meta = JSON.parse(row.text || '{}'); } catch {}
     return {
       cid: row.cid,
       title: row.title,
-      url: meta.url || '',
-      size: meta.size || 0,
-      isImage: (meta.type || '').startsWith('image/'),
+      url: (meta.url as string) || '',
+      size: (meta.size as number) || 0,
+      isImage: ((meta.type as string) || '').startsWith('image/'),
     };
   });
 }
@@ -233,10 +236,10 @@ if (isEdit && page) {
   </form>
 
   <Fragment slot="footer">
-    <script is:inline src="/js/hyperdown.js"></script>
-    <script is:inline src="/js/pagedown.js"></script>
-    <script is:inline src="/js/paste.js"></script>
-    <script is:inline src="/js/purify.js"></script>
+    <script is:inline src="/vendor/hyperdown.js"></script>
+    <script is:inline src="/vendor/pagedown.js"></script>
+    <script is:inline src="/vendor/paste.js"></script>
+    <script is:inline src="/vendor/purify.js"></script>
     <script is:inline>
     $(document).ready(function () {
       var textarea = $('#text'),

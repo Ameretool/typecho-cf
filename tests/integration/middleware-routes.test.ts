@@ -1,0 +1,147 @@
+/**
+ * Middleware redirect-loop smoke tests.
+ *
+ * Sends real GET requests through the middleware to verify that no path
+ * produces a 302 redirect when the DB is seeded and ready.
+ */
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { createTestDb, type TestDatabase } from '../helpers';
+import { resetIsolateBoot } from '@/lib/isolate-boot';
+
+let testDb: TestDatabase;
+
+// We need env.DB to be a real-enough D1 stub so ensureTablesReady doesn't throw.
+// The test DB is a @libsql/client SQLite file — we don't need the D1 stub for
+// anything except middleware's table-existence check.
+function createD1Stub(db: TestDatabase) {
+  return {
+    prepare: (_sql: string) => ({
+      first: () => Promise.resolve({ name: 'typecho_options' } as any),
+      bind: (): any => ({}),
+    }),
+    batch: (_stmts: any[]) => Promise.resolve([]),
+    dump: () => Promise.resolve([]),
+    exec: () => Promise.resolve({}),
+  };
+}
+
+let d1Stub: ReturnType<typeof createD1Stub>;
+
+vi.mock('@/db', async () => {
+  const actual = await vi.importActual<typeof import('@/db')>('@/db');
+  return { ...actual, getDb: () => testDb, schema: actual.schema };
+});
+
+vi.mock('cloudflare:workers', () => ({
+  env: {
+    get DB() { return d1Stub; },
+    BUCKET: { get: vi.fn(), put: vi.fn(), delete: vi.fn(), list: vi.fn() },
+  },
+  caches: { default: { match: vi.fn(), put: vi.fn(), delete: vi.fn() } },
+}));
+
+import { schema } from '@/db';
+import { onRequest } from '@/middleware';
+
+const SITE = 'http://localhost:4321';
+
+interface TestCase {
+  method: string;
+  path: string;
+  expectStatus: number;
+}
+
+const routes: TestCase[] = [
+  // Static/bypass paths
+  { method: 'GET', path: '/install', expectStatus: 200 },
+  { method: 'GET', path: '/api/install', expectStatus: 200 },
+  { method: 'GET', path: '/css/admin.css', expectStatus: 200 },
+  { method: 'GET', path: '/vendor/jquery.js', expectStatus: 200 },
+  { method: 'GET', path: '/js/test.js', expectStatus: 200 },
+  { method: 'GET', path: '/plugin-assets/x/y.js', expectStatus: 200 },
+
+  // Public pages
+  { method: 'GET', path: '/', expectStatus: 200 },
+  { method: 'GET', path: '/admin/login', expectStatus: 200 },
+  { method: 'GET', path: '/admin/forgot-password', expectStatus: 200 },
+  { method: 'GET', path: '/admin/reset-password', expectStatus: 200 },
+  { method: 'GET', path: '/sitemap.xml', expectStatus: 200 },
+  { method: 'GET', path: '/robots.txt', expectStatus: 200 },
+
+  // Admin pages (no auth cookie → should still return 200, not 302 loop)
+  { method: 'GET', path: '/admin/', expectStatus: 200 },
+  { method: 'GET', path: '/admin/preview', expectStatus: 200 },
+  { method: 'GET', path: '/admin/write-post', expectStatus: 200 },
+  { method: 'GET', path: '/admin/manage-posts', expectStatus: 200 },
+
+  // Feed routes
+  { method: 'GET', path: '/feed/', expectStatus: 200 },
+  { method: 'GET', path: '/category/test/feed.xml', expectStatus: 200 },
+  { method: 'GET', path: '/tag/test/feed.xml', expectStatus: 200 },
+  { method: 'GET', path: '/author/1/feed.xml', expectStatus: 200 },
+];
+
+describe('Middleware: no redirect loops when DB is ready', () => {
+  beforeAll(async () => {
+    testDb = await createTestDb();
+    d1Stub = createD1Stub(testDb);
+    // Seed minimal config so middleware doesn't redirect to /install
+    await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: SITE });
+    await testDb.insert(schema.options).values({ name: 'installed', user: 0, value: '1' });
+    await testDb.insert(schema.options).values({ name: 'secret', user: 0, value: 'test-secret-32-chars-long!!!!!' });
+    await testDb.insert(schema.options).values({ name: 'title', user: 0, value: 'Test Blog' });
+    await testDb.insert(schema.options).values({ name: 'theme', user: 0, value: 'typecho-theme-minimal' });
+  });
+
+  for (const { method, path, expectStatus } of routes) {
+    it(`${method} ${path} → ${expectStatus}`, async () => {
+      const request = new Request(`${SITE}${path}`, { method });
+      const ctx = {
+        request,
+        url: new URL(`${SITE}${path}`),
+        locals: { runtime: undefined },
+        redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+        rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      } as any;
+
+      const response = await onRequest(ctx, () => new Response('ok', { status: 200 }));
+      if (response.status !== expectStatus) {
+        const location = response.headers.get('Location') || '(none)';
+        throw new Error(`${method} ${path} returned ${response.status} (Location: ${location}), expected ${expectStatus}`);
+      }
+      expect(response.status).toBe(expectStatus);
+    });
+  }
+
+  // ── Error handling: specific error types ──
+
+  it('returns 302→/install when tables truly missing, not 500', async () => {
+    resetIsolateBoot();
+    // Override D1 stub to report no tables
+    d1Stub = createD1Stub(testDb);
+    (d1Stub as any).prepare = () => ({
+      first: () => Promise.resolve(null), // no typecho_options table
+      bind: () => ({}),
+    });
+
+    const request = new Request(`${SITE}/`, { method: 'GET' });
+    const ctx = { request, url: new URL(`${SITE}/`), locals: {}, redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }), rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }) } as any;
+    const response = await onRequest(ctx, () => new Response('ok', { status: 200 }));
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/install');
+  });
+
+  it('returns 500 when D1 unreachable, not 302 redirect', async () => {
+    resetIsolateBoot();
+    // Simulate D1 failure (not tables-missing)
+    d1Stub = {
+      prepare: () => { throw new Error('D1 unreachable'); },
+      batch: () => Promise.resolve([]),
+    } as any;
+
+    const request = new Request(`${SITE}/`, { method: 'GET' });
+    const ctx = { request, url: new URL(`${SITE}/`), locals: {}, redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }), rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }) } as any;
+    const response = await onRequest(ctx, () => new Response('ok', { status: 200 }));
+    expect(response.status).toBe(500);
+  });
+});
