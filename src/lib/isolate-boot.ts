@@ -72,9 +72,15 @@ export function ensureIndexes(
   state.indexEnsurePassed = true;
   const indexStatements = generateIndexSQL();
   if (indexStatements.length === 0) return;
-  const backfill = d1
-    .batch(indexStatements.map(sql => d1.prepare(sql)))
-    .catch(err => console.warn('[isolate-boot] ensureIndexes failed:', err));
+  // Explicit loop — .prepare() loses its `this` binding when passed as a
+  // .map() callback inside Cloudflare Workers' native API proxies.
+  const stmts: D1PreparedStatement[] = [];
+  for (const sql of indexStatements) {
+    stmts.push(d1.prepare(sql));
+  }
+  const backfill = d1.batch(stmts).catch(
+    err => console.warn('[isolate-boot] ensureIndexes failed:', err),
+  );
   if (waitUntil) {
     waitUntil(backfill);
   }
