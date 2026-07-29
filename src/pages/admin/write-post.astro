@@ -161,10 +161,10 @@ if (isEdit && post) {
         </section>
 
         <section class="typecho-post-option">
-          <label for="token-input-tags" class="typecho-label">标签</label>
-          <div data-tags-input data-tags-api="/api/admin/tags-suggest">
+          <label class="typecho-label">标签</label>
+          <p><div data-tags-input data-tags-api="/api/admin/tags-suggest">
             <input type="hidden" name="tags" value={postTags.join(',')} />
-          </div>
+          </div></p>
         </section>
 
         <section class="typecho-post-option">

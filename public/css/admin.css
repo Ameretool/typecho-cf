@@ -480,7 +480,7 @@ a.operate-reply { color: #545c30; }
 
 /* ── Tags input component ───────────────────────────────────────────── */
 /* ── Tags input component ───────────────────────────────────────────── */
-.tag-input-area { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; border: 1px solid #D9D9D6; border-radius: 2px; padding: 4px 5px; background: #FFF; cursor: text; box-sizing: border-box; }
+.tag-input-area { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; border: 1px solid #D9D9D6; border-radius: 2px; padding: 4px 5px; background: #FFF; cursor: text; box-sizing: border-box; position: relative; }
 .tag-input-area:focus-within { border-color: #467B96; }
 .tag-pills { display: flex; flex-wrap: wrap; gap: 3px; }
 .tag-pill { display: inline-flex; align-items: center; background: #467B96; color: #FFF; border-radius: 2px; padding: 2px 22px 2px 7px; font-size: .92857em; position: relative; white-space: nowrap; line-height: 1.4; }
