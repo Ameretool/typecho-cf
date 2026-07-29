@@ -185,6 +185,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     /^\/author\//,
     /^\/search\//,
     /^\/$/,
+    /^\/sitemap\.xml$/,            // SEO
+    /^\/robots\.txt$/,             // SEO
+    /^\/feed\/?$/,                 // main feed
+    /^\/feed\//,                   // sub feeds (atom, rss, comments)
   ];
 
   const isBuiltInRoute = builtInRoutes.some((re) => re.test(path));
@@ -306,7 +310,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return new Response('Server error', { status: 500 });
   }
   if (response.status === 404) {
-    console.warn('[middleware] route 404:', { path, method: context.request.method });
+    // Only warn for admin paths (should never 404); info for everything else
+    // (bots hitting non-existent routes is normal traffic noise).
+    if (path.startsWith('/admin')) {
+      console.warn('[middleware] admin route 404:', { path, method: context.request.method });
+    }
   }
 
   response = await applySecurityHeaders(response, { request: context.request }, pluginCtx);
