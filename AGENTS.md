@@ -90,7 +90,7 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 
 ## 4. 数据库
 
-### 4.1 表结构（8 张表，与 PHP Typecho 兼容）
+### 4.1 表结构（9 张表；7 张核心表与 PHP Typecho 兼容）
 
 | 表名 | 用途 | 主键 |
 |------|------|------|
@@ -102,6 +102,7 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 | `typecho_options` | 站点配置（KV 结构） | (name, user) |
 | `typecho_fields` | 扩展字段 | (cid, name) |
 | `typecho_login_failures` | 登录限速（D1 持久化） | ip |
+| `typecho_password_reset_requests` | 密码重置请求（限速 + 一次性令牌哈希） | email |
 
 **不可变约束**：
 - 表名必须保持 `typecho_*` 前缀，**不可重命名**
@@ -193,8 +194,8 @@ addHook(hookPoint, pluginId, handler, priority = 10)
 
 ### 6.2.1 懒加载初始化
 
-- 插件 `init()` **不在 build 时直接执行**；`plugin-loader.ts` 改为调用 `registerPluginInit(pluginId, init)` 把初始化函数登记到表中
-- 真正的 `init({ addHook, pluginId })` 由 `setActivatedPlugins(activatedIds)` 在第一次激活时按需触发，未激活的插件不会注入任何 hook（G6）
+- 插件 `init()` **不在 build 时直接执行**；`plugin-loader.ts` 通过 `registerPluginLoaders()` 登记字面量动态 import，未激活插件的模块不会在 isolate 启动时求值
+- 真正的 `init({ addHook, pluginId })` 由异步的 `setActivatedPlugins(activatedIds)` 在第一次激活时按需触发；调用方必须 `await`，未激活的插件不会注入任何 hook（G6）
 - 插件不要在模块顶层做副作用（数据库读写、外部请求、`addHook` 写入），所有注册逻辑必须放在导出的 `init()` 内
 
 ### 6.3 插件管理路径注册
@@ -345,7 +346,7 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 | `Content-Security-Policy` | 宽型默认（允许 `'self'` + 内联样式 / 脚本 + Gravatar 图片 + R2/usr/uploads） |
 | `Permissions-Policy` | 默认禁用 camera/microphone/geolocation/payment/usb |
 | `Cross-Origin-Opener-Policy` | `same-origin` |
-| `Cross-Origin-Resource-Policy` | `same-origin`（上传响应使用 `cross-origin` 预设） |
+| `Cross-Origin-Resource-Policy` | `same-origin`（包括上传响应，禁止第三方站点直接嵌入） |
 
 `csp:directives` filter hook 允许插件追加/调整 CSP directives；插件应只附加来源，不要清空默认 directive。
 
@@ -461,11 +462,14 @@ src/
 ├── middleware.ts                    # 请求入口
 ├── db/
 │   ├── index.ts                     # Drizzle DB 工厂
-│   └── schema.ts                    # 7 张表定义
+│   └── schema.ts                    # 9 张表定义
 ├── lib/
 │   ├── plugin.ts                    # 插件系统核心（Hook 总线）
 │   ├── theme.ts                     # 主题系统
-│   ├── context.ts                   # 请求上下文 + getClientIp
+│   ├── context.ts                   # 请求上下文（复用中间件 bootstrap）
+│   ├── client-ip.ts                 # 统一客户端 IP 提取
+│   ├── content-visibility.ts        # 公共内容可见性规则
+│   ├── permalink-pattern.ts         # 固定链接渲染/匹配统一语法
 │   ├── auth.ts                      # 密码哈希 + Session + CSRF
 │   ├── admin-auth.ts                # 管理后台认证中间件 + 安全重定向
 │   ├── options.ts                   # 站点配置 CRUD

@@ -23,6 +23,7 @@ import {
   shouldUseSecureCookie,
   passwordHashNeedsRehash,
   PBKDF2_ITERATIONS,
+  generateResetToken,
 } from '@/lib/auth';
 
 // ---------------------------------------------------------------------------
@@ -414,6 +415,12 @@ describe('generateRandomString() rejection sampling', () => {
     expect(s).toMatch(/[a-z]/);
     expect(s).toMatch(/[A-Z]/);
     expect(s).toMatch(/[0-9]/);
+  });
+});
+
+describe('password reset token format', () => {
+  it('generates an opaque hexadecimal token accepted by the reset parser', () => {
+    expect(generateResetToken()).toMatch(/^reset:[a-f0-9]{64}$/);
   });
 });
 

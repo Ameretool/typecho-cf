@@ -15,6 +15,8 @@
 import { schema, type Database } from '@/db';
 import { and, eq, lt } from 'drizzle-orm';
 
+type LoginRateLimitDatabase = Pick<Database, 'query' | 'insert' | 'update' | 'delete'>;
+
 export interface LoginRateLimitConfig {
   enabled: boolean;
   /** Sliding window in seconds during which failures accumulate. */
@@ -61,7 +63,7 @@ export function readLoginRateLimitConfig(options: Record<string, unknown>): Logi
  * table small under long-running attacks.
  */
 export async function loginLockedUntil(
-  db: Database,
+  db: LoginRateLimitDatabase,
   ip: string,
   config: LoginRateLimitConfig,
   now = Date.now(),
@@ -76,7 +78,7 @@ export async function loginLockedUntil(
 }
 
 export async function recordLoginFailure(
-  db: Database,
+  db: LoginRateLimitDatabase,
   ip: string,
   config: LoginRateLimitConfig,
   now = Date.now(),
@@ -101,7 +103,7 @@ export async function recordLoginFailure(
   }
 }
 
-export async function clearLoginFailures(db: Database, ip: string): Promise<void> {
+export async function clearLoginFailures(db: LoginRateLimitDatabase, ip: string): Promise<void> {
   if (!ip) return;
   await db.delete(schema.loginFailures).where(eq(schema.loginFailures.ip, ip));
 }
@@ -116,7 +118,7 @@ export async function clearLoginFailures(db: Database, ip: string): Promise<void
  * leaves a permanent row.
  */
 export async function purgeExpiredLoginFailures(
-  db: Database,
+  db: LoginRateLimitDatabase,
   windowSeconds?: number,
   now = Date.now(),
 ): Promise<void> {

@@ -66,6 +66,17 @@ const WHITESPACE_RE = /\s+/g;
 // ─── Strip <!--markdown--> prefix ────────────────────────────────────────────
 
 const MARKDOWN_PREFIX = '<!--markdown-->';
+const RENDER_CACHE_MAX_ENTRIES = 64;
+const RENDER_CACHE_MAX_SOURCE_LENGTH = 100_000;
+
+export interface RenderedContent {
+  html: string;
+  plainExcerpt: string;
+}
+
+const renderedContentCache = new Map<string, RenderedContent>();
+const commentSanitizeOptionsCache = new Map<string, sanitizeHtml.IOptions>();
+const COMMENT_SANITIZE_CACHE_MAX_ENTRIES = 32;
 
 function stripMarkdownPrefix(text: string): string {
   return text.startsWith(MARKDOWN_PREFIX) ? text.slice(MARKDOWN_PREFIX.length) : text;
@@ -91,10 +102,43 @@ export function stripHtmlTags(html: string): string {
  * Render markdown to HTML (synchronous, no plugin hooks)
  */
 export function renderMarkdown(text: string): string {
-  if (!text) return '';
+  return renderContent(text).html;
+}
+
+/**
+ * Parse and sanitize content once, deriving both the full HTML and its plain
+ * excerpt. A small bounded isolate cache lets archive and feed rendering reuse
+ * the same result without retaining arbitrarily large articles.
+ */
+export function renderContent(text: string, maxExcerptLength = 200): RenderedContent {
+  if (!text) return { html: '', plainExcerpt: '' };
+
+  const cacheable = maxExcerptLength === 200 && text.length <= RENDER_CACHE_MAX_SOURCE_LENGTH;
+  const cached = cacheable ? renderedContentCache.get(text) : undefined;
+  if (cached) {
+    // Refresh insertion order for LRU eviction.
+    renderedContentCache.delete(text);
+    renderedContentCache.set(text, cached);
+    return cached;
+  }
+
   const content = stripMarkdownPrefix(text).replace(MORE_COMMENT_RE, '');
-  const html = marked.parse(content, { async: false }) as string;
-  return sanitizeHtml(html, SANITIZE_OPTIONS);
+  const parsed = marked.parse(content, { async: false }) as string;
+  const html = sanitizeHtml(parsed, SANITIZE_OPTIONS);
+  const plain = stripHtmlTags(parsed);
+  const plainExcerpt = plain.length <= maxExcerptLength
+    ? plain
+    : `${plain.substring(0, maxExcerptLength)}...`;
+  const rendered = { html, plainExcerpt };
+
+  if (cacheable) {
+    renderedContentCache.set(text, rendered);
+    if (renderedContentCache.size > RENDER_CACHE_MAX_ENTRIES) {
+      const oldest = renderedContentCache.keys().next().value;
+      if (oldest !== undefined) renderedContentCache.delete(oldest);
+    }
+  }
+  return rendered;
 }
 
 export function renderCommentText(text: string, options: CommentRenderOptions = {}): string {
@@ -172,14 +216,7 @@ export function renderContentExcerpt(
  * Generate plain text excerpt from content
  */
 export function generateExcerpt(text: string, maxLength = 200): string {
-  if (!text) return '';
-
-  const content = stripMarkdownPrefix(text).replace(MORE_COMMENT_RE, '');
-  // Skip sanitizeHtml since stripHtmlTags removes all tags immediately after
-  const html = marked.parse(content, { async: false }) as string;
-  const plain = stripHtmlTags(html);
-  if (plain.length <= maxLength) return plain;
-  return plain.substring(0, maxLength) + '...';
+  return renderContent(text, maxLength).plainExcerpt;
 }
 
 /**
@@ -209,28 +246,38 @@ export function autop(text: string): string {
 }
 
 function buildCommentSanitizeOptions(htmlTagAllowed?: string | null, markdown = false): sanitizeHtml.IOptions {
+  const cacheKey = `${markdown ? '1' : '0'}\0${htmlTagAllowed || ''}`;
+  const cached = commentSanitizeOptionsCache.get(cacheKey);
+  if (cached) return cached;
+
   const parsed = parseAllowedHtmlTags(htmlTagAllowed);
+  let result: sanitizeHtml.IOptions;
   if (!parsed) {
-    return markdown ? COMMENT_MARKDOWN_OPTIONS : {
+    result = markdown ? COMMENT_MARKDOWN_OPTIONS : {
       allowedTags: [],
       allowedAttributes: {},
     };
-  }
-
-  if (!markdown) {
-    return {
+  } else if (!markdown) {
+    result = {
       allowedTags: parsed.allowedTags,
       allowedAttributes: parsed.allowedAttributes,
       // Carry the default schemes through so links survive the sanitizer.
       allowedSchemes: sanitizeHtml.defaults.allowedSchemes,
     };
+  } else {
+    result = {
+      ...COMMENT_MARKDOWN_OPTIONS,
+      allowedTags: [...new Set([...COMMENT_MARKDOWN_OPTIONS.allowedTags as string[], ...parsed.allowedTags])],
+      allowedAttributes: mergeAllowedAttributes(COMMENT_MARKDOWN_OPTIONS.allowedAttributes || {}, parsed.allowedAttributes),
+    };
   }
 
-  return {
-    ...COMMENT_MARKDOWN_OPTIONS,
-    allowedTags: [...new Set([...COMMENT_MARKDOWN_OPTIONS.allowedTags as string[], ...parsed.allowedTags])],
-    allowedAttributes: mergeAllowedAttributes(COMMENT_MARKDOWN_OPTIONS.allowedAttributes || {}, parsed.allowedAttributes),
-  };
+  commentSanitizeOptionsCache.set(cacheKey, result);
+  if (commentSanitizeOptionsCache.size > COMMENT_SANITIZE_CACHE_MAX_ENTRIES) {
+    const oldest = commentSanitizeOptionsCache.keys().next().value;
+    if (oldest !== undefined) commentSanitizeOptionsCache.delete(oldest);
+  }
+  return result;
 }
 
 function parseAllowedHtmlTags(htmlTagAllowed?: string | null): {

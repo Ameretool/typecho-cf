@@ -4,7 +4,11 @@
  * Tests the correct extraction of client IP from Cloudflare Workers requests.
  */
 import { describe, it, expect } from 'vitest';
-import { getClientIp } from '@/lib/context';
+import {
+  createContext,
+  getClientIp,
+  setRequestCoreContext,
+} from '@/lib/context';
 
 function makeRequest(headers: Record<string, string>): Request {
   return new Request('https://example.com/', { headers });
@@ -57,5 +61,30 @@ describe('getClientIp()', () => {
   it('handles IPv6 addresses from X-Forwarded-For', () => {
     const req = makeRequest({ 'x-forwarded-for': '2001:db8::1, 10.0.0.1' });
     expect(getClientIp(req)).toBe('2001:db8::1');
+  });
+});
+
+describe('request context reuse', () => {
+  it('reuses middleware options, database and plugin activation', async () => {
+    const locals = {} as App.Locals;
+    const db = {} as any;
+    const options = {
+      siteUrl: 'https://example.com',
+      secret: '',
+      activatedPlugins: '[]',
+    } as any;
+    const pluginCtx = { activatedPlugins: new Set(['active-plugin']) };
+    setRequestCoreContext(locals, { db, options, pluginCtx });
+
+    const request = makeRequest({});
+    const firstPromise = createContext(locals, request);
+    const secondPromise = createContext(locals, request);
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+
+    expect(firstPromise).toBe(secondPromise);
+    expect(first).toBe(second);
+    expect(first.db).toBe(db);
+    expect(first.options).toBe(options);
+    expect(first.activatedPlugins).toBe(pluginCtx.activatedPlugins);
   });
 });

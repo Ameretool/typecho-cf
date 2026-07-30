@@ -14,9 +14,9 @@ vi.mock('@/db', async () => {
   return { ...actual, getDb: (_d1: any) => testDb, schema: actual.schema };
 });
 
-const beforeUploadHook = vi.fn(async (value: any) => value);
-const uploadHook = vi.fn(async () => {});
-const deleteHook = vi.fn(async () => {});
+const beforeUploadHook = vi.fn(async (value: any, ..._args: any[]) => value);
+const uploadHook = vi.fn(async (..._args: any[]) => {});
+const deleteHook = vi.fn(async (..._args: any[]) => {});
 
 vi.mock('@/lib/plugin', async () => {
   const actual = await vi.importActual<typeof import('@/lib/plugin')>('@/lib/plugin');

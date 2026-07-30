@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { resetIsolateBoot, ensureTablesReady, ensureIndexes, TablesMissingError } from '@/lib/isolate-boot';
+import {
+  resetIsolateBoot,
+  ensureTablesReady,
+  ensurePasswordResetSchema,
+  ensureIndexes,
+  TablesMissingError,
+} from '@/lib/isolate-boot';
 
 // Mock generateIndexSQL so the test doesn't depend on actual schema
 vi.mock('@/lib/schema-sql', () => ({
@@ -73,10 +79,28 @@ describe('ensureIndexes', () => {
       prepare: vi.fn().mockReturnValue({}),
       batch: vi.fn().mockResolvedValue([]),
     } as unknown as D1Database;
-    const waitUntil = (p: Promise<unknown>) => { waited = p; };
+    const executionContext = {
+      waitUntil: (p: Promise<unknown>) => { waited = p; },
+    };
 
-    ensureIndexes(d1, waitUntil);
+    ensureIndexes(d1, executionContext);
     expect(waited).toBeDefined();
+  });
+
+  it('preserves the ExecutionContext receiver when scheduling index backfill', () => {
+    const d1 = {
+      prepare: vi.fn().mockReturnValue({}),
+      batch: vi.fn().mockResolvedValue([]),
+    } as unknown as D1Database;
+    const executionContext = {
+      waitUntil(this: unknown, _promise: Promise<unknown>) {
+        if (this !== executionContext) {
+          throw new TypeError('Illegal invocation: incorrect this reference');
+        }
+      },
+    };
+
+    expect(() => ensureIndexes(d1, executionContext)).not.toThrow();
   });
 
   it('does not crash when batch fails', () => {
@@ -86,5 +110,62 @@ describe('ensureIndexes', () => {
     } as unknown as D1Database;
     // Should not throw — fire-and-forget with catch
     expect(() => ensureIndexes(d1)).not.toThrow();
+  });
+});
+
+describe('ensurePasswordResetSchema', () => {
+  it('renames the legacy throttle table and adds reset-token columns', async () => {
+    const prepare = vi.fn((sql: string) => ({
+      sql,
+      all: vi.fn().mockResolvedValue(
+        sql.includes('sqlite_master')
+          ? { results: [{ name: 'typecho_password_reset_throttle' }] }
+          : { results: [{ name: 'email' }, { name: 'lastSentAt' }] },
+      ),
+    }));
+    const batch = vi.fn().mockResolvedValue([]);
+    const d1 = { prepare, batch } as unknown as D1Database;
+
+    await ensurePasswordResetSchema(d1);
+
+    expect(batch).toHaveBeenCalledTimes(2);
+    const rename = batch.mock.calls[0][0] as Array<{ sql: string }>;
+    expect(rename[0].sql).toBe(
+      'ALTER TABLE typecho_password_reset_throttle RENAME TO typecho_password_reset_requests',
+    );
+    expect(rename[1].sql).toBe('DROP INDEX IF EXISTS typecho_password_reset_tokenHash');
+    const upgrades = batch.mock.calls[1][0] as Array<{ sql: string }>;
+    expect(upgrades.map(statement => statement.sql)).toEqual([
+      'ALTER TABLE typecho_password_reset_requests ADD COLUMN uid INTEGER',
+      'ALTER TABLE typecho_password_reset_requests ADD COLUMN tokenHash TEXT',
+      'ALTER TABLE typecho_password_reset_requests ADD COLUMN expiresAt INTEGER',
+    ]);
+  });
+
+  it('runs only once after a successful upgrade', async () => {
+    const prepare = vi.fn((sql: string) => ({
+      sql,
+      all: vi.fn().mockResolvedValue(
+        sql.includes('sqlite_master')
+          ? { results: [{ name: 'typecho_password_reset_requests' }] }
+          : {
+              results: [
+                { name: 'email' },
+                { name: 'lastSentAt' },
+                { name: 'uid' },
+                { name: 'tokenHash' },
+                { name: 'expiresAt' },
+              ],
+            },
+      ),
+    }));
+    const batch = vi.fn().mockResolvedValue([]);
+    const d1 = { prepare, batch } as unknown as D1Database;
+
+    await ensurePasswordResetSchema(d1);
+    await ensurePasswordResetSchema(d1);
+
+    expect(batch).not.toHaveBeenCalled();
+    expect(prepare).toHaveBeenCalledTimes(2);
   });
 });

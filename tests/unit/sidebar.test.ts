@@ -108,6 +108,24 @@ describe('loadSidebarData', () => {
     expect(data.categories[1].name).toBe('Tech');
     expect(data.categories[0].permalink).toContain('/category/life/');
   });
+
+  it('reuses the versioned sidebar snapshot and refreshes after a version change', async () => {
+    const first = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 1);
+    expect(first.recentPosts).toEqual([]);
+
+    await testDb.insert(schema.contents).values({
+      title: 'New Post',
+      slug: 'new-post',
+      created: Math.floor(Date.now() / 1000),
+      type: 'post',
+      status: 'publish',
+    });
+
+    const sameVersion = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 1);
+    const nextVersion = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 2);
+    expect(sameVersion.recentPosts).toEqual([]);
+    expect(nextVersion.recentPosts).toHaveLength(1);
+  });
 });
 
 describe('loadNavPages', () => {

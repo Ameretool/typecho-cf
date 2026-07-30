@@ -241,17 +241,13 @@ export default function pluginLoaderIntegration(): AstroIntegration {
             return `registerPlugin(${JSON.stringify(plugin.packageName)}, ${manifest});`;
           }).join('\n');
 
-          const pluginImports = discoveredPlugins.map((plugin, idx) => {
-            return `import pluginInit_${idx} from ${JSON.stringify(plugin.importPath)};`;
-          }).join('\n');
-
-          const pluginEntries = discoveredPlugins.map((plugin, idx) => {
-            return `  ${JSON.stringify(plugin.id)}: pluginInit_${idx},`;
+          const pluginEntries = discoveredPlugins.map((plugin) => {
+            return `  ${JSON.stringify(plugin.id)}: () => import(${JSON.stringify(plugin.importPath)}).then((module) => module.default),`;
           }).join('\n');
 
           injectScript(
             'page-ssr',
-            `import { registerPlugin, registerPluginInit, addHook, HookPoints } from '@/lib/plugin';\n${pluginImports}\n${registrations}\nregisterPluginInit({\n${pluginEntries}\n}, { addHook, HookPoints });`,
+            `import { registerPlugin, registerPluginLoaders, addHook, HookPoints } from '@/lib/plugin';\n${registrations}\nregisterPluginLoaders({\n${pluginEntries}\n}, { addHook, HookPoints });`,
           );
         }
       },

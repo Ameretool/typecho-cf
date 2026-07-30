@@ -36,14 +36,14 @@ function firstImageUrl(html: string | null | undefined): string | undefined {
   return m ? m[1] : undefined;
 }
 
-function truncate(s: string | undefined, len: number): string | undefined {
+function truncate(s: string | null | undefined, len: number): string | undefined {
   if (!s) return undefined;
   return s.length <= len ? s : s.slice(0, len - 1) + '…';
 }
 
 /** Build SEO for a single post/page (article). */
 export function buildPostSeo(
-  row: { cid: number; slug: string | null; type: string; created: number; title: string | null; text?: string | null },
+  row: { cid: number; slug: string | null; type: string | null; created: number | null; title: string | null; text?: string | null },
   permalink: string,
   ctx: SeoBuildContext,
 ): SeoProps {

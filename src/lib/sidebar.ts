@@ -8,8 +8,10 @@ import type { Database } from '@/db';
 import { schema } from '@/db';
 import { buildPermalink, buildCategoryLink, buildDateLink } from '@/lib/content';
 import { applyFilterSafely, type HookContext } from '@/lib/plugin';
+import { publishedPostCondition } from '@/lib/content-visibility';
 
 type SidebarDatabase = Pick<Database, 'batch' | 'select'>;
+const SIDEBAR_SNAPSHOT_TTL_MS = 5_000;
 
 export interface SidebarData {
   recentPosts: Array<{ title: string; permalink: string }>;
@@ -18,7 +20,41 @@ export interface SidebarData {
   archives: Array<{ date: string; permalink: string }>;
 }
 
-export async function loadSidebarData(ctx: HookContext, db: SidebarDatabase, siteUrl: string, permalinkPattern?: string | null, categoryPattern?: string | null): Promise<SidebarData> {
+type SidebarSnapshot = { key: string; expiresAt: number; data: SidebarData };
+type NavPage = { title: string; slug: string; permalink: string };
+type NavSnapshot = { key: string; expiresAt: number; data: NavPage[] };
+const sidebarSnapshots = new WeakMap<object, SidebarSnapshot>();
+const navSnapshots = new WeakMap<object, NavSnapshot>();
+
+function cloneSidebarData(data: SidebarData): SidebarData {
+  return {
+    recentPosts: data.recentPosts.map(item => ({ ...item })),
+    recentComments: data.recentComments.map(item => ({ ...item })),
+    categories: data.categories.map(item => ({ ...item })),
+    archives: data.archives.map(item => ({ ...item })),
+  };
+}
+
+export async function loadSidebarData(
+  ctx: HookContext,
+  db: SidebarDatabase,
+  siteUrl: string,
+  permalinkPattern?: string | null,
+  categoryPattern?: string | null,
+  cacheVersion: string | number = 0,
+): Promise<SidebarData> {
+  const cacheKey = `${cacheVersion}\0${siteUrl}\0${permalinkPattern || ''}\0${categoryPattern || ''}`;
+  const cached = sidebarSnapshots.get(db as object);
+  if (cached && cached.key === cacheKey && cached.expiresAt > Date.now()) {
+    return await applyFilterSafely(
+      ctx,
+      'widget:sidebar',
+      cloneSidebarData(cached.data),
+      db,
+      siteUrl,
+    );
+  }
+
   // Execute all 4 queries in a single D1 round-trip
   const [recentPostRows, recentCommentRows, categoryRows, archiveRows] = await db.batch([
     // Recent posts
@@ -31,12 +67,7 @@ export async function loadSidebarData(ctx: HookContext, db: SidebarDatabase, sit
         created: schema.contents.created,
       })
       .from(schema.contents)
-      .where(
-        and(
-          eq(schema.contents.type, 'post'),
-          eq(schema.contents.status, 'publish')
-        )
-      )
+      .where(publishedPostCondition())
       .orderBy(desc(schema.contents.created))
       .limit(10),
 
@@ -55,7 +86,12 @@ export async function loadSidebarData(ctx: HookContext, db: SidebarDatabase, sit
 
     // Categories
     db
-      .select()
+      .select({
+        name: schema.metas.name,
+        slug: schema.metas.slug,
+        count: schema.metas.count,
+        order: schema.metas.order,
+      })
       .from(schema.metas)
       .where(eq(schema.metas.type, 'category'))
       .orderBy(schema.metas.order),
@@ -67,12 +103,7 @@ export async function loadSidebarData(ctx: HookContext, db: SidebarDatabase, sit
         month: sql<number>`cast(strftime('%m', ${schema.contents.created}, 'unixepoch') as integer)`,
       })
       .from(schema.contents)
-      .where(
-        and(
-          eq(schema.contents.type, 'post'),
-          eq(schema.contents.status, 'publish')
-        )
-      )
+      .where(publishedPostCondition())
       .groupBy(
         sql`strftime('%Y', ${schema.contents.created}, 'unixepoch')`,
         sql`strftime('%m', ${schema.contents.created}, 'unixepoch')`,
@@ -113,15 +144,31 @@ export async function loadSidebarData(ctx: HookContext, db: SidebarDatabase, sit
   }));
 
   const sidebarData = { recentPosts, recentComments, categories, archives };
+  sidebarSnapshots.set(db as object, {
+    key: cacheKey,
+    expiresAt: Date.now() + SIDEBAR_SNAPSHOT_TTL_MS,
+    data: sidebarData,
+  });
 
   // Apply widget:sidebar filter — plugins can add/modify sidebar widgets
-  return await applyFilterSafely(ctx, 'widget:sidebar', sidebarData, db, siteUrl);
+  return await applyFilterSafely(ctx, 'widget:sidebar', cloneSidebarData(sidebarData), db, siteUrl);
 }
 
 /**
  * Load navigation pages (published pages for header nav)
  */
-export async function loadNavPages(db: SidebarDatabase, siteUrl: string, pagePattern?: string | null) {
+export async function loadNavPages(
+  db: SidebarDatabase,
+  siteUrl: string,
+  pagePattern?: string | null,
+  cacheVersion: string | number = 0,
+): Promise<NavPage[]> {
+  const cacheKey = `${cacheVersion}\0${siteUrl}\0${pagePattern || ''}`;
+  const cached = navSnapshots.get(db as object);
+  if (cached && cached.key === cacheKey && cached.expiresAt > Date.now()) {
+    return cached.data.map(item => ({ ...item }));
+  }
+
   const rows = await db
     .select({
       cid: schema.contents.cid,
@@ -140,7 +187,7 @@ export async function loadNavPages(db: SidebarDatabase, siteUrl: string, pagePat
     )
     .orderBy(schema.contents.order);
 
-  return rows.map((p) => ({
+  const pages = rows.map((p) => ({
     title: p.title || '无标题',
     slug: p.slug || '',
     permalink: buildPermalink(
@@ -150,4 +197,10 @@ export async function loadNavPages(db: SidebarDatabase, siteUrl: string, pagePat
       pagePattern,
     ),
   }));
+  navSnapshots.set(db as object, {
+    key: cacheKey,
+    expiresAt: Date.now() + SIDEBAR_SNAPSHOT_TTL_MS,
+    data: pages,
+  });
+  return pages.map(item => ({ ...item }));
 }

@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { generateCreateSQL } from '@/lib/schema-sql';
 
 describe('generateCreateSQL', () => {
-  it('generates CREATE TABLE statements for all 8 tables', () => {
+  it('generates CREATE TABLE statements for all 9 tables', () => {
     const stmts = generateCreateSQL();
 
     const createTableStmts = stmts.filter(s => s.startsWith('CREATE TABLE IF NOT EXISTS'));
-    expect(createTableStmts.length).toBe(8);
+    expect(createTableStmts.length).toBe(9);
 
     const tableNames = createTableStmts.map(s => {
       const match = s.match(/`(typecho_\w+)`/);
@@ -20,14 +20,15 @@ describe('generateCreateSQL', () => {
     expect(tableNames).toContain('typecho_options');
     expect(tableNames).toContain('typecho_fields');
     expect(tableNames).toContain('typecho_login_failures');
+    expect(tableNames).toContain('typecho_password_reset_requests');
   });
 
   it('generates CREATE INDEX statements for unique indexes', () => {
     const stmts = generateCreateSQL();
 
     const uniqueIndexes = stmts.filter(s => s.startsWith('CREATE UNIQUE INDEX'));
-    // users_name, users_mail, contents_slug, relationships_cid_mid, options_name_user, fields_cid_name
-    expect(uniqueIndexes.length).toBe(6);
+    // Core unique indexes plus the one-time reset token hash.
+    expect(uniqueIndexes.length).toBe(7);
 
     const indexNames = uniqueIndexes.map(s => {
       const match = s.match(/`(typecho_\w+)`/);
@@ -39,6 +40,7 @@ describe('generateCreateSQL', () => {
     expect(indexNames).toContain('typecho_relationships_cid_mid');
     expect(indexNames).toContain('typecho_options_name_user');
     expect(indexNames).toContain('typecho_fields_cid_name');
+    expect(indexNames).toContain('typecho_password_reset_requests_tokenHash');
   });
 
   it('generates plain CREATE INDEX statements', () => {
@@ -47,6 +49,12 @@ describe('generateCreateSQL', () => {
     expect(plainIndexes.length).toBeGreaterThan(0);
     expect(plainIndexes.some(s => s.includes('typecho_contents_created'))).toBe(true);
     expect(plainIndexes.some(s => s.includes('typecho_comments_cid'))).toBe(true);
+    expect(plainIndexes.some(s => s.includes('typecho_contents_type_status_created'))).toBe(true);
+    expect(plainIndexes.some(s => s.includes('typecho_contents_author_type_status_created'))).toBe(true);
+    expect(plainIndexes.some(s => s.includes('typecho_contents_type_status_order'))).toBe(true);
+    expect(plainIndexes.some(s => s.includes('typecho_comments_cid_status_parent_created'))).toBe(true);
+    expect(plainIndexes.some(s => s.includes('typecho_comments_status_created'))).toBe(true);
+    expect(plainIndexes.some(s => s.includes('typecho_relationships_mid_cid'))).toBe(true);
   });
 
   it('does not generate duplicate statements', () => {

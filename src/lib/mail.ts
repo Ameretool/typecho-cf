@@ -10,7 +10,7 @@
  * degrade gracefully.
  */
 
-import { applyFilterSafely, type HookContext } from '@/lib/plugin';
+import { applyFilterUntil, type HookContext } from '@/lib/plugin';
 
 export interface MailPayload {
   to: string;
@@ -62,7 +62,13 @@ export async function sendMail(
 
   // Try every registered mail:send handler (filter chain).
   // The first handler that returns `sent: true` wins.
-  const result = await applyFilterSafely(pluginCtx, 'mail:send', null, { payload, ctx });
+  const result = await applyFilterUntil(
+    pluginCtx,
+    'mail:send',
+    null,
+    value => !!value && typeof value === 'object' && value.sent === true,
+    { payload, ctx },
+  );
   if (result && typeof result === 'object' && 'sent' in result) {
     return result as MailResult;
   }

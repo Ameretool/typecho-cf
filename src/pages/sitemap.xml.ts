@@ -41,7 +41,7 @@ export const GET: APIRoute = async () => {
         options.permalinkPattern as string | undefined,
         options.pagePattern as string | undefined,
       );
-      const lastmod = new Date((r.modified || r.created) * 1000)
+      const lastmod = new Date((r.modified || r.created || 0) * 1000)
         .toISOString()
         .slice(0, 10);
       return `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;

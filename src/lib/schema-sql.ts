@@ -97,6 +97,7 @@ const allTables: SQLiteTable[] = [
   schema.options,
   schema.fields,
   schema.loginFailures,
+  schema.passwordResetRequests,
 ];
 
 /**

@@ -44,7 +44,14 @@ export const contents = sqliteTable('typecho_contents', {
   index('typecho_contents_created').on(table.created),
   // G4-1: archive lookups (type='post' AND status='publish') and
   // author archives are the dominant front-end queries.
-  index('typecho_contents_type_status').on(table.type, table.status),
+  index('typecho_contents_type_status_created').on(table.type, table.status, table.created),
+  index('typecho_contents_author_type_status_created').on(
+    table.authorId,
+    table.type,
+    table.status,
+    table.created,
+  ),
+  index('typecho_contents_type_status_order').on(table.type, table.status, table.order),
   index('typecho_contents_authorId').on(table.authorId),
   // attachment.parent points back at the owning content row.
   index('typecho_contents_parent').on(table.parent),
@@ -69,6 +76,13 @@ export const comments = sqliteTable('typecho_comments', {
 }, (table) => [
   index('typecho_comments_cid').on(table.cid),
   index('typecho_comments_created').on(table.created),
+  index('typecho_comments_cid_status_parent_created').on(
+    table.cid,
+    table.status,
+    table.parent,
+    table.created,
+  ),
+  index('typecho_comments_status_created').on(table.status, table.created),
   // G4-1: moderation queries filter by status (and ownerId for editors).
   index('typecho_comments_status_owner').on(table.status, table.ownerId),
 ]);
@@ -97,7 +111,7 @@ export const relationships = sqliteTable('typecho_relationships', {
 }, (table) => [
   uniqueIndex('typecho_relationships_cid_mid').on(table.cid, table.mid),
   // G4-1: "posts in this category/tag" walks by mid.
-  index('typecho_relationships_mid').on(table.mid),
+  index('typecho_relationships_mid_cid').on(table.mid, table.cid),
 ]);
 
 // ==================== Options ====================
@@ -135,7 +149,12 @@ export const loginFailures = sqliteTable('typecho_login_failures', {
   bannedUntil: integer('bannedUntil').notNull().default(0),
 });
 
-export const passwordResetThrottle = sqliteTable('typecho_password_reset_throttle', {
+export const passwordResetRequests = sqliteTable('typecho_password_reset_requests', {
   email: text('email').primaryKey(),
   lastSentAt: integer('lastSentAt').notNull().default(0),
-});
+  uid: integer('uid'),
+  tokenHash: text('tokenHash'),
+  expiresAt: integer('expiresAt'),
+}, (table) => [
+  uniqueIndex('typecho_password_reset_requests_tokenHash').on(table.tokenHash),
+]);

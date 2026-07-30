@@ -47,6 +47,7 @@ describe('applySecurityHeaders', () => {
     expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
     expect(response.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
+    expect(response.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     expect(response.headers.get('Strict-Transport-Security')).toContain('max-age=31536000');
     expect(response.headers.get('Content-Security-Policy')).toContain("default-src 'self'");
   });

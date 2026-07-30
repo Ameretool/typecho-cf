@@ -4,9 +4,19 @@
  * Tests loadOptions(), getOption(), setOption(), deleteOption() and computeUrls()
  * using an in-memory libSQL database via Drizzle ORM.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestDb } from '../helpers';
-import { loadOptions, getOption, setOption, deleteOption, computeUrls, ensureSecret } from '@/lib/options';
+import { schema } from '@/db';
+import {
+  loadOptions,
+  getOption,
+  setOption,
+  setOptionsBatch,
+  deleteOption,
+  computeUrls,
+  ensureSecret,
+} from '@/lib/options';
+import { bumpCacheVersion } from '@/lib/cache';
 
 async function createOptionsTestDb() {
   return await createTestDb() as any;
@@ -47,6 +57,31 @@ describe('loadOptions()', () => {
     expect(opts.secret).toBeUndefined();
   });
 
+  it('reuses the parsed isolate snapshot for repeated reads', async () => {
+    const db = await createOptionsTestDb();
+    const matchSpy = vi.spyOn(caches.default, 'match');
+    await loadOptions(db);
+    const callsAfterFirstLoad = matchSpy.mock.calls.length;
+    await loadOptions(db);
+    expect(matchSpy.mock.calls.length).toBe(callsAfterFirstLoad);
+    matchSpy.mockRestore();
+  });
+
+  it('observes a direct cache-version bump immediately in the same isolate', async () => {
+    const db = await createOptionsTestDb();
+    await db.insert(schema.options).values({
+      name: 'cacheVersion',
+      user: 0,
+      value: '100',
+    });
+    const before = await loadOptions(db);
+    expect(before.cacheVersion).toBe(100);
+
+    await bumpCacheVersion(db);
+    const after = await loadOptions(db);
+    expect(after.cacheVersion).toBe(101);
+  });
+
   it('ensureSecret generates and persists on first call, reuses on subsequent calls', async () => {
     const db = await createOptionsTestDb();
     const first = await ensureSecret(db);
@@ -82,6 +117,16 @@ describe('setOption()', () => {
     await setOption(db, 'title', 'First');
     await setOption(db, 'title', 'Updated');
     expect(await getOption(db, 'title')).toBe('Updated');
+  });
+});
+
+describe('setOptionsBatch()', () => {
+  it('writes all values and one cache version in the same logical change', async () => {
+    const db = await createOptionsTestDb();
+    await setOptionsBatch(db, { title: 'Batch title', pageSize: '12' });
+    expect(await getOption(db, 'title')).toBe('Batch title');
+    expect(await getOption(db, 'pageSize')).toBe('12');
+    expect(await getOption(db, 'cacheVersion')).toBeTruthy();
   });
 });
 

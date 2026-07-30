@@ -10,9 +10,10 @@
  * every PoP naturally misses on its next read, no purge required.
  */
 
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { schema, type Database } from '@/db';
 import { OPTIONS_CACHE_TTL_SECONDS } from '@/lib/constants';
+import { advanceOptionsSnapshotGeneration } from '@/lib/options-snapshot-generation';
 
 /** Internal namespace used for Cache API keys that are not real URLs */
 const INTERNAL_ORIGIN = 'https://typecho-cf-internal';
@@ -80,18 +81,22 @@ export async function purgeOptionsCache(): Promise<void> {
 }
 
 export async function bumpCacheVersion(db: Database): Promise<void> {
-  const stamp = String(Date.now());
-  await db.insert(schema.options)
-    .values({ name: 'cacheVersion', user: 0, value: stamp })
+  const [updated] = await db.insert(schema.options)
+    .values({ name: 'cacheVersion', user: 0, value: '1' })
     .onConflictDoUpdate({
       target: [schema.options.name, schema.options.user],
-      set: { value: stamp },
-    });
+      set: {
+        value: sql`cast(coalesce(${schema.options.value}, '0') as integer) + 1`,
+      },
+    })
+    .returning({ value: schema.options.value });
+  const stamp = updated?.value ?? '1';
   // Best-effort local memo update so the writer sees its own bump on
   // subsequent reads within the same isolate (other PoPs will refresh
   // after their memo expires — see CACHE_VERSION_MEMO_TTL_MS).
   cachedVersion = stamp;
   cachedVersionAt = Date.now();
+  advanceOptionsSnapshotGeneration(db);
 }
 
 /**
@@ -179,20 +184,20 @@ export function buildContentPurgeUrls(
  * Does NOT purge the options cache — use purgeSiteCache for settings changes.
  */
 export async function purgeContentCache(
-  siteUrl: string,
-  cid?: number,
-  related: ContentPurgeUrlsOptions = {},
+  _siteUrl: string,
+  _cid?: number,
+  _related: ContentPurgeUrlsOptions = {},
 ): Promise<void> {
-  await purgeCache(buildContentPurgeUrls(siteUrl, cid, related));
+  // Public page keys include cacheVersion. Every caller bumps that version
+  // before reaching this compatibility function, so deleting raw URLs cannot
+  // hit the stored keys and only adds Cache API work to the write path.
 }
 
 /**
  * Purge site-wide cache: index + all feeds + options.
  * Used when site settings, theme, or plugin change.
  */
-export async function purgeSiteCache(siteUrl: string): Promise<void> {
-  await Promise.all([
-    purgeCache(buildContentPurgeUrls(siteUrl)),
-    purgeOptionsCache(),
-  ]);
+export async function purgeSiteCache(_siteUrl: string): Promise<void> {
+  // Kept for plugin/source compatibility. The preceding cacheVersion bump
+  // invalidates page and options keys across every PoP.
 }

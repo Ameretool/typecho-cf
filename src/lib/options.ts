@@ -1,8 +1,16 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import type { Database } from '@/db';
 import { schema } from '@/db';
 import { generateRandomString } from '@/lib/auth';
-import { getCachedOptions, setCachedOptions, bumpCacheVersion } from '@/lib/cache';
+import {
+  getCachedOptions,
+  setCachedOptions,
+  resetCacheVersionMemo,
+} from '@/lib/cache';
+import {
+  advanceOptionsSnapshotGeneration,
+  getOptionsSnapshotGeneration,
+} from '@/lib/options-snapshot-generation';
 
 export interface SiteOptions {
   theme: string;
@@ -132,6 +140,40 @@ const defaultOptions: Partial<SiteOptions> = {
   commentEmailReplyEnabled: 1,
 };
 
+const OPTIONS_SNAPSHOT_TTL_MS = 5_000;
+type OptionsSnapshot = { value: SiteOptions; expiresAt: number; generation: number };
+type PendingOptionsLoad = { promise: Promise<SiteOptions>; generation: number };
+const optionSnapshots = new WeakMap<Database, OptionsSnapshot>();
+const pendingOptionLoads = new WeakMap<Database, PendingOptionsLoad>();
+
+function invalidateOptionsSnapshot(db: Database): void {
+  advanceOptionsSnapshotGeneration(db);
+  optionSnapshots.delete(db);
+  pendingOptionLoads.delete(db);
+}
+
+async function executeOptionBatch(db: Database, statements: any[]): Promise<void> {
+  if (typeof (db as any).batch === 'function') {
+    await (db as any).batch(statements);
+    return;
+  }
+  // Lightweight plugin adapters and unit-test doubles may implement only
+  // Drizzle statements. Production D1 always takes the single-round-trip path.
+  for (const statement of statements) await statement;
+}
+
+function cacheVersionUpsert(db: Database) {
+  return db
+    .insert(schema.options)
+    .values({ name: 'cacheVersion', user: 0, value: '1' })
+    .onConflictDoUpdate({
+      target: [schema.options.name, schema.options.user],
+      set: {
+        value: sql`cast(coalesce(${schema.options.value}, '0') as integer) + 1`,
+      },
+    });
+}
+
 /**
  * Load all global options from database (with Cache API caching).
  *
@@ -142,6 +184,43 @@ const defaultOptions: Partial<SiteOptions> = {
  * than picking up a race-generated value that varies between requests.
  */
 export async function loadOptions(db: Database): Promise<SiteOptions> {
+  const now = Date.now();
+  const generation = getOptionsSnapshotGeneration(db);
+  const snapshot = optionSnapshots.get(db);
+  if (
+    snapshot &&
+    snapshot.generation === generation &&
+    snapshot.expiresAt > now
+  ) {
+    return { ...snapshot.value };
+  }
+
+  const existingLoad = pendingOptionLoads.get(db);
+  if (existingLoad?.generation === generation) {
+    return { ...await existingLoad.promise };
+  }
+
+  const pending = loadOptionsFresh(db);
+  const pendingRecord = { promise: pending, generation };
+  pendingOptionLoads.set(db, pendingRecord);
+  try {
+    const value = await pending;
+    if (getOptionsSnapshotGeneration(db) === generation) {
+      optionSnapshots.set(db, {
+        value,
+        expiresAt: Date.now() + OPTIONS_SNAPSHOT_TTL_MS,
+        generation,
+      });
+    }
+    return { ...value };
+  } finally {
+    if (pendingOptionLoads.get(db) === pendingRecord) {
+      pendingOptionLoads.delete(db);
+    }
+  }
+}
+
+async function loadOptionsFresh(db: Database): Promise<SiteOptions> {
   // Try cache first — key is versioned by cacheVersion so cross-PoP
   // writes automatically bust the entry (one D1 read is much cheaper
   // than reloading all rows).
@@ -231,27 +310,42 @@ export async function getOption(db: Database, name: string, userId = 0): Promise
  * request see the new cacheVersion, miss the cache, and reload from D1.
  */
 export async function setOption(db: Database, name: string, value: string, userId = 0): Promise<void> {
-  await db
+  const write = db
     .insert(schema.options)
     .values({ name, user: userId, value })
     .onConflictDoUpdate({
       target: [schema.options.name, schema.options.user],
       set: { value },
     });
-  // Bumping cacheVersion also writes to the options table, so we do it
-  // after the primary write to keep the row consistent within one D1
-  // batch on retries.
-  if (name !== 'cacheVersion') await bumpCacheVersion(db);
+  if (name === 'cacheVersion') {
+    await write;
+  } else {
+    await executeOptionBatch(db, [
+      write,
+      cacheVersionUpsert(db),
+    ]);
+    resetCacheVersionMemo();
+  }
+  invalidateOptionsSnapshot(db);
 }
 
 /**
  * Delete an option. Bumps cacheVersion — see setOption().
  */
 export async function deleteOption(db: Database, name: string, userId = 0): Promise<void> {
-  await db
+  const remove = db
     .delete(schema.options)
     .where(and(eq(schema.options.name, name), eq(schema.options.user, userId)));
-  if (name !== 'cacheVersion') await bumpCacheVersion(db);
+  if (name === 'cacheVersion') {
+    await remove;
+  } else {
+    await executeOptionBatch(db, [
+      remove,
+      cacheVersionUpsert(db),
+    ]);
+    resetCacheVersionMemo();
+  }
+  invalidateOptionsSnapshot(db);
 }
 
 /**
@@ -271,17 +365,21 @@ export async function setOptionsBatch(
 ): Promise<void> {
   const keys = Object.keys(entries);
   if (keys.length === 0) return;
-  for (const name of keys) {
-    await db
+  const statements = keys.map((name) =>
+    db
       .insert(schema.options)
       .values({ name, user: userId, value: entries[name] })
       .onConflictDoUpdate({
         target: [schema.options.name, schema.options.user],
         set: { value: entries[name] },
-      });
-  }
-  // Bump once so all readers see the batch as a single version change.
-  await bumpCacheVersion(db);
+      })
+  );
+  statements.push(cacheVersionUpsert(db));
+  await executeOptionBatch(db, statements);
+  // The batch wrote a new version without going through bumpCacheVersion().
+  // Force the next local read to observe it instead of serving the old memo.
+  resetCacheVersionMemo();
+  invalidateOptionsSnapshot(db);
 }
 
 /**

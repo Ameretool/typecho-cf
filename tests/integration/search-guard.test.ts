@@ -16,6 +16,7 @@ vi.mock('@/db', async () => {
 });
 
 import { prepareSearchData } from '@/lib/page-data';
+import type { RequestContext } from '@/lib/context';
 import { schema } from '@/db';
 
 describe('search keyword guard (G4-5)', () => {
@@ -92,5 +93,6 @@ async function buildCtx() {
     user: null,
     isLoggedIn: false,
     csrfToken: null,
-  };
+    activatedPlugins: new Set<string>(),
+  } as unknown as RequestContext;
 }

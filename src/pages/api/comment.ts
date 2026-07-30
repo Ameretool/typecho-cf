@@ -8,6 +8,7 @@ import { getClientIp } from '@/lib/context';
 import { notifyOnComment } from '@/lib/comment-email';
 import { buildPermalink } from '@/lib/content';
 import { normalizeHttpUrl } from '@/lib/url';
+import { isSameOriginRequest } from '@/lib/admin-auth';
 import { eq, and, sql } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -15,10 +16,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const db = getDb(env.DB);
   const options = await loadOptions(db);
 
+  if (!isSameOriginRequest(request, options.siteUrl || '')) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
   // Load activated plugins
   const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(pluginCtx, activatedIds);
+  await setActivatedPlugins(pluginCtx, activatedIds);
 
   const formData = await request.formData();
   const cid = parseInt(formData.get('cid')?.toString() || '0', 10);
@@ -232,13 +237,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(reason, { status: 403 });
   }
 
+  const finalStatus = commentData.status;
+  if (finalStatus !== 'approved' && finalStatus !== 'waiting' && finalStatus !== 'spam') {
+    return new Response('插件返回了无效的评论状态', { status: 400 });
+  }
+
   const inserted = await db.insert(schema.comments).values(commentData as any).returning({ coid: schema.comments.coid });
   if (!inserted.length) return new Response('评论保存失败', { status: 500 });
   const newCoid = inserted[0].coid;
   commentData.coid = newCoid;
 
   // Update comment count if approved
-  if (status === 'approved') {
+  if (finalStatus === 'approved') {
     await db
       .update(schema.contents)
       .set({
@@ -251,7 +261,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   await doHook(pluginCtx, 'feedback:finishComment', commentData);
 
   // Email notification (fire-and-forget via waitUntil)
-  if (status === 'approved') {
+  if (finalStatus === 'approved') {
     const notifyP = notifyOnComment({
       pluginCtx,
       db,
@@ -272,8 +282,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         cid: content.cid,
         title: content.title,
         slug: content.slug,
-        type: content.type,
-        created: content.created,
+        type: content.type || 'post',
+        created: content.created || 0,
         authorId: content.authorId,
       },
       request,

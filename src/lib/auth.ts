@@ -441,12 +441,17 @@ export function clearAuthCookieHeaders(request?: Request): string[] {
 // ── Password reset tokens ─────────────────────────────────────────────
 
 const RESET_TOKEN_PREFIX = 'reset:';
-const RESET_TOKEN_EXPIRY_SEC = 3600; // 1 hour
+export const RESET_TOKEN_EXPIRY_SEC = 3600;
 
-export function generateResetToken(expirySec = RESET_TOKEN_EXPIRY_SEC): string {
-  const hex = generateRandomString(32);
-  const exp = Math.floor(Date.now() / 1000) + expirySec;
-  return `${RESET_TOKEN_PREFIX}${hex}:${exp}`;
+export function generateResetToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `${RESET_TOKEN_PREFIX}${hex}`;
+}
+
+export async function hashResetToken(token: string): Promise<string> {
+  return sha256(token);
 }
 
 export interface ResetToken {
@@ -458,25 +463,19 @@ export interface ResetToken {
 export async function parseResetToken(
   token: string,
   db: Database,
+  now = Math.floor(Date.now() / 1000),
 ): Promise<ResetToken> {
   if (!token.startsWith(RESET_TOKEN_PREFIX)) return { valid: false, error: 'malformed' };
   const body = token.slice(RESET_TOKEN_PREFIX.length);
-  const colonIdx = body.lastIndexOf(':');
-  if (colonIdx === -1) return { valid: false, error: 'malformed' };
+  if (!/^[a-f0-9]{64}$/.test(body)) return { valid: false, error: 'malformed' };
 
-  const hex = body.slice(0, colonIdx);
-  const exp = parseInt(body.slice(colonIdx + 1), 10);
-
-  if (hex.length !== 32 || !/^[a-fA-F0-9]+$/.test(hex)) return { valid: false, error: 'malformed' };
-  if (!Number.isFinite(exp)) return { valid: false, error: 'malformed' };
-  if (Date.now() / 1000 > exp) return { valid: false, error: 'expired' };
-
-  // Find user by authCode (exact match, timing-safe)
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.authCode, token),
-    columns: { uid: true },
+  const tokenHash = await hashResetToken(token);
+  const pending = await db.query.passwordResetRequests.findFirst({
+    where: eq(schema.passwordResetRequests.tokenHash, tokenHash),
+    columns: { uid: true, expiresAt: true },
   });
-  if (!user) return { valid: false, error: 'consumed' };
+  if (!pending?.uid || !pending.expiresAt) return { valid: false, error: 'consumed' };
+  if (pending.expiresAt < now) return { valid: false, error: 'expired' };
 
-  return { valid: true, uid: user.uid };
+  return { valid: true, uid: pending.uid };
 }

@@ -6,5 +6,6 @@
       "typecho/plugin-sdk": ["./src/lib/plugin-sdk.ts"],
       "typecho/db": ["./src/db/index.ts"]
     }
-  }
+  },
+  "exclude": ["public", "dist"]
 }

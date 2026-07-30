@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { sendMail, type MailPayload, type MailContext, type MailResult } from '@/lib/mail';
 
-// mock plugin.ts applyFilterSafely — the mail module delegates to it
+// mock the short-circuit plugin runner — the mail module delegates to it
 vi.mock('@/lib/plugin', () => ({
-  applyFilterSafely: vi.fn(),
+  applyFilterUntil: vi.fn(),
 }));
 
-import { applyFilterSafely } from '@/lib/plugin';
+import { applyFilterUntil } from '@/lib/plugin';
 
 function makeCtx(overrides: Partial<Record<string, unknown>> = {}): { ctx: MailContext; pluginCtx: any } {
   return {
@@ -48,7 +48,7 @@ describe('sendMail', () => {
 
   it('returns no-adapter when no plugin handles mail:send', async () => {
     const { pluginCtx, ctx } = makeCtx();
-    vi.mocked(applyFilterSafely).mockResolvedValue(null);
+    vi.mocked(applyFilterUntil).mockResolvedValue(null);
     const r = await sendMail(pluginCtx, payload, ctx);
     expect(r.sent).toBe(false);
     expect(r.error).toBe('no-adapter');
@@ -57,7 +57,7 @@ describe('sendMail', () => {
   it('returns sent:true when a plugin handles successfully', async () => {
     const { pluginCtx, ctx } = makeCtx();
     const adapterResult: MailResult = { sent: true, provider: 'resend' };
-    vi.mocked(applyFilterSafely).mockResolvedValue(adapterResult);
+    vi.mocked(applyFilterUntil).mockResolvedValue(adapterResult);
     const r = await sendMail(pluginCtx, payload, ctx);
     expect(r.sent).toBe(true);
     expect(r.provider).toBe('resend');
@@ -65,12 +65,13 @@ describe('sendMail', () => {
 
   it('passes payload and ctx to the plugin filter', async () => {
     const { pluginCtx, ctx } = makeCtx();
-    vi.mocked(applyFilterSafely).mockResolvedValue(null);
+    vi.mocked(applyFilterUntil).mockResolvedValue(null);
     await sendMail(pluginCtx, { ...payload, replyTo: 'noreply@x.com' }, ctx);
-    expect(applyFilterSafely).toHaveBeenCalledWith(
+    expect(applyFilterUntil).toHaveBeenCalledWith(
       pluginCtx,
       'mail:send',
       null,
+      expect.any(Function),
       expect.objectContaining({
         payload: expect.objectContaining({ replyTo: 'noreply@x.com' }),
         ctx: expect.objectContaining({ reason: 'test' }),
@@ -80,7 +81,7 @@ describe('sendMail', () => {
 
   it('forwards error from failing adapter', async () => {
     const { pluginCtx, ctx } = makeCtx();
-    vi.mocked(applyFilterSafely).mockResolvedValue({ sent: false, provider: 'resend', error: 'rate-limited' });
+    vi.mocked(applyFilterUntil).mockResolvedValue({ sent: false, provider: 'resend', error: 'rate-limited' });
     const r = await sendMail(pluginCtx, payload, ctx);
     expect(r.sent).toBe(false);
     expect(r.error).toBe('rate-limited');

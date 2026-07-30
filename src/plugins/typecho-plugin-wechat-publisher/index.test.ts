@@ -203,7 +203,6 @@ describe('typecho-plugin-wechat-publisher', () => {
         }),
       },
     });
-
     expect(result).toMatchObject({
       handled: true,
       success: true,

@@ -1,38 +1,31 @@
 import type { APIRoute } from 'astro';
-import { getDb, schema } from '@/db';
-import { loadOptions, computeUrls } from '@/lib/options';
-import { setActivatedPlugins, parseActivatedPlugins, type HookContext } from '@/lib/plugin';
+import { schema } from '@/db';
 import { generateRss2 } from '@/lib/feed';
-import { clampFeedItems, buildFeedItem, xmlResponse } from '@/lib/feed-helpers';
-import { eq, and, desc, lte } from 'drizzle-orm';
-import { env } from 'cloudflare:workers';
+import { clampFeedItems, buildFeedItem, getFeedRuntime, xmlResponse } from '@/lib/feed-helpers';
+import { eq, and, desc } from 'drizzle-orm';
+import { publishedPostCondition } from '@/lib/content-visibility';
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ locals, params }) => {
   const uid = parseInt(params.uid || '0', 10);
   if (!uid) return new Response('Not Found', { status: 404 });
 
-  const db = getDb(env.DB);
-  const options = await loadOptions(db);
-  const urls = computeUrls(options);
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  setActivatedPlugins(pluginCtx, parseActivatedPlugins(options.activatedPlugins as string | undefined));
+  const { db, options, urls, pluginCtx } = await getFeedRuntime(locals);
 
-  const author = await db.query.users.findFirst({ where: eq(schema.users.uid, uid) });
+  const author = await db.query.users.findFirst({
+    columns: { name: true, screenName: true },
+    where: eq(schema.users.uid, uid),
+  });
   if (!author) return new Response('Not Found', { status: 404 });
 
   const limit = clampFeedItems(options.feedItems);
-  const nowSec = Math.floor(Date.now() / 1000);
-
   const posts = await db
     .select()
     .from(schema.contents)
     .where(
       and(
         eq(schema.contents.authorId, uid),
-        eq(schema.contents.type, 'post'),
-        eq(schema.contents.status, 'publish'),
+        publishedPostCondition(),
         eq(schema.contents.allowFeed, '1'),
-        lte(schema.contents.created, nowSec),
       ),
     )
     .orderBy(desc(schema.contents.created))

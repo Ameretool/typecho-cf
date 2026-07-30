@@ -5,50 +5,34 @@ import { loadOptions, ensureSecret } from '@/lib/options';
 import { applyFilter, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
 import { applySecurityHeaders } from '@/lib/security-headers';
-import { ensureTablesReady, ensureIndexes, TablesMissingError } from '@/lib/isolate-boot';
+import { setRequestCoreContext } from '@/lib/context';
+import { compilePermalinkPattern } from '@/lib/permalink-pattern';
+import {
+  ensureTablesReady,
+  ensurePasswordResetSchema,
+  ensureIndexes,
+  TablesMissingError,
+} from '@/lib/isolate-boot';
 import { eq, and } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
+import { publishedPostCondition } from '@/lib/content-visibility';
 
 const redirectToInstall = (request: Request) =>
   applySecurityHeaders(new Response(null, { status: 302, headers: { Location: '/install' } }), { request });
 
-// ── Module-level caches (persist across requests within the same isolate) ──
-const regexCache = new Map<string, RegExp | null>();
-
-/**
- * Build a regex from a permalink pattern to match incoming URLs.
- * Returns named capture groups for the variables.
- * Results are cached in a module-level Map.
- */
-function buildPermalinkRegex(pattern: string): RegExp | null {
-  if (!pattern) return null;
-
-  const cached = regexCache.get(pattern);
-  if (cached !== undefined) return cached;
-
-  let regexStr = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\{cid\}/g, '(?<cid>\\d+)')
-    .replace(/\{slug\}/g, '(?<slug>[^/]+)')
-    .replace(/\{mid\}/g, '(?<mid>\\d+)')
-    .replace(/\{category\}/g, '(?<category>[^/]+)')
-    .replace(/\{year\}/g, '(?<year>\\d{4})')
-    .replace(/\{month\}/g, '(?<month>\\d{1,2})')
-    .replace(/\{day\}/g, '(?<day>\\d{1,2})');
-
-  if (regexStr.endsWith('/')) {
-    regexStr = regexStr.slice(0, -1) + '/?';
-  }
-
-  try {
-    const re = new RegExp(`^${regexStr}$`);
-    regexCache.set(pattern, re);
-    return re;
-  } catch {
-    regexCache.set(pattern, null);
-    return null;
-  }
-}
+const BUILT_IN_ROUTES = [
+  /^\/archives\/\d+\/?$/,       // post: /archives/{cid}/
+  /^\/[^/]+\.html$/,            // page: /{slug}.html
+  /^\/category\/[^/]+\/?$/,     // category: /category/{slug}/
+  /^\/tag\//,
+  /^\/author\//,
+  /^\/search\//,
+  /^\/$/,
+  /^\/sitemap\.xml$/,           // SEO
+  /^\/robots\.txt$/,            // SEO
+  /^\/feed\/?$/,                // main feed
+  /^\/feed\//,                  // sub feeds (atom, rss, comments)
+];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
@@ -83,13 +67,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // Preserve `?foo=bar` (search/filter/sort params etc.) — dropping the
     // query string would break `/search/keyword/page/2/?sort=date` links.
     const target = (basePath === '' ? '/' : basePath + '/') + url.search;
-    return next(target);
+    return applySecurityHeaders(await next(target), { request: context.request });
   }
 
   const d1 = env.DB;
 
   try {
     await ensureTablesReady(d1);
+    await ensurePasswordResetSchema(d1);
   } catch (err) {
     if (err instanceof TablesMissingError) {
       return redirectToInstall(context.request);
@@ -97,10 +82,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // D1 unreachable or other unexpected error — fail open with 500
     // rather than redirecting to /install (which would try D1 again).
     console.error('[middleware] ensureTablesReady failed:', err);
-    return new Response('Service unavailable', { status: 500 });
+    return applySecurityHeaders(new Response('Service unavailable', { status: 500 }), { request: context.request });
   }
 
-  ensureIndexes(d1, context.locals.cfContext?.waitUntil);
+  ensureIndexes(d1, context.locals.cfContext);
 
   const db = getDb(d1);
 
@@ -120,12 +105,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   } catch (err) {
     console.error('[middleware] loadOptions failed:', err);
-    return new Response('Service unavailable', { status: 500 });
+    return applySecurityHeaders(new Response('Service unavailable', { status: 500 }), { request: context.request });
   }
 
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
   const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  setActivatedPlugins(pluginCtx, activatedIds);
+  await setActivatedPlugins(pluginCtx, activatedIds);
+  setRequestCoreContext(context.locals, { db, options, pluginCtx }, context.request);
 
   const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
     request: context.request,
@@ -177,21 +163,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const pagePattern = options.pagePattern as string | undefined;
   const categoryPattern = options.categoryPattern as string | undefined;
 
-  const builtInRoutes = [
-    /^\/archives\/\d+\/?$/,       // post: /archives/{cid}/
-    /^\/[^/]+\.html$/,            // page: /{slug}.html
-    /^\/category\/[^/]+\/?$/,     // category: /category/{slug}/
-    /^\/tag\//,
-    /^\/author\//,
-    /^\/search\//,
-    /^\/$/,
-    /^\/sitemap\.xml$/,            // SEO
-    /^\/robots\.txt$/,             // SEO
-    /^\/feed\/?$/,                 // main feed
-    /^\/feed\//,                   // sub feeds (atom, rss, comments)
-  ];
-
-  const isBuiltInRoute = builtInRoutes.some((re) => re.test(path));
+  const isBuiltInRoute = BUILT_IN_ROUTES.some((re) => re.test(path));
 
   if (
     !isBuiltInRoute &&
@@ -205,7 +177,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       postPattern &&
       postPattern !== '/archives/{cid}/'
     ) {
-      const regex = buildPermalinkRegex(postPattern);
+      const regex = compilePermalinkPattern(postPattern, 'post');
       if (regex) {
         const match = path.match(regex);
         if (match?.groups) {
@@ -216,11 +188,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
           } else if (match.groups.slug) {
             const row = await db.query.contents.findFirst({
               columns: { cid: true },
-              where: and(
-                eq(schema.contents.slug, match.groups.slug),
-                eq(schema.contents.type, 'post'),
-                eq(schema.contents.status, 'publish'),
-              ),
+              where: and(eq(schema.contents.slug, match.groups.slug), publishedPostCondition()),
             });
             if (row) {
               cid = row.cid;
@@ -239,7 +207,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       pagePattern &&
       pagePattern !== '/{slug}.html'
     ) {
-      const regex = buildPermalinkRegex(pagePattern);
+      const regex = compilePermalinkPattern(pagePattern, 'page');
       if (regex) {
         const match = path.match(regex);
         if (match?.groups) {
@@ -272,7 +240,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       categoryPattern &&
       categoryPattern !== '/category/{slug}/'
     ) {
-      const regex = buildPermalinkRegex(categoryPattern);
+      const regex = compilePermalinkPattern(categoryPattern, 'category');
       if (regex) {
         const match = path.match(regex);
         if (match?.groups) {
@@ -307,7 +275,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response = await next();
   } catch (err) {
     console.error('[middleware] next() threw:', path, err);
-    return new Response('Server error', { status: 500 });
+    return applySecurityHeaders(new Response('Server error', { status: 500 }), { request: context.request }, pluginCtx);
   }
   if (response.status === 404) {
     // Only warn for admin paths (should never 404); info for everything else
@@ -340,7 +308,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
       headers: cacheHeaders,
     });
 
-    await caches.default.put(cacheKey, cacheable);
+    const cacheWrite = caches.default.put(cacheKey, cacheable);
+    const executionContext = context.locals.cfContext;
+    if (executionContext) {
+      // Keep cache persistence off the response path. Call through the
+      // ExecutionContext object so Workers receives the correct `this`.
+      executionContext.waitUntil(cacheWrite);
+    } else {
+      // Astro's Node test/dev adapter does not always provide an execution
+      // context, so preserve deterministic writes there.
+      await cacheWrite;
+    }
   }
 
   return response;

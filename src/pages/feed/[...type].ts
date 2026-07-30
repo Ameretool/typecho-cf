@@ -1,26 +1,19 @@
 import type { APIRoute } from 'astro';
-import { getDb, schema } from '@/db';
-import { loadOptions, computeUrls } from '@/lib/options';
+import { schema, type Database } from '@/db';
 import { buildPermalink } from '@/lib/content';
-import { renderMarkdown, generateExcerpt } from '@/lib/markdown';
+import { renderContent } from '@/lib/markdown';
 import { generateRss2, generateAtom, generateRss1, type FeedItem } from '@/lib/feed';
-import { setActivatedPlugins, parseActivatedPlugins, applyFilterSafely, type HookContext } from '@/lib/plugin';
+import { applyFilterSafely } from '@/lib/plugin';
+import { getFeedRuntime } from '@/lib/feed-helpers';
 import { eq, and, desc, sql, or } from 'drizzle-orm';
-import { env } from 'cloudflare:workers';
+import { publishedPostCondition } from '@/lib/content-visibility';
 
 const FEED_ITEMS_DEFAULT = 10;
 const FEED_ITEMS_MIN = 5;
 const FEED_ITEMS_MAX = 50;
 
 export const GET: APIRoute = async ({ locals, params }) => {
-  const db = getDb(env.DB);
-  const options = await loadOptions(db);
-  const urls = computeUrls(options);
-
-  // Load activated plugins
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(pluginCtx, activatedIds);
+  const { db, options, urls, pluginCtx } = await getFeedRuntime(locals);
 
   const type = params.type || '';
   const isComments = type.includes('comments');
@@ -47,8 +40,7 @@ export const GET: APIRoute = async ({ locals, params }) => {
     .from(schema.contents)
     .where(
       and(
-        eq(schema.contents.type, 'post'),
-        eq(schema.contents.status, 'publish'),
+        publishedPostCondition(),
         eq(schema.contents.allowFeed, '1'),
         sql`(${schema.contents.password} IS NULL OR ${schema.contents.password} = '')`,
       ),
@@ -56,17 +48,20 @@ export const GET: APIRoute = async ({ locals, params }) => {
     .orderBy(desc(schema.contents.created))
     .limit(feedLimit);
 
-  // Fetch authors
+  // Fetch authors and categories in one D1 round trip.
   const authorIds = [...new Set(posts.map((p) => p.authorId).filter(Boolean))];
-  const authors = authorIds.length > 0
-    ? await db.select().from(schema.users).where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`)
-    : [];
-  const authorMap = new Map(authors.map((a) => [a.uid, a]));
-
-  // Fetch categories
   const postIds = posts.map((p) => p.cid);
-  const catData = postIds.length > 0
-    ? await db
+  const [authors, catData] = postIds.length > 0
+    ? await db.batch([
+        db
+          .select({
+            uid: schema.users.uid,
+            name: schema.users.name,
+            screenName: schema.users.screenName,
+          })
+          .from(schema.users)
+          .where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`),
+        db
         .select({ cid: schema.relationships.cid, name: schema.metas.name })
         .from(schema.relationships)
         .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
@@ -75,8 +70,10 @@ export const GET: APIRoute = async ({ locals, params }) => {
             sql`${schema.relationships.cid} IN (${sql.join(postIds.map(id => sql`${id}`), sql`, `)})`,
             eq(schema.metas.type, 'category')
           )
-        )
-    : [];
+        ),
+      ])
+    : [[], []];
+  const authorMap = new Map(authors.map((a) => [a.uid, a]));
   const postCats = new Map<number, string[]>();
   for (const row of catData) {
     if (!postCats.has(row.cid)) postCats.set(row.cid, []);
@@ -99,8 +96,7 @@ export const GET: APIRoute = async ({ locals, params }) => {
     // content:encoded (full body, only when feedFullText is on). The
     // legacy code emitted the full body in both fields when feedFullText
     // was enabled, doubling the payload.
-    const excerpt = generateExcerpt(post.text || '');
-    const fullContent = options.feedFullText ? renderMarkdown(post.text || '') : '';
+    const rendered = renderContent(post.text || '');
     const cats = postCats.get(post.cid) || [];
     let item: FeedItem = {
       title: post.title || '无标题',
@@ -109,8 +105,8 @@ export const GET: APIRoute = async ({ locals, params }) => {
         urls.siteUrl,
         options.permalinkPattern as string | undefined,
       ),
-      content: fullContent,
-      excerpt,
+      content: options.feedFullText ? rendered.html : '',
+      excerpt: rendered.plainExcerpt,
       date: new Date((post.created || 0) * 1000),
       author: author?.screenName || author?.name || undefined,
       categories: cats,
@@ -143,7 +139,7 @@ export const GET: APIRoute = async ({ locals, params }) => {
 };
 
 async function generateCommentsFeed(
-  db: ReturnType<typeof getDb>,
+  db: Database,
   options: any,
   urls: any,
   isAtom: boolean,
@@ -180,7 +176,7 @@ async function generateCommentsFeed(
       options.permalinkPattern as string | undefined,
       options.pagePattern as string | undefined,
     )}#comment-${comment.coid}`,
-    content: renderMarkdown(comment.text || ''),
+    content: renderContent(comment.text || '').html,
     date: new Date((comment.created || 0) * 1000),
     author: comment.author || '匿名',
   }));

@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     // Save to DB and update runtime state
     const newIds = Array.from(idSet);
-    setActivatedPlugins(auth.pluginCtx, newIds);
+    await setActivatedPlugins(auth.pluginCtx, newIds);
     await setOption(auth.db, 'activatedPlugins', JSON.stringify(newIds));
 
     // Plugin changes affect page rendering

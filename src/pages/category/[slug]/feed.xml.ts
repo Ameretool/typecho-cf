@@ -1,19 +1,13 @@
 import type { APIRoute } from 'astro';
-import { getDb, schema } from '@/db';
-import { loadOptions, computeUrls } from '@/lib/options';
-import { setActivatedPlugins, parseActivatedPlugins, type HookContext } from '@/lib/plugin';
+import { schema } from '@/db';
 import { generateRss2, generateAtom } from '@/lib/feed';
-import { clampFeedItems, buildFeedItem, xmlResponse } from '@/lib/feed-helpers';
-import { eq, and, desc, lte } from 'drizzle-orm';
-import { env } from 'cloudflare:workers';
+import { clampFeedItems, buildFeedItem, getFeedRuntime, xmlResponse } from '@/lib/feed-helpers';
+import { eq, and, desc } from 'drizzle-orm';
+import { publishedPostCondition } from '@/lib/content-visibility';
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ locals, params }) => {
   const slug = params.slug || '';
-  const db = getDb(env.DB);
-  const options = await loadOptions(db);
-  const urls = computeUrls(options);
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  setActivatedPlugins(pluginCtx, parseActivatedPlugins(options.activatedPlugins as string | undefined));
+  const { db, options, urls, pluginCtx } = await getFeedRuntime(locals);
 
   const cat = await db.query.metas.findFirst({
     where: and(eq(schema.metas.type, 'category'), eq(schema.metas.slug, slug)),
@@ -21,8 +15,6 @@ export const GET: APIRoute = async ({ params }) => {
   if (!cat) return new Response('Not Found', { status: 404 });
 
   const limit = clampFeedItems(options.feedItems);
-  const nowSec = Math.floor(Date.now() / 1000);
-
   const rows = await db
     .select({ contents: schema.contents })
     .from(schema.contents)
@@ -30,10 +22,8 @@ export const GET: APIRoute = async ({ params }) => {
     .where(
       and(
         eq(schema.relationships.mid, cat.mid),
-        eq(schema.contents.type, 'post'),
-        eq(schema.contents.status, 'publish'),
+        publishedPostCondition(),
         eq(schema.contents.allowFeed, '1'),
-        lte(schema.contents.created, nowSec),
       ),
     )
     .orderBy(desc(schema.contents.created))

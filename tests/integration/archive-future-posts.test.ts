@@ -20,6 +20,7 @@ import {
   prepareCategoryData,
   prepareTagData,
   prepareAuthorData,
+  preparePostData,
 } from '@/lib/page-data';
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -138,5 +139,37 @@ describe('archive future-post filtering (G7-5)', () => {
     } else {
       throw new Error('expected ThemeArchiveProps');
     }
+  });
+
+  it('post detail hides a scheduled post from anonymous visitors', async () => {
+    await seedArchive();
+    const future = await testDb.query.contents.findFirst({
+      where: (t, { eq }) => eq(t.slug, 'future-post'),
+    });
+    const result = await preparePostData(
+      buildCtx() as any,
+      future!.cid,
+      `https://example.com/archives/${future!.cid}/`,
+      null,
+      future,
+    );
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(404);
+  });
+
+  it('post navigation does not expose a scheduled next post', async () => {
+    await seedArchive();
+    const past = await testDb.query.contents.findFirst({
+      where: (t, { eq }) => eq(t.slug, 'past-post'),
+    });
+    const result = await preparePostData(
+      buildCtx() as any,
+      past!.cid,
+      `https://example.com/archives/${past!.cid}/`,
+      null,
+      past,
+    );
+    expect(result).not.toBeInstanceOf(Response);
+    expect((result as any).nextPost).toBeNull();
   });
 });

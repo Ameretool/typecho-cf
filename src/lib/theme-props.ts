@@ -10,6 +10,7 @@ import type { SidebarData } from '@/lib/sidebar';
 import type { PaginationInfo } from '@/lib/pagination';
 import type { UserRow } from '@/lib/context';
 import type { HookContext } from '@/lib/plugin';
+import type { CommentPagination } from '@/lib/comment-page';
 
 // ─── Base Props (shared by all theme components) ────────────────────────
 
@@ -77,6 +78,7 @@ export interface ThemePostProps extends ThemeBaseProps {
   categories: Array<{ name: string; slug: string; permalink: string }>;
   tags: Array<{ name: string; slug: string; permalink: string }>;
   comments: CommentNode[];
+  commentPagination: CommentPagination;
   commentOptions: CommentOptions;
   prevPost: { title: string; permalink: string } | null;
   nextPost: { title: string; permalink: string } | null;
@@ -99,6 +101,7 @@ export interface ThemePageProps extends ThemeBaseProps {
     passwordVerified: boolean;
   };
   comments: CommentNode[];
+  commentPagination: CommentPagination;
   commentOptions: CommentOptions;
   gravatarMap: Record<number, string>;
 }

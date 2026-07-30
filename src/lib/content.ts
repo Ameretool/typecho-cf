@@ -2,6 +2,7 @@
  * Content utility functions
  * Corresponds to Typecho's Widget/Base/Contents.php
  */
+import { renderPermalinkPattern } from '@/lib/permalink-pattern';
 
 /**
  * Generate a URL-safe slug from a string
@@ -45,9 +46,10 @@ export function buildPermalink(
   // Pages use pagePattern (default: /{slug}.html)
   if (content.type === 'page' || content.type === 'page_draft') {
     const pgPattern = pagePattern || '/{slug}.html';
-    const url = pgPattern
-      .replace(/\{cid\}/g, String(content.cid))
-      .replace(/\{slug\}/g, content.slug || String(content.cid));
+    const url = renderPermalinkPattern(pgPattern, 'page', {
+      cid: content.cid,
+      slug: content.slug || String(content.cid),
+    }) ?? `/${content.slug || content.cid}.html`;
     return `${base}${url}`;
   }
 
@@ -65,13 +67,14 @@ export function buildPermalink(
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
 
-  const url = postPattern
-    .replace(/\{cid\}/g, String(content.cid))
-    .replace(/\{slug\}/g, content.slug || String(content.cid))
-    .replace(/\{category\}/g, content.category || 'uncategorized')
-    .replace(/\{year\}/g, year)
-    .replace(/\{month\}/g, month)
-    .replace(/\{day\}/g, day);
+  const url = renderPermalinkPattern(postPattern, 'post', {
+    cid: content.cid,
+    slug: content.slug || String(content.cid),
+    category: content.category || 'uncategorized',
+    year,
+    month,
+    day,
+  }) ?? `/archives/${content.cid}/`;
 
   return `${base}${url}`;
 }
@@ -106,12 +109,16 @@ export function getRedirectPathIfDifferent(currentUrl: string, targetUrl: string
  *   {slug}     - Category slug
  *   {mid}      - Category ID
  */
-export function buildCategoryLink(slug: string, siteUrl: string, categoryPattern?: string | null): string {
+export function buildCategoryLink(
+  slug: string,
+  siteUrl: string,
+  categoryPattern?: string | null,
+  mid?: number | null,
+): string {
   const base = siteUrl.replace(/\/$/, '');
   const pattern = categoryPattern || '/category/{slug}/';
-  const url = pattern
-    .replace(/\{slug\}/g, slug)
-    .replace(/\{mid\}/g, ''); // mid not commonly available in this context
+  const url = renderPermalinkPattern(pattern, 'category', { slug, mid })
+    ?? `/category/${slug}/`;
   return `${base}${url}`;
 }
 

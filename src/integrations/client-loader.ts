@@ -132,35 +132,31 @@ export default function clientLoaderIntegration(): AstroIntegration {
       },
 
       'astro:server:setup': async ({ server }) => {
-        // Recompile on change in dev mode — debounced via chokidar
-        try {
-          const chokidar = await import('chokidar');
-          const changed = new Set<string>();
-          let timer: ReturnType<typeof setTimeout> | undefined;
+        // Recompile on change in dev mode using Vite's existing watcher.
+        const changed = new Set<string>();
+        let timer: ReturnType<typeof setTimeout> | undefined;
 
-          const schedule = () => {
-            clearTimeout(timer);
-            timer = setTimeout(async () => {
-              const paths = [...changed];
-              changed.clear();
-              const affected = allSources.filter(s => paths.some(p => s.sourcePath === p));
-              if (affected.length > 0) {
-                console.log('[client-loader] Recompiling due to changes...');
-                await compileAll(affected, true);
-                console.log('[client-loader] Done. Refresh your browser.');
-              }
-            }, 300);
-          };
+        const schedule = () => {
+          clearTimeout(timer);
+          timer = setTimeout(async () => {
+            const paths = [...changed];
+            changed.clear();
+            const affected = allSources.filter(s => paths.some(p => s.sourcePath === p));
+            if (affected.length > 0) {
+              console.log('[client-loader] Recompiling due to changes...');
+              await compileAll(affected, true);
+              console.log('[client-loader] Done. Refresh your browser.');
+            }
+          }, 300);
+        };
 
-          for (const src of allSources) {
-            chokidar.watch(src.sourcePath).on('change', (p: string) => {
-              changed.add(p);
-              schedule();
-            });
+        server.watcher.add(allSources.map(src => src.sourcePath));
+        server.watcher.on('change', (path: string) => {
+          if (allSources.some(src => src.sourcePath === path)) {
+            changed.add(path);
+            schedule();
           }
-        } catch {
-          // chokidar not available — dev mode won't hot-reload client files
-        }
+        });
       },
 
       'astro:build:done': async () => {

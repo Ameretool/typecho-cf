@@ -10,6 +10,10 @@ import { createTestDb, type TestDatabase } from '../helpers';
 import { generateCommentToken } from '@/lib/auth';
 
 let testDb: TestDatabase;
+const { mockApplyFilter, mockDoHook } = vi.hoisted(() => ({
+  mockApplyFilter: vi.fn(async (_ctx: any, _hook: string, data: any) => data),
+  mockDoHook: vi.fn(async () => {}),
+}));
 
 vi.mock('@/db', async () => {
   const actual = await vi.importActual<typeof import('@/db')>('@/db');
@@ -20,8 +24,8 @@ vi.mock('@/db', async () => {
 vi.mock('@/lib/plugin', () => ({
   parseActivatedPlugins: () => [],
   setActivatedPlugins: () => {},
-  applyFilter: async (_ctx: any, _hook: string, data: any) => data,
-  doHook: async () => {},
+  applyFilter: mockApplyFilter,
+  doHook: mockDoHook,
 }));
 
 import { POST } from '@/pages/api/comment';
@@ -89,6 +93,8 @@ function makeCommentRequest(
 describe('POST /api/comment', () => {
   beforeEach(async () => {
     testDb = await createTestDb();
+    mockApplyFilter.mockImplementation(async (_ctx: any, _hook: string, data: any) => data);
+    mockDoHook.mockClear();
   });
 
   it('returns 400 when cid is missing', async () => {
@@ -319,6 +325,42 @@ describe('POST /api/comment', () => {
     expect(updated?.commentsNum).toBe(0);
   });
 
+  it('uses the final plugin-filtered status for counts and notifications', async () => {
+    await seedOptions(testDb);
+    const content = await seedContent(testDb);
+    mockApplyFilter.mockImplementation(async (_ctx: any, hook: string, data: any) => {
+      if (hook === 'feedback:comment') return { ...data, status: 'spam' };
+      return data;
+    });
+
+    const req = makeCommentRequest({
+      cid: String(content.cid),
+      text: 'Filtered as spam',
+      author: 'Spammer',
+    });
+    await POST({ request: req, locals: {} } as any);
+
+    const comment = await testDb.query.comments.findFirst();
+    const updated = await testDb.query.contents.findFirst();
+    expect(comment?.status).toBe('spam');
+    expect(updated?.commentsNum).toBe(0);
+  });
+
+  it('rejects a cross-origin comment even when referer checking is disabled', async () => {
+    await seedOptions(testDb, {
+      siteUrl: 'https://example.com',
+      commentsCheckReferer: '0',
+      commentsAntiSpam: '0',
+    });
+    const content = await seedContent(testDb);
+    const req = makeCommentRequest(
+      { cid: String(content.cid), text: 'Cross-origin', author: 'Mallory' },
+      { origin: 'https://evil.test', referer: 'https://evil.test/form' },
+    );
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(403);
+  });
+
   // ── New validation tests (security fixes) ──
 
   it('returns 400 when comment text exceeds 10000 characters', async () => {
@@ -406,7 +448,7 @@ describe('POST /api/comment', () => {
     expect(comment?.url).toBe('https://example.org/about');
   });
 
-  it('prevents open redirect in comment response', async () => {
+  it('rejects a cross-origin referer before redirect construction', async () => {
     await seedOptions(testDb, { siteUrl: 'https://example.com' });
     const content = await seedContent(testDb);
     const req = makeCommentRequest(
@@ -418,15 +460,10 @@ describe('POST /api/comment', () => {
       { referer: 'https://evil.com/phishing' },
     );
     const res = await POST({ request: req, locals: {} } as any);
-    expect(res.status).toBe(302);
-    const location = res.headers.get('location') || '';
-    // Should NOT redirect to evil.com
-    expect(location).not.toContain('evil.com');
-    // Should redirect to a safe path
-    expect(location).toContain('#comments');
+    expect(res.status).toBe(403);
   });
 
-  it('does not redirect to same-host referers on a different protocol', async () => {
+  it('rejects same-host referers on a different protocol', async () => {
     await seedOptions(testDb, { siteUrl: 'https://example.com' });
     const content = await seedContent(testDb);
     const req = makeCommentRequest(
@@ -438,8 +475,7 @@ describe('POST /api/comment', () => {
       { referer: 'http://example.com/archives/1/' },
     );
     const res = await POST({ request: req, locals: {} } as any);
-    expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe(`/archives/${content.cid}/#comments`);
+    expect(res.status).toBe(403);
   });
 
   it('uses same-origin referer for redirect when valid', async () => {

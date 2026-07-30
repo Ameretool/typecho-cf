@@ -23,10 +23,8 @@ const VISIBILITY_TO_STATUS: Record<string, string> = {
  * Save custom fields for a content item.
  * Handles the field[name], fieldNames[], fieldTypes[] form pattern from Typecho.
  */
-async function saveCustomFields(db: any, cid: number, formData: FormData) {
-  // Delete existing fields first
-  await db.delete(schema.fields).where(eq(schema.fields.cid, cid));
-
+function buildCustomFieldStatements(db: any, cid: number, formData: FormData): any[] {
+  const statements = [db.delete(schema.fields).where(eq(schema.fields.cid, cid))];
   const fieldNames = formData.getAll('fieldNames[]').map((v: any) => v.toString().trim()).filter(Boolean);
   for (const name of fieldNames) {
     const type = formData.get(`fieldTypes[${name}]`)?.toString() || 'str';
@@ -42,11 +40,12 @@ async function saveCustomFields(db: any, cid: number, formData: FormData) {
       fieldData.str_value = rawValue;
     }
 
-    await db.insert(schema.fields).values(fieldData).onConflictDoUpdate({
+    statements.push(db.insert(schema.fields).values(fieldData).onConflictDoUpdate({
       target: [schema.fields.cid, schema.fields.name],
       set: { type: fieldData.type, str_value: fieldData.str_value, int_value: fieldData.int_value, float_value: fieldData.float_value },
-    });
+    }));
   }
+  return statements;
 }
 
 function parseTagNames(tags: string): string[] {
@@ -80,10 +79,12 @@ async function attachTags(db: any, cid: number, tags: string) {
     });
     if (existingRel) continue;
 
-    await db.insert(schema.relationships).values({ cid, mid: tagRow.mid });
-    await db.update(schema.metas)
-      .set({ count: sql`${schema.metas.count} + 1` })
-      .where(eq(schema.metas.mid, tagRow.mid));
+    await db.batch([
+      db.insert(schema.relationships).values({ cid, mid: tagRow.mid }),
+      db.update(schema.metas)
+        .set({ count: sql`${schema.metas.count} + 1` })
+        .where(eq(schema.metas.mid, tagRow.mid)),
+    ]);
   }
 }
 
@@ -275,21 +276,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (!newCid) return new Response('创建失败', { status: 500 });
 
     const finalSlug = await resolveUniqueContentSlug(db, slugInput || String(newCid), newCid);
-    await db.update(schema.contents).set({ slug: finalSlug }).where(eq(schema.contents.cid, newCid));
-
-    // Save custom fields
-    await saveCustomFields(db, newCid, formData);
-
-    // Add categories
+    const createStatements: any[] = [
+      db.update(schema.contents).set({ slug: finalSlug }).where(eq(schema.contents.cid, newCid)),
+      ...buildCustomFieldStatements(db, newCid, formData),
+    ];
     if (categoryIds.length > 0) {
-      await db.insert(schema.relationships).values(
-        categoryIds.map((mid) => ({ cid: newCid, mid }))
-      );
-      // Update category count in a single UPDATE (was one query per mid)
-      await db.update(schema.metas)
+      createStatements.push(
+        db.insert(schema.relationships).values(
+          categoryIds.map((mid) => ({ cid: newCid, mid })),
+        ),
+        db.update(schema.metas)
         .set({ count: sql`${schema.metas.count} + 1` })
-        .where(sql`${schema.metas.mid} IN (${sql.join(categoryIds.map(id => sql`${id}`), sql`, `)})`);
+        .where(sql`${schema.metas.mid} IN (${sql.join(categoryIds.map(id => sql`${id}`), sql`, `)})`),
+      );
     }
+    await db.batch(createStatements as [any, ...any[]]);
 
     // Add tags
     if (tags) {
@@ -325,25 +326,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const finalSlug = await resolveUniqueContentSlug(db, slugInput || String(cid), cid);
 
-    await db.update(schema.contents).set({
-      title,
-      slug: finalSlug,
-      created,
-      modified: now,
-      text,
-      order,
-      template,
-      type: contentType,
-      status,
-      password,
-      allowComment,
-      allowPing,
-      allowFeed,
-    }).where(eq(schema.contents.cid, cid));
-
-    // Save custom fields
-    await saveCustomFields(db, cid, formData);
-
     // Update categories: remove old, add new. Snapshot old category/tag
     // slugs first so we can purge their archive pages after the writes —
     // otherwise a re-categorised post keeps showing up on its previous
@@ -364,31 +346,46 @@ export const POST: APIRoute = async ({ request, locals }) => {
       .filter((m: any) => m.type === 'tag' && m.slug)
       .map((m: any) => buildTagLink(m.slug, options.siteUrl || ''));
 
-    // Delete old relationships
-    await db.delete(schema.relationships).where(eq(schema.relationships.cid, cid));
+    const updateStatements: any[] = [
+      db.update(schema.contents).set({
+        title,
+        slug: finalSlug,
+        created,
+        modified: now,
+        text,
+        order,
+        template,
+        type: contentType,
+        status,
+        password,
+        allowComment,
+        allowPing,
+        allowFeed,
+      }).where(eq(schema.contents.cid, cid)),
+      ...buildCustomFieldStatements(db, cid, formData),
+      db.delete(schema.relationships).where(eq(schema.relationships.cid, cid)),
+    ];
 
-    // Decrement old category/tag counts in a single UPDATE. Restricted
-    // to category/tag metas so that if a future feature links a post to
-    // some other meta type (badge, series, etc.), its count column
-    // isn't silently touched.
     if (oldMids.length > 0) {
-      await db.update(schema.metas)
+      updateStatements.push(db.update(schema.metas)
         .set({ count: sql`MAX(0, ${schema.metas.count} - 1)` })
         .where(and(
           sql`${schema.metas.mid} IN (${sql.join(oldMids.map(id => sql`${id}`), sql`, `)})`,
           sql`${schema.metas.type} IN ('category', 'tag')`,
-        ));
+        )));
     }
 
-    // Add new categories
     if (categoryIds.length > 0) {
-      await db.insert(schema.relationships).values(
-        categoryIds.map((mid) => ({ cid, mid }))
-      );
-      await db.update(schema.metas)
+      updateStatements.push(
+        db.insert(schema.relationships).values(
+          categoryIds.map((mid) => ({ cid, mid })),
+        ),
+        db.update(schema.metas)
         .set({ count: sql`${schema.metas.count} + 1` })
-        .where(sql`${schema.metas.mid} IN (${sql.join(categoryIds.map(id => sql`${id}`), sql`, `)})`);
+        .where(sql`${schema.metas.mid} IN (${sql.join(categoryIds.map(id => sql`${id}`), sql`, `)})`),
+      );
     }
+    await db.batch(updateStatements as [any, ...any[]]);
 
     // Add tags
     if (tags) {
@@ -427,20 +424,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const rels = await db.select({ mid: schema.relationships.mid })
       .from(schema.relationships)
       .where(eq(schema.relationships.cid, cid));
+    const deleteStatements: any[] = [];
     if (rels.length > 0) {
       const mids = rels.map(r => r.mid);
-      await db.update(schema.metas)
+      deleteStatements.push(db.update(schema.metas)
         .set({ count: sql`MAX(0, ${schema.metas.count} - 1)` })
         .where(and(
           sql`${schema.metas.mid} IN (${sql.join(mids.map(id => sql`${id}`), sql`, `)})`,
           sql`${schema.metas.type} IN ('category', 'tag')`,
-        ));
+        )));
     }
-    // Delete relationships and comments
-    await db.delete(schema.relationships).where(eq(schema.relationships.cid, cid));
-    await db.delete(schema.comments).where(eq(schema.comments.cid, cid));
-    await db.delete(schema.fields).where(eq(schema.fields.cid, cid));
-    await db.delete(schema.contents).where(eq(schema.contents.cid, cid));
+    deleteStatements.push(
+      db.delete(schema.relationships).where(eq(schema.relationships.cid, cid)),
+      db.delete(schema.comments).where(eq(schema.comments.cid, cid)),
+      db.delete(schema.fields).where(eq(schema.fields.cid, cid)),
+      db.delete(schema.contents).where(eq(schema.contents.cid, cid)),
+    );
+    await db.batch(deleteStatements as [any, ...any[]]);
 
     // Purge cache AFTER the row is gone. If we bump cacheVersion before
     // the delete, a concurrent public GET between bump and delete would

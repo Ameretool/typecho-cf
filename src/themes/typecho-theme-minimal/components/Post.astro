@@ -15,20 +15,12 @@ type Props = ThemePostProps;
 const {
   options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
   post, author, categories, tags, comments, commentOptions,
-  prevPost, nextPost, gravatarMap,
+  commentPagination, prevPost, nextPost, gravatarMap,
 } = Astro.props;
 
 const isIndex = currentPath === '/';
 
-// Count all comments (including nested)
-function countAll(nodes: typeof comments): number {
-  let n = 0;
-  for (const node of nodes) {
-    n += 1 + countAll(node.children);
-  }
-  return n;
-}
-const totalComments = countAll(comments);
+const totalComments = commentPagination.totalComments;
 ---
 <Base
   title={post.title}
@@ -134,6 +126,17 @@ const totalComments = countAll(comments);
                       permalink={post.permalink}
                     />
                   </ol>
+                  {commentPagination.enabled && commentPagination.totalPages > 1 && (
+                    <nav class="page-navigator comment-page-navigator" aria-label="评论分页">
+                      {commentPagination.prevUrl && <a class="prev" href={commentPagination.prevUrl} rel="prev">上一页</a>}
+                      {commentPagination.pages.map((pageNumber) => (
+                        pageNumber === commentPagination.currentPage
+                          ? <span class="current" aria-current="page">{pageNumber}</span>
+                          : <a href={commentPagination.pageUrls[pageNumber]}>{pageNumber}</a>
+                      ))}
+                      {commentPagination.nextUrl && <a class="next" href={commentPagination.nextUrl} rel="next">下一页</a>}
+                    </nav>
+                  )}
                 </>
               )}
 

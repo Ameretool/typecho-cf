@@ -130,7 +130,7 @@ pnpm run db:migrate:dry-run \
 
 ### 迁移后重置密码
 
-密码哈希算法不兼容（PHP phpass → SHA-256 + salt），迁移后需重置密码：
+密码哈希算法不兼容（PHP phpass → PBKDF2-SHA256，600,000 次迭代 + 16B salt），迁移后需重置密码：
 
 ```bash
 # 本地
@@ -181,7 +181,7 @@ pnpm run reset-password:cloudflare
 
 | 方面 | 状态 |
 |------|------|
-| 数据库结构 | ✅ 完全兼容，可直接导入 SQLite 数据库 |
+| 数据库结构 | ✅ 7 张核心表兼容；运行时会幂等补齐登录限速和密码重置辅助表 |
 | 默认主题样式 | ✅ CSS & HTML 结构保持一致 |
 | URL 结构 | ✅ 路由规则与 Typecho 默认配置一致 |
 | 密码哈希 | ⚠️ 迁移后需重置密码（算法不同） |

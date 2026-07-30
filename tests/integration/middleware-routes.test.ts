@@ -17,6 +17,15 @@ function createD1Stub(db: TestDatabase) {
   return {
     prepare: (_sql: string) => ({
       first: () => Promise.resolve({ name: 'typecho_options' } as any),
+      all: () => Promise.resolve({
+        results: [
+          { name: 'email' },
+          { name: 'lastSentAt' },
+          { name: 'uid' },
+          { name: 'tokenHash' },
+          { name: 'expiresAt' },
+        ],
+      }),
       bind: (): any => ({}),
     }),
     batch: (_stmts: any[]) => Promise.resolve([]),
@@ -104,7 +113,7 @@ describe('Middleware: no redirect loops when DB is ready', () => {
         rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
       } as any;
 
-      const response = await onRequest(ctx, () => new Response('ok', { status: 200 }));
+      const response = await onRequest(ctx, async () => new Response('ok', { status: 200 })) as Response;
       if (response.status !== expectStatus) {
         const location = response.headers.get('Location') || '(none)';
         throw new Error(`${method} ${path} returned ${response.status} (Location: ${location}), expected ${expectStatus}`);
@@ -112,6 +121,29 @@ describe('Middleware: no redirect loops when DB is ready', () => {
       expect(response.status).toBe(expectStatus);
     });
   }
+
+  it('schedules edge cache persistence through the bound ExecutionContext', async () => {
+    const waitUntil = vi.fn();
+    const putSpy = vi.spyOn(caches.default, 'put');
+    const request = new Request(`${SITE}/cache-write`, { method: 'GET' });
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: { cfContext: { waitUntil } },
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+
+    const response = await onRequest(
+      ctx,
+      async () => new Response('cache me', { status: 200 }),
+    ) as Response;
+
+    expect(response.status).toBe(200);
+    expect(putSpy).toHaveBeenCalledOnce();
+    expect(waitUntil).toHaveBeenCalledWith(putSpy.mock.results[0].value);
+    putSpy.mockRestore();
+  });
 
   // ── Error handling: specific error types ──
 
@@ -126,7 +158,7 @@ describe('Middleware: no redirect loops when DB is ready', () => {
 
     const request = new Request(`${SITE}/`, { method: 'GET' });
     const ctx = { request, url: new URL(`${SITE}/`), locals: {}, redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }), rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }) } as any;
-    const response = await onRequest(ctx, () => new Response('ok', { status: 200 }));
+    const response = await onRequest(ctx, async () => new Response('ok', { status: 200 })) as Response;
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/install');
   });
@@ -141,7 +173,7 @@ describe('Middleware: no redirect loops when DB is ready', () => {
 
     const request = new Request(`${SITE}/`, { method: 'GET' });
     const ctx = { request, url: new URL(`${SITE}/`), locals: {}, redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }), rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }) } as any;
-    const response = await onRequest(ctx, () => new Response('ok', { status: 200 }));
+    const response = await onRequest(ctx, async () => new Response('ok', { status: 200 })) as Response;
     expect(response.status).toBe(500);
   });
 });

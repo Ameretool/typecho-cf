@@ -9,6 +9,7 @@ import {
   hasHook,
   setActivatedPlugins,
   registerPluginInit,
+  registerPluginLoaders,
   type HookContext,
 } from '@/lib/plugin';
 
@@ -18,9 +19,9 @@ function mockCtx(): HookContext {
 
 describe('addHook deduplication (G6-1)', () => {
   let ctx: HookContext;
-  beforeEach(() => {
+  beforeEach(async () => {
     ctx = mockCtx();
-    setActivatedPlugins(ctx, ['p-dedupe']);
+    await setActivatedPlugins(ctx, ['p-dedupe']);
   });
 
   it('does not register the same handler twice for the same plugin', async () => {
@@ -43,7 +44,7 @@ describe('addHook deduplication (G6-1)', () => {
 });
 
 describe('lazy plugin init (G6-3)', () => {
-  it('only runs init for plugins listed as active', () => {
+  it('only runs init for plugins listed as active', async () => {
     const inits = {
       'lazy-a': vi.fn(),
       'lazy-b': vi.fn(),
@@ -51,30 +52,64 @@ describe('lazy plugin init (G6-3)', () => {
     registerPluginInit(inits, { addHook, HookPoints: {} as any });
 
     const ctx = mockCtx();
-    setActivatedPlugins(ctx, ['lazy-a']);
+    await setActivatedPlugins(ctx, ['lazy-a']);
     expect(inits['lazy-a']).toHaveBeenCalledTimes(1);
     expect(inits['lazy-b']).not.toHaveBeenCalled();
 
     // Reactivating the same plugin must not run init twice — the
     // module is already side-effected.
-    setActivatedPlugins(ctx, ['lazy-a']);
+    await setActivatedPlugins(ctx, ['lazy-a']);
     expect(inits['lazy-a']).toHaveBeenCalledTimes(1);
 
     // Activating a previously dormant plugin runs its init now.
-    setActivatedPlugins(ctx, ['lazy-a', 'lazy-b']);
+    await setActivatedPlugins(ctx, ['lazy-a', 'lazy-b']);
     expect(inits['lazy-b']).toHaveBeenCalledTimes(1);
   });
 
-  it('isolates init failures per plugin', () => {
+  it('isolates init failures per plugin', async () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const good = vi.fn();
     const bad = vi.fn(() => { throw new Error('boom'); });
     registerPluginInit({ 'lazy-good': good, 'lazy-bad': bad }, { addHook, HookPoints: {} as any });
     const ctx = mockCtx();
-    expect(() => setActivatedPlugins(ctx, ['lazy-bad', 'lazy-good'])).not.toThrow();
+    await expect(setActivatedPlugins(ctx, ['lazy-bad', 'lazy-good'])).resolves.toBeUndefined();
     expect(good).toHaveBeenCalled();
     expect(bad).toHaveBeenCalled();
     expect(errSpy).toHaveBeenCalled();
     errSpy.mockRestore();
+  });
+
+  it('waits for async init before hooks are used', async () => {
+    const handler = vi.fn();
+    registerPluginInit({
+      'lazy-async': async ({ addHook: register, pluginId }) => {
+        await Promise.resolve();
+        register('post:finishSave', pluginId, handler);
+      },
+    }, { addHook, HookPoints: {} as any });
+    const ctx = mockCtx();
+
+    await setActivatedPlugins(ctx, ['lazy-async']);
+    await doHook(ctx, 'post:finishSave', {});
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it('loads an active plugin module once and keeps inactive modules unloaded', async () => {
+    const activeInit = vi.fn();
+    const activeLoader = vi.fn(async () => activeInit);
+    const inactiveLoader = vi.fn(async () => vi.fn());
+    registerPluginLoaders({
+      'dynamic-active': activeLoader,
+      'dynamic-inactive': inactiveLoader,
+    }, { addHook, HookPoints: {} as any });
+    const ctx = mockCtx();
+
+    await setActivatedPlugins(ctx, ['dynamic-active']);
+    await setActivatedPlugins(ctx, ['dynamic-active']);
+
+    expect(activeLoader).toHaveBeenCalledOnce();
+    expect(activeInit).toHaveBeenCalledOnce();
+    expect(inactiveLoader).not.toHaveBeenCalled();
   });
 });

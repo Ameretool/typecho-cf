@@ -11,6 +11,7 @@ declare module '*.sql?raw' {
 // `import { env } from 'cloudflare:workers'` instead of `locals.runtime.env`
 interface D1PreparedStatement {
   first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<{ results: T[] }>;
 }
 
 interface D1Database {

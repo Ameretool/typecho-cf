@@ -73,7 +73,7 @@ export const POST: APIRoute = async ({ request }) => {
   const options = await loadOptions(db);
   const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
   const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  setActivatedPlugins(pluginCtx, activatedIds);
+  await setActivatedPlugins(pluginCtx, activatedIds);
 
   if (!isSameOriginRequest(request, options.siteUrl)) {
     return new Response('Forbidden', { status: 403 });

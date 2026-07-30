@@ -14,9 +14,9 @@ export {
   parsePluginConfigFormData,
   loadPluginConfig,
   escapeAttr,
-  getClientIp,
   registerPluginAdminPath,
 } from './plugin';
+export { getClientIp } from './client-ip';
 
 // ── Auth ──
 export { hasPermission, verifyPassword } from './auth';

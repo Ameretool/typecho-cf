@@ -3,6 +3,7 @@ import { loadOptions, type SiteOptions } from '@/lib/options';
 import { getAuthCookies, hasPermission, requireAdminCSRF, validateAuthToken } from '@/lib/auth';
 import { parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { env } from 'cloudflare:workers';
+import { getRequestCoreContext } from '@/lib/context';
 
 export interface AdminActionContext {
   db: Database;
@@ -56,8 +57,9 @@ export async function requireAdminAction(
   requiredGroup: string,
   { csrf = true, plugins }: RequireAdminActionOptions = {},
 ): Promise<AdminActionContext | Response> {
-  const db = getDb(env.DB);
-  const options = await loadOptions(db);
+  const requestCore = getRequestCoreContext(request);
+  const db = requestCore?.db ?? getDb(env.DB);
+  const options = requestCore?.options ?? await loadOptions(db);
 
   const { token } = getAuthCookies(request.headers.get('cookie'));
   if (!token || !options.secret) return new Response('Unauthorized', { status: 401 });
@@ -84,9 +86,9 @@ export async function requireAdminAction(
   // pluginInits loop entirely. Callers that DO need hooks on a GET can
   // opt in with `plugins: true`.
   const wantsPlugins = plugins ?? csrf;
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  if (wantsPlugins) {
-    setActivatedPlugins(pluginCtx, parseActivatedPlugins(options.activatedPlugins as string | undefined));
+  const pluginCtx: HookContext = requestCore?.pluginCtx ?? { activatedPlugins: new Set<string>() };
+  if (wantsPlugins && !requestCore) {
+    await setActivatedPlugins(pluginCtx, parseActivatedPlugins(options.activatedPlugins as string | undefined));
   }
 
   return { db, options, uid: auth.uid, user: auth.user, pluginCtx };

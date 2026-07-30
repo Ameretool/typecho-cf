@@ -17,7 +17,9 @@ import { renderCommentText, renderContentExcerpt, renderMarkdownFiltered } from 
 import { paginate } from '@/lib/pagination';
 import { generateCommentToken } from '@/lib/auth';
 import { buildGravatarUrl } from '@/lib/gravatar';
+import { loadCommentPage } from '@/lib/comment-page';
 import type { RequestContext } from '@/lib/context';
+import { canViewContent, publishedPostCondition } from '@/lib/content-visibility';
 import type {
   ThemeIndexProps, ThemePostProps, ThemePageProps, ThemeArchiveProps, ThemeNotFoundProps,
   PostListItem, CommentNode, CommentOptions,
@@ -27,19 +29,25 @@ import type {
 
 type ContentRow = typeof schema.contents.$inferSelect;
 type CommentRow = typeof schema.comments.$inferSelect;
-type UserRow = typeof schema.users.$inferSelect;
-
 type CategoryEntry = { name: string; slug: string; permalink: string };
 type CategoryMap = Map<number, CategoryEntry[]>;
-type AuthorMap = Map<number, UserRow>;
+type AuthorEntry = { uid: number; name: string | null; screenName: string | null };
+type AuthorMap = Map<number, AuthorEntry>;
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 async function loadCommon(ctx: RequestContext, requestUrl: string) {
   const { db, options, urls, user, isLoggedIn } = ctx;
   const [sidebarData, pages] = await Promise.all([
-    loadSidebarData(ctx, db, urls.siteUrl, options.permalinkPattern as string | undefined, options.categoryPattern as string | undefined),
-    loadNavPages(db, urls.siteUrl, options.pagePattern as string | undefined),
+    loadSidebarData(
+      ctx,
+      db,
+      urls.siteUrl,
+      options.permalinkPattern as string | undefined,
+      options.categoryPattern as string | undefined,
+      options.cacheVersion,
+    ),
+    loadNavPages(db, urls.siteUrl, options.pagePattern as string | undefined, options.cacheVersion),
   ]);
   const currentPath = new URL(requestUrl).pathname;
   return { options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx: ctx };
@@ -69,6 +77,10 @@ function buildCommentTree(allComments: CommentRow[], options: SiteOptions): Comm
     });
   }
 
+  if (!options.commentsThreaded) {
+    return allComments.map(comment => map.get(comment.coid)!);
+  }
+
   for (const c of allComments) {
     const node = map.get(c.coid)!;
     if (c.parent && map.has(c.parent)) {
@@ -82,13 +94,20 @@ function buildCommentTree(allComments: CommentRow[], options: SiteOptions): Comm
 }
 
 async function buildGravatarMap(allComments: CommentRow[], avatarRating: string): Promise<Record<number, string>> {
+  const urlsByEmail = new Map<string, Promise<string>>();
   const entries = await Promise.all(
     allComments.map(async (c) => {
-      return [c.coid, await buildGravatarUrl(c.mail, {
-        defaultImage: 'identicon',
-        size: 40,
-        rating: avatarRating,
-      })] as const;
+      const email = (c.mail || '').trim().toLowerCase();
+      let pending = urlsByEmail.get(email);
+      if (!pending) {
+        pending = buildGravatarUrl(email, {
+          defaultImage: 'identicon',
+          size: 40,
+          rating: avatarRating,
+        });
+        urlsByEmail.set(email, pending);
+      }
+      return [c.coid, await pending] as const;
     })
   );
   return Object.fromEntries(entries);
@@ -119,34 +138,22 @@ function buildCommentOptions(options: SiteOptions, securityToken: string): Comme
 
 async function fetchAuthors(db: Database, authorIds: number[]): Promise<AuthorMap> {
   if (authorIds.length === 0) return new Map();
-  const authors = await db.select().from(schema.users)
+  const authors = await db
+    .select({
+      uid: schema.users.uid,
+      name: schema.users.name,
+      screenName: schema.users.screenName,
+    })
+    .from(schema.users)
     .where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`);
   return new Map(authors.map(a => [a.uid, a]));
 }
 
-async function fetchPostCategories(
-  db: Database,
-  postIds: number[],
+function mapPostCategories(
+  rows: Array<{ cid: number; mid: number; name: string | null; slug: string | null }>,
   siteUrl: string,
   categoryPattern?: string | null,
-): Promise<CategoryMap> {
-  if (postIds.length === 0) return new Map();
-  const rows = await db
-    .select({
-      cid: schema.relationships.cid,
-      mid: schema.relationships.mid,
-      name: schema.metas.name,
-      slug: schema.metas.slug,
-    })
-    .from(schema.relationships)
-    .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
-    .where(
-      and(
-        sql`${schema.relationships.cid} IN (${sql.join(postIds.map(id => sql`${id}`), sql`, `)})`,
-        eq(schema.metas.type, 'category')
-      )
-    );
-
+): CategoryMap {
   const map: CategoryMap = new Map();
   for (const row of rows) {
     if (!map.has(row.cid)) map.set(row.cid, []);
@@ -208,7 +215,7 @@ async function prepareArchiveData(
   params: ArchiveParams,
 ): Promise<ThemeArchiveProps> {
   const { db, options, urls } = ctx;
-  const common = await loadCommon(ctx, requestUrl);
+  const commonPromise = loadCommon(ctx, requestUrl);
   const page = getPage(locals, url);
   const pageSize = options.pageSize || 5;
 
@@ -216,11 +223,8 @@ async function prepareArchiveData(
   // posts whose `created` is in the future. The legacy code only
   // filtered the index page, leaking scheduled posts via category/tag
   // archives.
-  const nowSeconds = Math.floor(Date.now() / 1000);
   const baseConditions = [
-    eq(schema.contents.type, 'post'),
-    eq(schema.contents.status, 'publish'),
-    sql`${schema.contents.created} <= ${nowSeconds}`,
+    publishedPostCondition(),
   ];
   if (params.extraWhere) baseConditions.push(params.extraWhere);
 
@@ -235,20 +239,32 @@ async function prepareArchiveData(
     ? and(eq(schema.relationships.mid, params.joinMid!), ...baseConditions)
     : and(...baseConditions);
 
-  const countResult = await countBase.where(countWhere);
-  const totalPosts = countResult[0]?.count || 0;
-  const pg = paginate(totalPosts, page, pageSize, params.baseUrl);
-
-  const listBase = hasJoin
+  const makeListStatement = (offset: number) => hasJoin
     ? db.select({ content: schema.contents }).from(schema.contents)
         .innerJoin(schema.relationships, eq(schema.contents.cid, schema.relationships.cid))
-    : db.select().from(schema.contents);
+        .where(countWhere)
+        .orderBy(desc(schema.contents.created))
+        .limit(pageSize)
+        .offset(offset)
+    : db.select().from(schema.contents)
+        .where(countWhere)
+        .orderBy(desc(schema.contents.created))
+        .limit(pageSize)
+        .offset(offset);
 
-  const posts = await listBase
-    .where(countWhere)
-    .orderBy(desc(schema.contents.created))
-    .limit(pageSize)
-    .offset((pg.currentPage - 1) * pageSize);
+  const requestedPage = Math.max(1, page);
+  const [common, [countResult, initialPosts]] = await Promise.all([
+    commonPromise,
+    db.batch([
+      countBase.where(countWhere),
+      makeListStatement((requestedPage - 1) * pageSize),
+    ]),
+  ]);
+  const totalPosts = countResult[0]?.count || 0;
+  const pg = paginate(totalPosts, page, pageSize, params.baseUrl);
+  const posts = pg.currentPage === requestedPage
+    ? initialPosts
+    : await makeListStatement((pg.currentPage - 1) * pageSize);
 
   const rawPosts: ContentRow[] = hasJoin
     ? (posts as { content: ContentRow }[]).map(p => p.content)
@@ -256,8 +272,49 @@ async function prepareArchiveData(
   const authorIds = [...new Set(rawPosts.map(p => p.authorId).filter((id): id is number => Boolean(id)))];
   const postIds = rawPosts.map(p => p.cid).filter((id): id is number => id !== null);
 
-  const authorMap = params.authorOverride ?? await fetchAuthors(db, authorIds);
-  const categoryMap = await fetchPostCategories(db, postIds, urls.siteUrl, options.categoryPattern as string | undefined);
+  let authorMap = params.authorOverride;
+  let categoryRows: Array<{ cid: number; mid: number; name: string | null; slug: string | null }> = [];
+  if (postIds.length > 0) {
+    const categoryStatement = db
+      .select({
+        cid: schema.relationships.cid,
+        mid: schema.relationships.mid,
+        name: schema.metas.name,
+        slug: schema.metas.slug,
+      })
+      .from(schema.relationships)
+      .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
+      .where(
+        and(
+          sql`${schema.relationships.cid} IN (${sql.join(postIds.map(id => sql`${id}`), sql`, `)})`,
+          eq(schema.metas.type, 'category')
+        )
+      );
+
+    if (authorMap || authorIds.length === 0) {
+      categoryRows = await categoryStatement;
+    } else {
+      const [authors, categories] = await db.batch([
+        db
+          .select({
+            uid: schema.users.uid,
+            name: schema.users.name,
+            screenName: schema.users.screenName,
+          })
+          .from(schema.users)
+          .where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`),
+        categoryStatement,
+      ]);
+      authorMap = new Map(authors.map(author => [author.uid, author]));
+      categoryRows = categories;
+    }
+  }
+  authorMap ??= await fetchAuthors(db, authorIds);
+  const categoryMap = mapPostCategories(
+    categoryRows,
+    urls.siteUrl,
+    options.categoryPattern as string | undefined,
+  );
 
   return {
     ...common,
@@ -310,59 +367,59 @@ export async function preparePostData(
 
   if (!contentRow) return new Response('Not Found', { status: 404 });
 
-  // Visibility checks
-  const isPublished = contentRow.status === 'publish' || contentRow.status === 'hidden';
-  const isPrivate = contentRow.status === 'private';
-  const isDraft = contentRow.type?.endsWith('_draft');
-
-  if (isDraft && (!isLoggedIn || user?.uid !== contentRow.authorId)) return new Response('Not Found', { status: 404 });
-  if (isPrivate && (!isLoggedIn || user?.uid !== contentRow.authorId)) return new Response('Not Found', { status: 404 });
-  if (!isPublished && !isPrivate && !isDraft) return new Response('Not Found', { status: 404 });
+  if (!canViewContent(contentRow, { isLoggedIn, uid: user?.uid })) {
+    return new Response('Not Found', { status: 404 });
+  }
 
   // Password
   const hasPassword = !!contentRow.password;
   const passwordVerified = hasPassword && suppliedPassword === contentRow.password;
 
-  const commentsOrder = options.commentsOrder === 'DESC' ? desc(schema.comments.created) : asc(schema.comments.created);
-
-  // Six independent D1 reads — fire them in parallel. Each hop is ~5-15 ms
-  // from a Worker; serialised this is 30-90 ms of unnecessary latency on
-  // every cache miss.
+  // Keep all content-specific reads in one D1 round trip while the common
+  // chrome data loads independently.
   const [
-    author,
-    relatedMetas,
-    prevPostRows,
-    nextPostRows,
-    allComments,
     common,
+    [
+      authorRows,
+      relatedMetas,
+      prevPostRows,
+      nextPostRows,
+    ],
+    commentPage,
   ] = await Promise.all([
-    contentRow.authorId
-      ? db.query.users.findFirst({ where: eq(schema.users.uid, contentRow.authorId) })
-      : Promise.resolve(null),
-    db
-      .select({ name: schema.metas.name, slug: schema.metas.slug, type: schema.metas.type })
-      .from(schema.relationships)
-      .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
-      .where(eq(schema.relationships.cid, cidNum)),
-    db
-      .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
-      .from(schema.contents)
-      .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), lt(schema.contents.created, contentRow.created || 0)))
-      .orderBy(desc(schema.contents.created))
-      .limit(1),
-    db
-      .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
-      .from(schema.contents)
-      .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), gt(schema.contents.created, contentRow.created || 0)))
-      .orderBy(asc(schema.contents.created))
-      .limit(1),
-    db
-      .select()
-      .from(schema.comments)
-      .where(and(eq(schema.comments.cid, cidNum), eq(schema.comments.status, 'approved')))
-      .orderBy(commentsOrder),
     loadCommon(ctx, requestUrl),
+    db.batch([
+      db
+        .select({
+          uid: schema.users.uid,
+          name: schema.users.name,
+          screenName: schema.users.screenName,
+        })
+        .from(schema.users)
+        .where(eq(schema.users.uid, contentRow.authorId || 0))
+        .limit(1),
+      db
+        .select({ name: schema.metas.name, slug: schema.metas.slug, type: schema.metas.type })
+        .from(schema.relationships)
+        .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
+        .where(eq(schema.relationships.cid, cidNum)),
+      db
+        .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
+        .from(schema.contents)
+        .where(and(publishedPostCondition(), lt(schema.contents.created, contentRow.created || 0)))
+        .orderBy(desc(schema.contents.created))
+        .limit(1),
+      db
+        .select({ cid: schema.contents.cid, title: schema.contents.title, slug: schema.contents.slug, type: schema.contents.type, created: schema.contents.created })
+        .from(schema.contents)
+        .where(and(publishedPostCondition(), gt(schema.contents.created, contentRow.created || 0)))
+        .orderBy(asc(schema.contents.created))
+        .limit(1),
+    ]),
+    loadCommentPage(db, cidNum, options, requestUrl),
   ]);
+  const author = authorRows[0] ?? null;
+  const allComments = commentPage.rows;
 
   type MetaEntry = { name: string | null; slug: string | null; type: string | null };
   const categories = (relatedMetas as MetaEntry[]).filter(m => m.type === 'category').map(m => ({
@@ -377,7 +434,9 @@ export async function preparePostData(
   }));
 
   const commentTree = buildCommentTree(allComments, options);
-  const gravatarMap = await buildGravatarMap(allComments, options.commentsAvatarRating || 'G');
+  const gravatarMap = options.commentsAvatar
+    ? await buildGravatarMap(allComments, options.commentsAvatarRating || 'G')
+    : {};
 
   const permalink = buildPermalink(
     { cid: contentRow.cid, slug: contentRow.slug, type: contentRow.type, created: contentRow.created, category: categories[0]?.slug },
@@ -414,6 +473,7 @@ export async function preparePostData(
     categories,
     tags,
     comments: commentTree,
+    commentPagination: commentPage.pagination,
     commentOptions: { ...buildCommentOptions(options, securityToken), allowComment },
     prevPost: prevPostRows[0] ? {
       title: prevPostRows[0].title || '无标题',
@@ -444,11 +504,8 @@ export async function preparePageData(
 
   if (!pageRow) return new Response('Not Found', { status: 404 });
 
-  // Visibility
-  if (pageRow.status !== 'publish' && pageRow.status !== 'hidden') {
-    if (!isLoggedIn || (pageRow.status === 'private' && user?.uid !== pageRow.authorId)) {
-      return new Response('Not Found', { status: 404 });
-    }
+  if (!canViewContent(pageRow, { isLoggedIn, uid: user?.uid })) {
+    return new Response('Not Found', { status: 404 });
   }
 
   const permalink = buildPermalink(
@@ -461,18 +518,16 @@ export async function preparePageData(
   const hasPassword = !!pageRow.password;
   const passwordVerified = hasPassword && suppliedPassword === pageRow.password;
 
-  const commentsOrder = options.commentsOrder === 'DESC' ? desc(schema.comments.created) : asc(schema.comments.created);
-  const [allComments, common] = await Promise.all([
-    db
-      .select()
-      .from(schema.comments)
-      .where(and(eq(schema.comments.cid, pageRow.cid), eq(schema.comments.status, 'approved')))
-      .orderBy(commentsOrder),
+  const [commentPage, common] = await Promise.all([
+    loadCommentPage(db, pageRow.cid, options, requestUrl),
     loadCommon(ctx, requestUrl),
   ]);
+  const allComments = commentPage.rows;
 
   const commentTree = buildCommentTree(allComments, options);
-  const gravatarMap = await buildGravatarMap(allComments, options.commentsAvatarRating || 'G');
+  const gravatarMap = options.commentsAvatar
+    ? await buildGravatarMap(allComments, options.commentsAvatarRating || 'G')
+    : {};
   const allowComment = pageRow.allowComment === '1';
 
   const renderedContent = hasPassword && !passwordVerified
@@ -499,6 +554,7 @@ export async function preparePageData(
       passwordVerified,
     },
     comments: commentTree,
+    commentPagination: commentPage.pagination,
     commentOptions: { ...buildCommentOptions(options, securityToken), allowComment },
     gravatarMap,
   };

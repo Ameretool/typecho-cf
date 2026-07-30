@@ -104,7 +104,7 @@ export async function applySecurityHeaders(
     ['Referrer-Policy', 'strict-origin-when-cross-origin'],
     ['Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'],
     ['Cross-Origin-Opener-Policy', 'same-origin'],
-    ['Cross-Origin-Resource-Policy', secCtx.upload ? 'same-origin' : 'same-site'],
+    ['Cross-Origin-Resource-Policy', 'same-origin'],
     ['Content-Security-Policy', cspString],
   ];
   if (isHttps) additions.push(['Strict-Transport-Security', 'max-age=31536000; includeSubDomains']);

@@ -9,33 +9,7 @@ import { getAuthCookies, validateAuthToken, hasPermission, generateSecurityToken
 import { setActivatedPlugins, parseActivatedPlugins, doHook, type HookContext } from '@/lib/plugin';
 import { schema } from '@/db';
 import { env } from 'cloudflare:workers';
-
-/**
- * Extract the real client IP address from a request.
- *
- * Priority:
- *  1. CF-Connecting-IP  — set by Cloudflare to the true client IP (single value, always reliable)
- *  2. X-Forwarded-For   — may be a comma-separated list such as "clientIP, proxy1, proxy2";
- *                         only the *first* entry is the original client IP.
- *
- * The returned value is trimmed. Returns an empty string if no header is present.
- */
-export function getClientIp(request: Request): string {
-  const cfIp = request.headers.get('cf-connecting-ip');
-  if (cfIp) return cfIp.trim();
-
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) {
-    // X-Forwarded-For: clientIP, proxy1, proxy2 — only the first entry is the real client.
-    // Filter out empty segments so a leading comma (", 1.2.3.4") doesn't yield the empty string.
-    for (const raw of xff.split(',')) {
-      const ip = raw.trim();
-      if (ip) return ip;
-    }
-  }
-
-  return '';
-}
+export { getClientIp } from '@/lib/client-ip';
 
 /** Drizzle-inferred user row type */
 export type UserRow = typeof schema.users.$inferSelect;
@@ -49,26 +23,75 @@ export interface RequestContext extends HookContext {
   csrfToken: string | null;
 }
 
+export interface RequestCoreContext {
+  db: Database;
+  options: SiteOptions;
+  pluginCtx: HookContext;
+}
+
+type InternalLocals = App.Locals & {
+  _typechoCore?: RequestCoreContext;
+  _typechoContext?: Promise<RequestContext>;
+};
+
+const requestCores = new WeakMap<Request, RequestCoreContext>();
+
+/** Share the middleware bootstrap with page/layout context creation. */
+export function setRequestCoreContext(
+  locals: App.Locals,
+  core: RequestCoreContext,
+  request?: Request,
+): void {
+  (locals as InternalLocals)._typechoCore = core;
+  if (request) requestCores.set(request, core);
+}
+
+export function getRequestCoreContext(request: Request): RequestCoreContext | undefined {
+  return requestCores.get(request);
+}
+
+export function getRequestCoreContextFromLocals(locals: App.Locals): RequestCoreContext | undefined {
+  return (locals as InternalLocals)._typechoCore;
+}
+
 /**
  * Create request context from Astro locals
  */
-export async function createContext(locals: App.Locals, request: Request): Promise<RequestContext> {
-  const db = getDb(env.DB);
+export function createContext(locals: App.Locals, request: Request): Promise<RequestContext> {
+  const internalLocals = locals as InternalLocals;
+  if (internalLocals._typechoContext) return internalLocals._typechoContext;
+
+  const pending = buildContext(internalLocals, request);
+  internalLocals._typechoContext = pending;
+  void pending.catch(() => {
+    // A transient bootstrap failure must not poison subsequent attempts made
+    // by the same request pipeline.
+    if (internalLocals._typechoContext === pending) {
+      delete internalLocals._typechoContext;
+    }
+  });
+  return pending;
+}
+
+async function buildContext(locals: InternalLocals, request: Request): Promise<RequestContext> {
+  const core = locals._typechoCore;
+  const db = core?.db ?? getDb(env.DB);
 
   // Load site options
-  const options = await loadOptions(db);
+  const options = core?.options ?? await loadOptions(db);
   const urls = computeUrls(options);
 
   // Load activated plugins from DB options. Nothing is auto-activated: an
   // operator must explicitly turn plugins on from /admin/plugin. This means a
   // hostile package that happens to land in node_modules with typecho/plugin
   // keywords cannot register hooks without a deliberate admin action.
-  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-
-  const activatedPlugins = new Set<string>();
+  const activatedIds = core
+    ? []
+    : parseActivatedPlugins(options.activatedPlugins as string | undefined);
+  const activatedPlugins = core?.pluginCtx.activatedPlugins ?? new Set<string>();
   const ctx: RequestContext = { db, options, urls, user: null, isLoggedIn: false, csrfToken: null, activatedPlugins };
 
-  setActivatedPlugins(ctx, activatedIds);
+  if (!core) await setActivatedPlugins(ctx, activatedIds);
 
   // Check auth
   const cookieHeader = request.headers.get('cookie');
