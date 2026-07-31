@@ -140,7 +140,10 @@ const defaultOptions: Partial<SiteOptions> = {
   commentEmailReplyEnabled: 1,
 };
 
-const OPTIONS_SNAPSHOT_TTL_MS = 5_000;
+// Site options change rarely. Local writes invalidate this snapshot
+// immediately; writes from another PoP become visible after at most one
+// minute, avoiding an inter-region D1 version read every five seconds.
+const OPTIONS_SNAPSHOT_TTL_MS = 60_000;
 type OptionsSnapshot = { value: SiteOptions; expiresAt: number; generation: number };
 type PendingOptionsLoad = { promise: Promise<SiteOptions>; generation: number };
 const optionSnapshots = new WeakMap<Database, OptionsSnapshot>();

@@ -157,10 +157,10 @@ const totalComments = commentPagination.totalComments;
                       <input type="hidden" name="_" value={commentOptions.securityToken} />
                     )}
                     {isLoggedIn ? (
-                      <p>
-                        登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a>.
-                        <a href={urls.logoutUrl}>退出 &raquo;</a>
-                      </p>
+                      <>
+                        <p>登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a>.</p>
+                        <form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出 &raquo;</button></form>
+                      </>
                     ) : (
                       <>
                         <p>
@@ -284,7 +284,7 @@ const totalComments = commentPagination.totalComments;
                     <li class="last">
                       <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
                     </li>
-                    <li><a href={urls.logoutUrl}>退出</a></li>
+                    <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
                   </>
                 ) : (
                   <li class="last"><a href={urls.loginUrl}>登录</a></li>

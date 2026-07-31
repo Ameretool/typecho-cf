@@ -18,7 +18,7 @@ import {
   recordLoginFailure,
 } from '@/lib/login-rate-limit';
 import { safeAdminRedirectUrl } from '@/lib/admin-auth';
-import { getClientIp } from '@/lib/context';
+import { getClientIp, getRequestCoreContextFromLocals } from '@/lib/context';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -52,11 +52,11 @@ function redirectWithLoginError(message: string, request?: Request): Response {
  * as untrusted to avoid `<form enctype=text/plain>` cross-site logins.
  */
 function isSameOriginRequest(request: Request, siteUrl: string): boolean {
-  if (!siteUrl) return true; // unconfigured siteUrl — fall back to permissive (covers fresh-install)
+    if (!siteUrl) return false;
   const expected = (() => {
     try { return new URL(siteUrl).origin; } catch { return ''; }
   })();
-  if (!expected) return true;
+  if (!expected) return false;
   const headerCheck = (raw: string | null) => {
     if (!raw) return null;
     try { return new URL(raw).origin === expected; } catch { return false; }
@@ -68,12 +68,15 @@ function isSameOriginRequest(request: Request, siteUrl: string): boolean {
   return false;
 }
 
-export const POST: APIRoute = async ({ request }) => {
-  const db = getDb(env.DB);
-  const options = await loadOptions(db);
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  await setActivatedPlugins(pluginCtx, activatedIds);
+export const POST: APIRoute = async ({ request, locals }) => {
+  const core = getRequestCoreContextFromLocals(locals);
+  const db = core?.db ?? getDb(env.DB);
+  const options = core?.options ?? await loadOptions(db);
+  const pluginCtx: HookContext = core?.pluginCtx ?? { activatedPlugins: new Set<string>() };
+  if (!core) {
+    const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
+    await setActivatedPlugins(pluginCtx, activatedIds);
+  }
 
   if (!isSameOriginRequest(request, options.siteUrl)) {
     return new Response('Forbidden', { status: 403 });
@@ -100,7 +103,12 @@ export const POST: APIRoute = async ({ request }) => {
   // ── Brute-force throttle ────────────────────────────────────────────────
   const rateConfig = readLoginRateLimitConfig(options as unknown as Record<string, unknown>);
   const ip = getClientIp(request);
-  const lockedUntil = await loginLockedUntil(db, ip, rateConfig);
+  // The lock row and user row are independent. Fetch both in parallel so a
+  // normal login pays one D1 latency wave before PBKDF2 verification.
+  const [lockedUntil, user] = await Promise.all([
+    loginLockedUntil(db, ip, rateConfig),
+    db.query.users.findFirst({ where: eq(schema.users.name, name) }),
+  ]);
   if (lockedUntil > 0) {
     const remaining = Math.max(1, Math.ceil((lockedUntil - Date.now()) / 1000));
     const headers = createFlashRedirectHeaders(LOGIN_URL, LOGIN_ERROR_FLASH_COOKIE, `登录失败次数过多，请 ${remaining} 秒后再试`, LOGIN_URL, request);
@@ -112,8 +120,6 @@ export const POST: APIRoute = async ({ request }) => {
   if (loginContext._rejected) {
     return redirectWithLoginError(String(loginContext._rejected), request);
   }
-
-  const user = await db.query.users.findFirst({ where: eq(schema.users.name, name) });
 
   if (!user) {
     // Run a dummy PBKDF2 against a fixed hash so response time reveals

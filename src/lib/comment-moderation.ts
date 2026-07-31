@@ -51,6 +51,37 @@ export async function getModeratableComment(
   return comment;
 }
 
+/**
+ * Resolve and authorize a complete moderation selection in one query.
+ * Missing comments retain the legacy "skip" behaviour, while any forbidden
+ * row rejects the whole selection before writes begin.
+ */
+export async function getModeratableComments(
+  db: Database,
+  coids: number[],
+  user: UserRow,
+): Promise<CommentRow[] | Response> {
+  if (coids.length === 0) return [];
+  const idList = sql.join(coids.map(coid => sql`${coid}`), sql`, `);
+  const rows = await db
+    .select({ comment: schema.comments, contentAuthorId: schema.contents.authorId })
+    .from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(sql`${schema.comments.coid} IN (${idList})`);
+  const byId = new Map(rows.map(row => [row.comment.coid, row]));
+  const isAdmin = hasPermission(user.group || 'visitor', 'administrator');
+  const comments: CommentRow[] = [];
+  for (const coid of coids) {
+    const row = byId.get(coid);
+    if (!row) continue;
+    if (!isAdmin && row.contentAuthorId !== user.uid) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    comments.push(row.comment);
+  }
+  return comments;
+}
+
 export async function applyCommentAction(
   ctx: HookContext,
   db: Database,
@@ -81,6 +112,64 @@ export async function applyCommentAction(
   }
 
   await doHook(ctx, 'comment:action', comment, { action, oldStatus, newStatus: nextStatus, options });
+}
+
+/** Apply a validated selection in one D1 batch and fire hooks in input order. */
+export async function applyCommentActions(
+  ctx: HookContext,
+  db: Database,
+  comments: CommentRow[],
+  action: CommentAction,
+  options?: Record<string, unknown>,
+): Promise<void> {
+  if (comments.length === 0) return;
+  const statements: any[] = [];
+  const countDeltaByCid = new Map<number, number>();
+
+  for (const comment of comments) {
+    const oldStatus = comment.status;
+    if (action === 'delete') {
+      statements.push(db.delete(schema.comments).where(eq(schema.comments.coid, comment.coid)));
+      if (oldStatus === 'approved' && comment.cid) {
+        countDeltaByCid.set(comment.cid, (countDeltaByCid.get(comment.cid) || 0) - 1);
+      }
+      continue;
+    }
+
+    const nextStatus = action === 'approved' ? 'approved' : action;
+    statements.push(
+      db.update(schema.comments)
+        .set({ status: nextStatus })
+        .where(eq(schema.comments.coid, comment.coid)),
+    );
+    if (comment.cid && oldStatus !== nextStatus) {
+      if (oldStatus !== 'approved' && nextStatus === 'approved') {
+        countDeltaByCid.set(comment.cid, (countDeltaByCid.get(comment.cid) || 0) + 1);
+      } else if (oldStatus === 'approved' && nextStatus !== 'approved') {
+        countDeltaByCid.set(comment.cid, (countDeltaByCid.get(comment.cid) || 0) - 1);
+      }
+    }
+  }
+
+  for (const [cid, delta] of countDeltaByCid) {
+    if (delta === 0) continue;
+    statements.push(
+      db.update(schema.contents)
+        .set({
+          commentsNum: delta > 0
+            ? sql`${schema.contents.commentsNum} + ${delta}`
+            : sql`MAX(0, ${schema.contents.commentsNum} + ${delta})`,
+        })
+        .where(eq(schema.contents.cid, cid)),
+    );
+  }
+  await db.batch(statements as [any, ...any[]]);
+
+  for (const comment of comments) {
+    const oldStatus = comment.status;
+    const newStatus = action === 'delete' ? 'deleted' : action === 'approved' ? 'approved' : action;
+    await doHook(ctx, 'comment:action', comment, { action, oldStatus, newStatus, options });
+  }
 }
 
 export async function deleteSpamCommentsForUser(

@@ -32,31 +32,35 @@ if (keywords) {
 
 const where = and(...conditions);
 
-const countResult = await db.select({ count: sql<number>`count(*)` }).from(schema.contents).where(where);
+const [countResult, attachmentRows] = await db.batch([
+  db.select({ count: sql<number>`count(*)` }).from(schema.contents).where(where),
+  db.select({
+    attachment: schema.contents,
+    authorName: sql<string | null>`(
+      SELECT ${schema.users.name} FROM ${schema.users}
+      WHERE ${schema.users.uid} = ${schema.contents.authorId}
+      LIMIT 1
+    )`,
+    authorScreenName: sql<string | null>`(
+      SELECT ${schema.users.screenName} FROM ${schema.users}
+      WHERE ${schema.users.uid} = ${schema.contents.authorId}
+      LIMIT 1
+    )`,
+    parentTitle: sql<string | null>`(
+      SELECT parent.title FROM ${schema.contents} AS parent
+      WHERE parent.cid = ${schema.contents.parent}
+      LIMIT 1
+    )`,
+  }).from(schema.contents)
+    .where(where)
+    .orderBy(desc(schema.contents.created))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize),
+]);
+const attachments = attachmentRows.map(row => row.attachment);
 const totalItems = countResult[0]?.count || 0;
 const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-
-const attachments = await db.select().from(schema.contents)
-  .where(where)
-  .orderBy(desc(schema.contents.created))
-  .limit(pageSize)
-  .offset((page - 1) * pageSize);
-
-// Get author info
-const authorIds = [...new Set(attachments.map(a => a.authorId).filter(Boolean))];
-const authors = authorIds.length > 0
-  ? await db.select().from(schema.users)
-      .where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`)
-  : [];
-const authorMap = new Map(authors.map(a => [a.uid, a]));
-
-// Get parent content titles
-const parentIds = [...new Set(attachments.map(a => a.parent).filter(Boolean))];
-const parents = parentIds.length > 0
-  ? await db.select({ cid: schema.contents.cid, title: schema.contents.title }).from(schema.contents)
-      .where(sql`${schema.contents.cid} IN (${sql.join(parentIds.map(id => sql`${id}`), sql`, `)})`)
-  : [];
-const parentMap = new Map(parents.map(p => [p.cid, p.title]));
+const relatedByCid = new Map(attachmentRows.map(row => [row.attachment.cid, row]));
 
 // Parse attachment meta
 function parseMeta(text: string) {
@@ -133,8 +137,9 @@ function formatBytes(bytes: number): string {
             ) : (
               attachments.map((att) => {
                 const meta = parseMeta(att.text || '');
-                const author = authorMap.get(att.authorId || 0);
-                const parentTitle = parentMap.get(att.parent || 0);
+                const related = relatedByCid.get(att.cid);
+                const authorName = related?.authorScreenName || related?.authorName;
+                const parentTitle = related?.parentTitle;
                 const isImage = isImageFile(meta);
                 const fileUrl = resolveFileUrl(meta);
                 return (
@@ -149,7 +154,7 @@ function formatBytes(bytes: number): string {
                       <br />
                       <span class="description">{isImage ? '图片' : '文件'} - {formatBytes(parseInt(String(meta.size || '0'), 10) || 0)}</span>
                     </td>
-                    <td class="kit-hidden-mb">{author?.screenName || author?.name || '未知'}</td>
+                    <td class="kit-hidden-mb">{authorName || '未知'}</td>
                     <td class="kit-hidden-mb">
                       {att.parent && parentTitle ? (
                         <a href={`/admin/write-post?cid=${att.parent}`}>{parentTitle}</a>

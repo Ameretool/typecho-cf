@@ -3,9 +3,9 @@ import { schema } from '@/db';
 import { type SiteOptions } from '@/lib/options';
 import { canManageResource } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { buildAuthorLink, buildCategoryLink, buildPermalink, buildTagLink, generateSlug } from '@/lib/content';
+import { generateSlug } from '@/lib/content';
 import { applyFilter, doHook } from '@/lib/plugin';
-import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
+import { bumpCacheVersion } from '@/lib/cache';
 import { jsonError, jsonOk } from '@/lib/http';
 import { eq, and, sql } from 'drizzle-orm';
 
@@ -105,66 +105,29 @@ async function resolveUniqueContentSlug(db: any, desiredSlug: string, cid: numbe
 
 async function purgeContentAndRelatedCache(
   db: any,
-  options: SiteOptions,
-  cid: number,
+  _options: SiteOptions,
+  _cid: number,
   fallbackContent?: typeof schema.contents.$inferSelect,
   /**
    * Extra category/tag URLs to purge — used when a piece of content is
    * being reassigned so the OLD categories/tags see their post lists
    * refresh alongside the new ones.
    */
-  extraUrls?: { categoryUrls?: string[]; tagUrls?: string[] },
+  _extraUrls?: { categoryUrls?: string[]; tagUrls?: string[] },
 ) {
-  const content = fallbackContent || await db.query.contents.findFirst({
-    where: eq(schema.contents.cid, cid),
-  });
+  const content = fallbackContent;
 
   // Skip cache work for drafts — they never appear on public pages, so
-  // purging index/feed/category URLs is pure waste. If we can't find
-  // the content at all we still purge the specific /archives/{cid}
-  // entry (safety net for edge cases).
+  // purging index/feed/category URLs is pure waste.
   const isDraft = content?.type?.endsWith('_draft') || content?.status === 'draft';
   if (isDraft) {
     return;
   }
 
+  // Every public cache key embeds cacheVersion. A single version bump replaces
+  // URL-by-URL purges and avoids loading relationships solely to build keys
+  // that the Cache API no longer stores.
   await bumpCacheVersion(db);
-
-  if (!content) {
-    await purgeContentCache(options.siteUrl || '', cid);
-    return;
-  }
-
-  const relatedMetas = await db
-    .select({ type: schema.metas.type, slug: schema.metas.slug })
-    .from(schema.relationships)
-    .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
-    .where(eq(schema.relationships.cid, cid));
-
-  const categories = relatedMetas.filter((m: any) => m.type === 'category' && m.slug);
-  const tags = relatedMetas.filter((m: any) => m.type === 'tag' && m.slug);
-  const contentUrl = buildPermalink(
-    {
-      cid: content.cid,
-      slug: content.slug,
-      type: content.type,
-      created: content.created,
-      category: categories[0]?.slug || null,
-    },
-    options.siteUrl || '',
-    options.permalinkPattern as string | undefined,
-    options.pagePattern as string | undefined,
-  );
-
-  const categoryUrls = categories.map((m: any) => buildCategoryLink(m.slug, options.siteUrl || '', options.categoryPattern as string | undefined));
-  const tagUrls = tags.map((m: any) => buildTagLink(m.slug, options.siteUrl || ''));
-
-  await purgeContentCache(options.siteUrl || '', cid, {
-    contentUrl,
-    categoryUrls: extraUrls?.categoryUrls ? [...categoryUrls, ...extraUrls.categoryUrls] : categoryUrls,
-    tagUrls: extraUrls?.tagUrls ? [...tagUrls, ...extraUrls.tagUrls] : tagUrls,
-    authorUrl: content.authorId ? buildAuthorLink(content.authorId, options.siteUrl || '') : null,
-  });
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -304,7 +267,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
     await doHook(pluginCtx, type === 'page' ? 'page:finishSave' : 'post:finishSave', finishData);
 
-    await purgeContentAndRelatedCache(db, options, newCid);
+    await purgeContentAndRelatedCache(db, options, newCid, finishData as typeof schema.contents.$inferSelect);
 
     const editUrl = type === 'page' ? `/admin/write-page?cid=${newCid}` : `/admin/write-post?cid=${newCid}`;
     return new Response(null, {
@@ -332,19 +295,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // category page until the cacheVersion bumps invalidate everything.
     const oldRelMetas = await db.select({
       mid: schema.relationships.mid,
-      type: schema.metas.type,
-      slug: schema.metas.slug,
     })
       .from(schema.relationships)
-      .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
       .where(eq(schema.relationships.cid, cid));
     const oldMids = oldRelMetas.map((r: any) => r.mid);
-    const oldCategoryUrls = oldRelMetas
-      .filter((m: any) => m.type === 'category' && m.slug)
-      .map((m: any) => buildCategoryLink(m.slug, options.siteUrl || '', options.categoryPattern as string | undefined));
-    const oldTagUrls = oldRelMetas
-      .filter((m: any) => m.type === 'tag' && m.slug)
-      .map((m: any) => buildTagLink(m.slug, options.siteUrl || ''));
 
     const updateStatements: any[] = [
       db.update(schema.contents).set({
@@ -392,9 +346,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       await attachTags(db, cid, tags);
     }
 
-    await purgeContentAndRelatedCache(db, options, cid, undefined, {
-      categoryUrls: oldCategoryUrls,
-      tagUrls: oldTagUrls,
+    await purgeContentAndRelatedCache(db, options, cid, {
+      ...existing,
+      type: contentType,
+      status,
     });
 
     const editUrl = type === 'page' ? `/admin/write-page?cid=${cid}` : `/admin/write-post?cid=${cid}`;

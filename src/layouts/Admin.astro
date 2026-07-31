@@ -114,7 +114,9 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
     </nav>
     <div class="operate">
       <a href={`/admin/profile`} class="author">{user?.screenName || user?.name}</a>
-      <a class="exit" href={urls.logoutUrl}>登出</a>
+      <form method="post" action={urls.logoutUrl} class="logout-form">
+        <button type="submit" class="exit">登出</button>
+      </form>
       <a href={urls.siteUrl + '/'}>网站</a>
     </div>
   </div>

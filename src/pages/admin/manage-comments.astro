@@ -39,60 +39,56 @@ if (cid) {
 
 const where = and(...conditions);
 
-const countResult = await db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(where);
+const [countResult, commentsList, approvedCount, waitingCount, spamCount] = await db.batch([
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(where),
+  // G4-4: only fetch a 500-char preview of comment.text — the table only
+  // renders the first 200 chars and full bodies make every page render
+  // pull megabytes of payload from D1 on busy sites.
+  db.select({
+    coid: schema.comments.coid,
+    cid: schema.comments.cid,
+    author: schema.comments.author,
+    authorId: schema.comments.authorId,
+    ownerId: schema.comments.ownerId,
+    mail: schema.comments.mail,
+    url: schema.comments.url,
+    ip: schema.comments.ip,
+    agent: schema.comments.agent,
+    text: sql<string>`substr(${schema.comments.text}, 1, 500)`,
+    type: schema.comments.type,
+    status: schema.comments.status,
+    parent: schema.comments.parent,
+    created: schema.comments.created,
+    contentTitle: schema.contents.title,
+  }).from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(where)
+    .orderBy(desc(schema.comments.created))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .where(eq(schema.comments.status, 'approved')),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .where(eq(schema.comments.status, 'waiting')),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .where(eq(schema.comments.status, 'spam')),
+]);
 const totalComments = countResult[0]?.count || 0;
 const totalPages = Math.max(1, Math.ceil(totalComments / pageSize));
 
-// G4-4: only fetch a 500-char preview of comment.text — the table only
-// renders the first 200 chars and full bodies make every page render
-// pull megabytes of payload from D1 on busy sites.
-const commentsList = await db.select({
-  coid: schema.comments.coid,
-  cid: schema.comments.cid,
-  author: schema.comments.author,
-  authorId: schema.comments.authorId,
-  ownerId: schema.comments.ownerId,
-  mail: schema.comments.mail,
-  url: schema.comments.url,
-  ip: schema.comments.ip,
-  agent: schema.comments.agent,
-  text: sql<string>`substr(${schema.comments.text}, 1, 500)`,
-  type: schema.comments.type,
-  status: schema.comments.status,
-  parent: schema.comments.parent,
-  created: schema.comments.created,
-}).from(schema.comments)
-  .where(where)
-  .orderBy(desc(schema.comments.created))
-  .limit(pageSize)
-  .offset((page - 1) * pageSize);
-
-// Get post titles for comments
-const commentCids = [...new Set(commentsList.map(c => c.cid).filter(Boolean))];
-const contentTitles = commentCids.length > 0
-  ? await db.select({ cid: schema.contents.cid, title: schema.contents.title })
-      .from(schema.contents)
-      .where(sql`${schema.contents.cid} IN (${sql.join(commentCids.map(id => sql`${id}`), sql`, `)})`)
-  : [];
-const titleMap = new Map(contentTitles.map(c => [c.cid, c.title]));
+const titleMap = new Map(commentsList.map(c => [c.cid, c.contentTitle]));
 
 // Pre-compute Gravatar URLs for all comments
 const avatarMap = new Map<number, string>();
-for (const c of commentsList) {
-  avatarMap.set(c.coid, await buildGravatarUrl(c.mail, {
+const avatarEntries = await Promise.all(commentsList.map(async c => [
+  c.coid,
+  await buildGravatarUrl(c.mail, {
     defaultImage: 'identicon',
     size: 40,
     rating: avatarRating,
-  }));
-}
-
-// Tab counts
-const approvedCount = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.status, 'approved'));
-const waitingCount = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.status, 'waiting'));
-const spamCount = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.status, 'spam'));
+  }),
+] as const));
+for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
 ---
 <Admin title="管理评论" options={options} urls={urls} user={user} activeMenu="manage-comments" pluginCtx={ctx}>
   <div class="col-mb-12 typecho-list">

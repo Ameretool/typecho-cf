@@ -73,6 +73,22 @@ export function createContext(locals: App.Locals, request: Request): Promise<Req
   return pending;
 }
 
+/**
+ * Start a route-specific read alongside authentication using the DB core that
+ * middleware already installed. The fallback preserves direct test/dev calls
+ * where middleware locals are unavailable.
+ */
+export async function createContextAlongside<T>(
+  locals: App.Locals,
+  request: Request,
+  load: (db: Database) => Promise<T>,
+): Promise<[RequestContext, T]> {
+  const contextPromise = createContext(locals, request);
+  const core = getRequestCoreContextFromLocals(locals);
+  const valuePromise = core ? load(core.db) : contextPromise.then(ctx => load(ctx.db));
+  return Promise.all([contextPromise, valuePromise]);
+}
+
 async function buildContext(locals: InternalLocals, request: Request): Promise<RequestContext> {
   const core = locals._typechoCore;
   const db = core?.db ?? getDb(env.DB);

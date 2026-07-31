@@ -1,7 +1,9 @@
 ---
 import { themeTemplates } from 'virtual:theme-templates';
-import { createContext } from '@/lib/context';
+import { createContextAlongside } from '@/lib/context';
 import { prepareNotFoundData, preparePageData } from '@/lib/page-data';
+import { and, eq } from 'drizzle-orm';
+import { schema } from '@/db';
 
 const { slug } = Astro.params;
 
@@ -9,7 +11,15 @@ const { slug } = Astro.params;
 const cleanSlug = slug?.replace(/\.html$/, '') || '';
 if (!cleanSlug) return Astro.redirect('/');
 
-const ctx = await createContext(Astro.locals, Astro.request);
+// Resolve auth and the page row in parallel. The middleware has already
+// installed the request-scoped DB core for normal page requests.
+const [ctx, pageRow] = await createContextAlongside(
+  Astro.locals,
+  Astro.request,
+  db => db.query.contents.findFirst({
+    where: and(eq(schema.contents.slug, cleanSlug), eq(schema.contents.type, 'page')),
+  }),
+);
 const { options } = ctx;
 
 // Select theme component
@@ -20,7 +30,7 @@ let Component = templates.Page ?? defaultTemplates.Page!;
 
 // Prepare data
 const suppliedPassword = Astro.url.searchParams.get('password');
-let result = await preparePageData(ctx, cleanSlug, Astro.request.url, suppliedPassword);
+let result = await preparePageData(ctx, cleanSlug, Astro.request.url, suppliedPassword, pageRow);
 if (result instanceof Response) {
   if (result.status !== 404) return result;
   Astro.response.status = 404;

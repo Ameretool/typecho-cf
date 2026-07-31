@@ -11,7 +11,10 @@ import { applyFilterSafely, type HookContext } from '@/lib/plugin';
 import { publishedPostCondition } from '@/lib/content-visibility';
 
 type SidebarDatabase = Pick<Database, 'batch' | 'select'>;
-const SIDEBAR_SNAPSHOT_TTL_MS = 5_000;
+// Snapshots are version-keyed, so content/options writes invalidate them by
+// changing the key. A longer TTL mainly protects logged-in/cache-bypassed page
+// views from repeatedly rebuilding identical global chrome data.
+const SIDEBAR_SNAPSHOT_TTL_MS = 60_000;
 
 export interface SidebarData {
   recentPosts: Array<{ title: string; permalink: string }>;

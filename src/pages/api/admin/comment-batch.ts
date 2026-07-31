@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
 import { isAdminActionResponse, requireAdminAction, safeAdminRedirectUrl } from '@/lib/admin-auth';
 import {
-  applyCommentAction,
+  applyCommentActions,
   deleteSpamCommentsForUser,
-  getModeratableComment,
+  getModeratableComments,
   normalizeCommentAction,
   purgeCommentModerationCache,
 } from '@/lib/comment-moderation';
@@ -38,7 +38,9 @@ async function handler({ request, locals, url }: { request: Request; locals: App
   let coids: number[] = [];
   if (request.method === 'POST') {
     const formData = await request.formData();
-    coids = formData.getAll('coid[]').map(v => parseInt(v.toString(), 10)).filter(Boolean);
+    coids = [...new Set(
+      formData.getAll('coid[]').map(v => parseInt(v.toString(), 10)).filter(Boolean),
+    )];
   }
 
   if (coids.length === 0) {
@@ -52,14 +54,9 @@ async function handler({ request, locals, url }: { request: Request; locals: App
 
   const pluginCtx = auth.pluginCtx;
 
-  for (const coid of coids) {
-    const comment = await getModeratableComment(auth.db, coid, auth.user);
-    if (comment instanceof Response) {
-      if (comment.status === 404) continue;
-      return comment;
-    }
-    await applyCommentAction(pluginCtx, auth.db, comment, normalizedAction, auth.options);
-  }
+  const comments = await getModeratableComments(auth.db, coids, auth.user);
+  if (comments instanceof Response) return comments;
+  await applyCommentActions(pluginCtx, auth.db, comments, normalizedAction, auth.options);
 
   // Comments affect post pages and feeds
   await purgeCommentModerationCache(auth.db, auth.options);

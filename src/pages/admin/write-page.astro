@@ -17,18 +17,24 @@ if (!hasPermission(ctx.user!.group || 'visitor', 'editor')) {
 const { db, options, urls, user, csrfToken } = ctx;
 const cid = Astro.url.searchParams.get('cid');
 type ContentRow = typeof schema.contents.$inferSelect;
+interface AttachmentItem { cid: number; title: string | null; url: string; size: number; isImage: boolean; }
 let page: ContentRow | null = null;
 let isEdit = false;
 let customFields: { name: string; type: string; value: string }[] = [];
+let attachments: AttachmentItem[] = [];
 
-if (cid) {
-  page = await db.query.contents.findFirst({ where: eq(schema.contents.cid, parseInt(cid, 10)) });
+const cidNum = cid ? parseInt(cid, 10) : 0;
+if (cidNum > 0) {
+  const [pageRows, fieldRows, attachmentRows] = await db.batch([
+    db.select().from(schema.contents).where(eq(schema.contents.cid, cidNum)).limit(1),
+    db.select().from(schema.fields).where(eq(schema.fields.cid, cidNum)),
+    db.select().from(schema.contents)
+      .where(and(eq(schema.contents.type, 'attachment'), eq(schema.contents.parent, cidNum)))
+      .orderBy(schema.contents.created),
+  ]);
+  page = pageRows[0] || null;
   if (page) {
     isEdit = true;
-
-    // Load custom fields
-    const fieldRows = await db.select().from(schema.fields)
-      .where(eq(schema.fields.cid, page.cid));
     customFields = fieldRows.map(f => ({
       name: f.name,
       type: f.type || 'str',
@@ -36,6 +42,17 @@ if (cid) {
            : f.type === 'float' ? String(f.float_value || 0)
            : (f.str_value || ''),
     }));
+    attachments = attachmentRows.map(row => {
+      let meta: Record<string, unknown> = {};
+      try { meta = JSON.parse(row.text || '{}'); } catch {}
+      return {
+        cid: row.cid,
+        title: row.title,
+        url: (meta.url as string) || '',
+        size: (meta.size as number) || 0,
+        isImage: ((meta.type as string) || '').startsWith('image/'),
+      };
+    });
   }
 }
 
@@ -45,26 +62,6 @@ const isMarkdown = !page || (page.text && page.text.indexOf('<!--markdown-->') >
 const previewUrl = isEdit && page ? buildPermalink(page, urls.siteUrl, options.permalinkPattern, options.pagePattern) : '';
 const writePageBottomHtml = await applyFilterSafely(ctx, 'admin:writePage:bottom', '', { options, page, user, isEdit });
 
-// Fetch existing attachments for this page
-interface AttachmentMeta { url?: string; size?: number; type?: string; }
-interface AttachmentItem { cid: number; title: string | null; url: string; size: number; isImage: boolean; }
-let attachments: AttachmentItem[] = [];
-if (isEdit && page) {
-  const rows = await db.select().from(schema.contents)
-    .where(and(eq(schema.contents.type, 'attachment'), eq(schema.contents.parent, page.cid)))
-    .orderBy(schema.contents.created);
-  attachments = rows.map(row => {
-    let meta: Record<string, unknown> = {};
-    try { meta = JSON.parse(row.text || '{}'); } catch {}
-    return {
-      cid: row.cid,
-      title: row.title,
-      url: (meta.url as string) || '',
-      size: (meta.size as number) || 0,
-      isImage: ((meta.type as string) || '').startsWith('image/'),
-    };
-  });
-}
 ---
 <Admin
   title={isEdit ? '编辑页面' : '创建新页面'}

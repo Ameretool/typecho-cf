@@ -55,81 +55,59 @@ if (category) {
 
 const where = and(...conditions);
 
-// Count
-let totalPosts: number;
-let posts: any[];
-
-if (categoryFilter) {
-  // Filter by category: get cids from relationships, then filter contents
-  const relCids = await db.select({ cid: schema.relationships.cid })
-    .from(schema.relationships)
-    .where(eq(schema.relationships.mid, categoryFilter));
-  const filterCids = relCids.map(r => r.cid);
-
-  if (filterCids.length > 0) {
-    const catCondition = sql`${schema.contents.cid} IN (${sql.join(filterCids.map(id => sql`${id}`), sql`, `)})`;
-    const countResult = await db.select({ count: sql<number>`count(*)` })
-      .from(schema.contents)
-      .where(and(where, catCondition));
-    totalPosts = countResult[0]?.count || 0;
-
-    posts = await db.select().from(schema.contents)
-      .where(and(where, catCondition))
-      .orderBy(desc(schema.contents.created))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
-  } else {
-    totalPosts = 0;
-    posts = [];
-  }
-} else {
-  const countResult = await db.select({ count: sql<number>`count(*)` })
+// A correlated EXISTS keeps category filtering in SQL and avoids first loading
+// every related cid. Independent list metadata shares the same D1 batch.
+const categoryCondition = categoryFilter
+  ? sql`EXISTS (
+      SELECT 1 FROM ${schema.relationships}
+      WHERE ${schema.relationships.cid} = ${schema.contents.cid}
+        AND ${schema.relationships.mid} = ${categoryFilter}
+    )`
+  : undefined;
+const listWhere = categoryCondition ? and(where, categoryCondition) : where;
+const [countResult, posts, allCategories, draftCount, waitingCount] = await db.batch([
+  db.select({ count: sql<number>`count(*)` })
     .from(schema.contents)
-    .where(where);
-  totalPosts = countResult[0]?.count || 0;
-
-  posts = await db.select().from(schema.contents)
-    .where(where)
+    .where(listWhere),
+  db.select().from(schema.contents)
+    .where(listWhere)
     .orderBy(desc(schema.contents.created))
     .limit(pageSize)
-    .offset((page - 1) * pageSize);
-}
+    .offset((page - 1) * pageSize),
+  db.select().from(schema.metas)
+    .where(eq(schema.metas.type, 'category'))
+    .orderBy(schema.metas.order),
+  db.select({ count: sql<number>`count(*)` }).from(schema.contents)
+    .where(and(eq(schema.contents.type, 'post_draft'), ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []))),
+  db.select({ count: sql<number>`count(*)` }).from(schema.contents)
+    .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'waiting'), ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []))),
+]);
+const totalPosts = countResult[0]?.count || 0;
 const totalPages = Math.max(1, Math.ceil(totalPosts / pageSize));
 
-// Authors
 const authorIds = [...new Set(posts.map(p => p.authorId).filter(Boolean))];
-const authors = authorIds.length > 0
-  ? await db.select().from(schema.users).where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`)
-  : [];
+const postIds = posts.map(p => p.cid);
+const safeAuthorIds = authorIds.length > 0 ? authorIds : [-1];
+const safePostIds = postIds.length > 0 ? postIds : [-1];
+const [authors, catData] = await db.batch([
+  db.select().from(schema.users)
+    .where(sql`${schema.users.uid} IN (${sql.join(safeAuthorIds.map(id => sql`${id}`), sql`, `)})`),
+  db.select({ cid: schema.relationships.cid, name: schema.metas.name, mid: schema.metas.mid })
+    .from(schema.relationships)
+    .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
+    .where(and(
+      sql`${schema.relationships.cid} IN (${sql.join(safePostIds.map(id => sql`${id}`), sql`, `)})`,
+      eq(schema.metas.type, 'category')
+    )),
+]);
 const authorMap = new Map(authors.map(a => [a.uid, a]));
 
 // Categories for posts
-const postIds = posts.map(p => p.cid);
-const catData = postIds.length > 0
-  ? await db.select({ cid: schema.relationships.cid, name: schema.metas.name, mid: schema.metas.mid })
-      .from(schema.relationships)
-      .innerJoin(schema.metas, eq(schema.relationships.mid, schema.metas.mid))
-      .where(and(
-        sql`${schema.relationships.cid} IN (${sql.join(postIds.map(id => sql`${id}`), sql`, `)})`,
-        eq(schema.metas.type, 'category')
-      ))
-  : [];
 const postCats = new Map<number, { name: string; mid: number }[]>();
 for (const row of catData) {
   if (!postCats.has(row.cid)) postCats.set(row.cid, []);
   if (row.name) postCats.get(row.cid)!.push({ name: row.name, mid: row.mid });
 }
-
-// All categories for filter
-const allCategories = await db.select().from(schema.metas)
-  .where(eq(schema.metas.type, 'category'))
-  .orderBy(schema.metas.order);
-
-// Counts for tabs
-const draftCount = await db.select({ count: sql<number>`count(*)` }).from(schema.contents)
-  .where(and(eq(schema.contents.type, 'post_draft'), ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : [])));
-const waitingCount = await db.select({ count: sql<number>`count(*)` }).from(schema.contents)
-  .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'waiting'), ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : [])));
 
 const titleActionHtml = new Map<number, string>(
   await Promise.all(posts.map(async (post) => [

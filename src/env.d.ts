@@ -10,13 +10,16 @@ declare module '*.sql?raw' {
 // In Astro 6 + @astrojs/cloudflare v13, bindings are accessed via
 // `import { env } from 'cloudflare:workers'` instead of `locals.runtime.env`
 interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
   first<T = unknown>(): Promise<T | null>;
   all<T = unknown>(): Promise<{ results: T[] }>;
+  run<T = unknown>(): Promise<T>;
 }
 
 interface D1Database {
   prepare(query: string): D1PreparedStatement;
   batch<T = unknown>(statements: D1PreparedStatement[]): Promise<T[]>;
+  withSession?(constraint?: 'first-unconstrained' | 'first-primary' | string): D1Database;
 }
 
 interface R2HTTPMetadata {

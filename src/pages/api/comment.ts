@@ -4,7 +4,7 @@ import { loadOptions } from '@/lib/options';
 import { getAuthCookies, validateAuthToken, validateCommentToken, timeSafeEqual } from '@/lib/auth';
 import { setActivatedPlugins, parseActivatedPlugins, applyFilter, doHook, type HookContext } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
-import { getClientIp } from '@/lib/context';
+import { getClientIp, getRequestCoreContextFromLocals } from '@/lib/context';
 import { notifyOnComment } from '@/lib/comment-email';
 import { buildPermalink } from '@/lib/content';
 import { normalizeHttpUrl } from '@/lib/url';
@@ -13,17 +13,24 @@ import { eq, and, sql } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const db = getDb(env.DB);
-  const options = await loadOptions(db);
+  const core = getRequestCoreContextFromLocals(locals);
+  const db = core?.db ?? getDb(env.DB);
+  const options = core?.options ?? await loadOptions(db);
 
   if (!isSameOriginRequest(request, options.siteUrl || '')) {
     return new Response('Forbidden', { status: 403 });
   }
+  const requestReferer = request.headers.get('referer');
+  if (requestReferer && !isTrustedCommentReferer(requestReferer, options.siteUrl || '')) {
+    return new Response('评论来源页 URL 不合法', { status: 403 });
+  }
 
   // Load activated plugins
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  await setActivatedPlugins(pluginCtx, activatedIds);
+  const pluginCtx: HookContext = core?.pluginCtx ?? { activatedPlugins: new Set<string>() };
+  if (!core) {
+    const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
+    await setActivatedPlugins(pluginCtx, activatedIds);
+  }
 
   const formData = await request.formData();
   const cid = parseInt(formData.get('cid')?.toString() || '0', 10);
@@ -42,10 +49,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response('评论内容过长', { status: 400 });
   }
 
-  // Check if content exists and allows comments
-  const content = await db.query.contents.findFirst({
-    where: eq(schema.contents.cid, cid),
-  });
+  // Content lookup and optional session validation are independent.
+  const cookieHeader = request.headers.get('cookie');
+  const { token } = getAuthCookies(cookieHeader);
+  const [content, authResult] = await Promise.all([
+    db.query.contents.findFirst({ where: eq(schema.contents.cid, cid) }),
+    token && options.secret
+      ? validateAuthToken(token, options.secret, db)
+      : Promise.resolve(null),
+  ]);
 
   if (!content) {
     return new Response('文章不存在', { status: 404 });
@@ -82,20 +94,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
   }
 
-  // Check auth
-  const cookieHeader = request.headers.get('cookie');
-  const { token } = getAuthCookies(cookieHeader);
   let userId = 0;
   let ownerId = content.authorId || 0;
 
-  if (token && options.secret) {
-    const result = await validateAuthToken(token, options.secret, db);
-    if (result) {
-      userId = result.uid;
-      author = result.user.screenName || result.user.name || author;
-      mail = result.user.mail || mail;
-      url = result.user.url || url;
-    }
+  if (authResult) {
+    userId = authResult.uid;
+    author = authResult.user.screenName || authResult.user.name || author;
+    mail = authResult.user.mail || mail;
+    url = authResult.user.url || url;
   }
 
   // Validate for anonymous users
@@ -133,9 +139,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // Resolve client IP once — used for anti-spam rate-limit and stored with the comment
   const ip = getClientIp(request);
 
-  // Anti-spam: check comment interval
-  if (options.commentsPostIntervalEnable && !userId) {
-    const recentComment = await db
+  // These moderation checks depend on normalized identity, but not on each
+  // other. Execute only the enabled checks and share one latency wave.
+  const [recentComment, approved, parentComment] = await Promise.all([
+    options.commentsPostIntervalEnable && !userId
+      ? db
       .select({ created: schema.comments.created })
       .from(schema.comments)
       .where(and(
@@ -143,14 +151,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
         eq(schema.comments.ip, ip)
       ))
       .orderBy(sql`${schema.comments.created} DESC`)
-      .limit(1);
+      .limit(1)
+      : Promise.resolve([]),
+    options.commentsWhitelist && !userId
+      ? db.query.comments.findFirst({
+          where: and(
+            eq(schema.comments.mail, mail),
+            eq(schema.comments.status, 'approved')
+          ),
+        })
+      : Promise.resolve(null),
+    parent > 0
+      ? db.query.comments.findFirst({
+          where: and(
+            eq(schema.comments.coid, parent),
+            eq(schema.comments.cid, cid)
+          ),
+        })
+      : Promise.resolve(null),
+  ]);
 
-    if (recentComment[0]) {
+  if (options.commentsPostIntervalEnable && !userId && recentComment[0]) {
       const elapsed = Math.floor(Date.now() / 1000) - (recentComment[0].created || 0);
       if (elapsed < (options.commentsPostInterval || 60)) {
         return new Response(`评论过于频繁，请等待 ${options.commentsPostInterval - elapsed} 秒后再试`, { status: 429 });
       }
-    }
   }
 
   // Determine comment status
@@ -159,29 +184,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     status = 'waiting';
   }
   if (options.commentsWhitelist && !userId) {
-    // Check if this commenter has been approved before
-    const approved = await db.query.comments.findFirst({
-      where: and(
-        eq(schema.comments.mail, mail),
-        eq(schema.comments.status, 'approved')
-      ),
-    });
     if (!approved) {
       status = 'waiting';
     }
   }
 
-  // Check parent comment exists
-  if (parent > 0) {
-    const parentComment = await db.query.comments.findFirst({
-      where: and(
-        eq(schema.comments.coid, parent),
-        eq(schema.comments.cid, cid)
-      ),
-    });
-    if (!parentComment) {
-      return new Response('父评论不存在', { status: 400 });
-    }
+  if (parent > 0 && !parentComment) {
+    return new Response('父评论不存在', { status: 400 });
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -242,20 +251,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response('插件返回了无效的评论状态', { status: 400 });
   }
 
-  const inserted = await db.insert(schema.comments).values(commentData as any).returning({ coid: schema.comments.coid });
+  const writeStatements: any[] = [
+    db.insert(schema.comments).values(commentData as any).returning({ coid: schema.comments.coid }),
+  ];
+  if (finalStatus === 'approved') {
+    writeStatements.push(
+      db.update(schema.contents)
+        .set({ commentsNum: sql`${schema.contents.commentsNum} + 1` })
+        .where(eq(schema.contents.cid, cid)),
+    );
+  }
+  const [inserted] = await db.batch(writeStatements as [any, ...any[]]);
   if (!inserted.length) return new Response('评论保存失败', { status: 500 });
   const newCoid = inserted[0].coid;
   commentData.coid = newCoid;
-
-  // Update comment count if approved
-  if (finalStatus === 'approved') {
-    await db
-      .update(schema.contents)
-      .set({
-        commentsNum: sql`${schema.contents.commentsNum} + 1`,
-      })
-      .where(eq(schema.contents.cid, cid));
-  }
 
   // Trigger feedback:finishComment hook — plugins can act after comment saved
   await doHook(pluginCtx, 'feedback:finishComment', commentData);
@@ -299,13 +308,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
     options.permalinkPattern as string | undefined,
     options.pagePattern as string | undefined,
   );
-  await bumpCacheVersion(db);
-  await purgeContentCache(options.siteUrl || '', cid, { contentUrl });
+  await Promise.all([
+    bumpCacheVersion(db),
+    purgeContentCache(options.siteUrl || '', cid, { contentUrl }),
+  ]);
 
   // Redirect back to the post
   // Prevent open redirect: only use referer if it's a relative path or same-origin
   let redirectUrl = `/archives/${cid}/#comments`;
-  const referer = request.headers.get('referer');
+  const referer = requestReferer;
   if (referer) {
     redirectUrl = safeCommentRedirectUrl(referer, options.siteUrl || '', request.url, redirectUrl);
   }

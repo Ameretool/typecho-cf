@@ -23,6 +23,23 @@ a {
 a:hover, a:active {
   color: #444;
 }
+.logout-form {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+.logout-form button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #3354AA;
+  font: inherit;
+  cursor: pointer;
+}
+.logout-form button:hover,
+.logout-form button:active {
+  color: #444;
+}
 pre, code {
   background: #F3F3F3;
   font-family: Menlo, Monaco, Consolas, "Lucida Console", "Courier New", monospace;

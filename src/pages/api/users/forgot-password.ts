@@ -44,16 +44,14 @@ export const POST: APIRoute = async ({ request }) => {
   if (!email) return successPage;
 
   // Per-email throttle (1 per hour)
-  const existingRequest = await db.query.passwordResetRequests.findFirst({
-    where: eq(schema.passwordResetRequests.email, email),
-  });
+  const [[existingRequest], [user]] = await db.batch([
+    db.select().from(schema.passwordResetRequests)
+      .where(eq(schema.passwordResetRequests.email, email)).limit(1),
+    db.select({ uid: schema.users.uid, mail: schema.users.mail }).from(schema.users)
+      .where(eq(schema.users.mail, email)).limit(1),
+  ]);
   const nowSec = Math.floor(Date.now() / 1000);
   if (existingRequest && nowSec - existingRequest.lastSentAt < 3600) return successPage;
-
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.mail, email),
-    columns: { uid: true, mail: true },
-  });
   if (!user) return successPage;
 
   // Store only a hash of the pending token. Requesting a reset must not

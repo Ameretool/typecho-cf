@@ -42,6 +42,7 @@ describe('typecho-plugin-turnstile', () => {
     expect(snippet.headHtml).toContain('__typechoTurnstileSubmit');
     expect(snippet.headHtml).toContain('__typechoTurnstileSetStatus');
     expect(snippet.headHtml).toContain('.typecho-turnstile-status:empty');
+    expect(snippet.headHtml).toContain('.typecho-turnstile { margin: 0 0 1em; text-align: left; }');
     expect(snippet.headHtml).toContain('message ');
     expect(snippet.bodyHtml).toContain('cf-turnstile typecho-turnstile-widget');
     expect(snippet.bodyHtml).toContain('typecho-turnstile-status');
@@ -50,6 +51,8 @@ describe('typecho-plugin-turnstile', () => {
     expect(snippet.bodyHtml).toContain('data-response-field="true"');
     expect(snippet.bodyHtml).toContain('data-response-field-name="cf-token"');
     expect(snippet.bodyHtml).toContain('cf-token');
+    expect(snippet.bodyHtml).toContain('form.insertBefore(widget, submitBlock)');
+    expect(snippet.bodyHtml).toContain('document.getElementById(formId)');
   });
 
   it('executes interaction-only widgets on submit so login cannot post without a token', () => {

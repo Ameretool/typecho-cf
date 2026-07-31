@@ -14,11 +14,11 @@ import { env } from 'cloudflare:workers';
  * a third-party page.
  */
 function isSameOriginRequest(request: Request, siteUrl: string): boolean {
-  if (!siteUrl) return true;
+  if (!siteUrl) return false;
   const expected = (() => {
     try { return new URL(siteUrl).origin; } catch { return ''; }
   })();
-  if (!expected) return true;
+  if (!expected) return false;
   const headerCheck = (raw: string | null) => {
     if (!raw) return null;
     try { return new URL(raw).origin === expected; } catch { return false; }
@@ -63,16 +63,15 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('邮箱格式不正确', { status: 400 });
   }
 
-  const existingName = await db.query.users.findFirst({
-    where: eq(schema.users.name, name),
-  });
+  const [[existingName], [existingMail]] = await db.batch([
+    db.select({ uid: schema.users.uid }).from(schema.users)
+      .where(eq(schema.users.name, name)).limit(1),
+    db.select({ uid: schema.users.uid }).from(schema.users)
+      .where(eq(schema.users.mail, mail)).limit(1),
+  ]);
   if (existingName) {
     return new Response('用户名已被使用', { status: 409 });
   }
-
-  const existingMail = await db.query.users.findFirst({
-    where: eq(schema.users.mail, mail),
-  });
   if (existingMail) {
     return new Response('邮箱已被使用', { status: 409 });
   }

@@ -265,6 +265,19 @@ describe('POST /api/admin/comment-batch', () => {
     expect(updatedPost?.commentsNum).toBe(3);
   });
 
+  it('deduplicates repeated coids before applying counter changes', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+    const comment = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'approved', [comment.coid, comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(1);
+  });
+
   it('returns 403 when contributor tries to moderate another author owner comment', async () => {
     const contributor = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE, group: 'contributor' });
     const cookie = await makeAuthCookie(testDb, contributor.uid, TEST_AUTH_CODE, TEST_SECRET);

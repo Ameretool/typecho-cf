@@ -8,6 +8,17 @@ import { clearAuthCookieHeaders } from '@/lib/auth';
  * but never modifies session state.
  */
 export const POST: APIRoute = async ({ request }) => {
+  const requestOrigin = new URL(request.url).origin;
+  const source = request.headers.get('origin') || request.headers.get('referer');
+  if (source) {
+    try {
+      if (new URL(source).origin !== requestOrigin) {
+        return new Response('Forbidden', { status: 403 });
+      }
+    } catch {
+      return new Response('Forbidden', { status: 403 });
+    }
+  }
   const cookieHeaders = clearAuthCookieHeaders(request);
   const headers = new Headers();
   headers.set('Location', '/');

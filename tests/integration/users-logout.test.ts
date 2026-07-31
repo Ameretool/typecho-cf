@@ -46,4 +46,16 @@ describe('users/logout endpoint (G1-1)', () => {
     } as any);
     expect(response.headers.get('Set-Cookie') || '').toContain('Secure');
   });
+
+  it('POST rejects a cross-origin logout form', async () => {
+    const response = await POST({
+      request: new Request('https://example.com/api/users/logout', {
+        method: 'POST',
+        headers: { Origin: 'https://evil.example' },
+      }),
+      locals: {},
+    } as any);
+    expect(response.status).toBe(403);
+    expect(response.headers.get('Set-Cookie')).toBeNull();
+  });
 });

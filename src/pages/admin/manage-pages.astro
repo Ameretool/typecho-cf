@@ -23,16 +23,23 @@ if (keywords) {
   conditions.push(sql`${schema.contents.title} LIKE ${'%' + keywords + '%'}`);
 }
 
-const pages = await db.select().from(schema.contents)
+const pageRows = await db.select({
+  content: schema.contents,
+  authorUid: schema.users.uid,
+  authorName: schema.users.name,
+  authorScreenName: schema.users.screenName,
+}).from(schema.contents)
+  .leftJoin(schema.users, eq(schema.contents.authorId, schema.users.uid))
   .where(sql.join(conditions, sql` AND `))
   .orderBy(schema.contents.order, desc(schema.contents.created));
-
-// Authors
-const authorIds = [...new Set(pages.map(p => p.authorId).filter(Boolean))];
-const authors = authorIds.length > 0
-  ? await db.select().from(schema.users).where(sql`${schema.users.uid} IN (${sql.join(authorIds.map(id => sql`${id}`), sql`, `)})`)
-  : [];
-const authorMap = new Map(authors.map(a => [a.uid, a]));
+const pages = pageRows.map(row => row.content);
+const authorMap = new Map(pageRows
+  .filter(row => row.authorUid !== null)
+  .map(row => [row.authorUid!, {
+    uid: row.authorUid!,
+    name: row.authorName,
+    screenName: row.authorScreenName,
+  }]));
 ---
 <Admin title="管理页面" options={options} urls={urls} user={user} activeMenu="manage-pages" pluginCtx={ctx}>
   <div class="col-mb-12 typecho-list">

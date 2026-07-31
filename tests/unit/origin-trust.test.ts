@@ -82,9 +82,8 @@ describe('isSameOriginRequest()', () => {
     expect(isSameOriginRequest(req({ origin: 'https://blog.example.com.evil.com' }), SITE)).toBe(false);
   });
 
-  it('falls back to permissive when siteUrl is unconfigured', () => {
-    // Empty siteUrl signals fresh-install / test fixtures.
-    expect(isSameOriginRequest(req({}), '')).toBe(true);
-    expect(isSameOriginRequest(req({ origin: 'https://anywhere.example' }), '')).toBe(true);
+  it('fails closed when siteUrl is unconfigured', () => {
+    expect(isSameOriginRequest(req({}), '')).toBe(false);
+    expect(isSameOriginRequest(req({ origin: 'https://anywhere.example' }), '')).toBe(false);
   });
 });

@@ -55,15 +55,17 @@ try {
   }
 } catch {}
 
-// Get author
-const author = attachment.authorId
-  ? await db.query.users.findFirst({ where: eq(schema.users.uid, attachment.authorId) })
-  : null;
-
-// Get parent content
-const parentContent = attachment.parent
-  ? await db.query.contents.findFirst({ where: eq(schema.contents.cid, attachment.parent) })
-  : null;
+// Author and parent are independent once the attachment has been resolved.
+const [authorRows, parentRows] = await db.batch([
+  db.select().from(schema.users)
+    .where(eq(schema.users.uid, attachment.authorId || -1))
+    .limit(1),
+  db.select().from(schema.contents)
+    .where(eq(schema.contents.cid, attachment.parent || -1))
+    .limit(1),
+]);
+const author = authorRows[0] ?? null;
+const parentContent = parentRows[0] ?? null;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';

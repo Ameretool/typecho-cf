@@ -1,24 +1,26 @@
 ---
 import { themeTemplates } from 'virtual:theme-templates';
-import { createContext } from '@/lib/context';
+import { createContextAlongside } from '@/lib/context';
 import { prepareNotFoundData, preparePageData, preparePostData } from '@/lib/page-data';
 import { buildPermalink, getRedirectPathIfDifferent } from '@/lib/content';
+import { eq } from 'drizzle-orm';
+import { schema } from '@/db';
 
 const { cid } = Astro.params;
 const cidNum = parseInt(cid || '0', 10);
 if (!cidNum) return Astro.redirect('/');
 
-const ctx = await createContext(Astro.locals, Astro.request);
+// Authentication and the content lookup are independent D1 reads. Start both
+// immediately so logged-in page views do not pay two inter-region round trips.
+const [ctx, contentRow] = await createContextAlongside(
+  Astro.locals,
+  Astro.request,
+  db => db.query.contents.findFirst({ where: eq(schema.contents.cid, cidNum) }),
+);
 
 // If it's a page, the data layer will handle the redirect via contentRow.type check
 // But we still need to handle the page redirect at the route level
-const { db, options } = ctx;
-import { eq } from 'drizzle-orm';
-import { schema } from '@/db';
-
-const contentRow = await db.query.contents.findFirst({
-  where: eq(schema.contents.cid, cidNum),
-});
+const { options } = ctx;
 
 const suppliedPassword = Astro.url.searchParams.get('password');
 let result;

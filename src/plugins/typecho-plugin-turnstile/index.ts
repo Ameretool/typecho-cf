@@ -137,7 +137,7 @@ function buildSnippet(options: Record<string, unknown> | undefined, formId: stri
   };
 })();
 </script><style>
-.typecho-turnstile { margin: 0 0 1em; text-align: center; }
+.typecho-turnstile { margin: 0 0 1em; text-align: left; }
 .typecho-turnstile-widget { display: inline-block; min-height: 65px; }
 .typecho-turnstile-status:empty { display: none; }
 .typecho-turnstile-status { margin: 6px 0 0; text-align: left; }
@@ -173,16 +173,41 @@ function buildSnippet(options: Record<string, unknown> | undefined, formId: stri
 <p id="${statusIdAttr}" class="typecho-turnstile-status" aria-live="polite"></p>
 </div>`;
 
+  // archive:footer is rendered just before </body>. Move the comment widget
+  // into the form so it stays next to the action it protects instead of
+  // appearing at the bottom of the whole page.
+  const placementHtml = formId === 'comment-form' ? `<script is:inline>
+(function() {
+  var formId = ${targetFormId};
+  var containerId = ${JSON.stringify(containerIdValue)};
+  function placeWidget() {
+    var form = document.getElementById(formId);
+    var container = document.getElementById(containerId);
+    if (!form || !container) return;
+    var widget = container.closest('.typecho-turnstile');
+    var submit = form.querySelector('[type="submit"]');
+    if (!widget || !submit || widget.parentNode === form) return;
+    var submitBlock = submit.closest('p') || submit;
+    form.insertBefore(widget, submitBlock);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", placeWidget);
+  } else {
+    placeWidget();
+  }
+})();
+</script>` : '';
+
   if (!onDemand) {
     return {
       headHtml,
-      bodyHtml: widgetHtml,
+      bodyHtml: widgetHtml + placementHtml,
     };
   }
 
   return {
     headHtml,
-    bodyHtml: `${widgetHtml}<script is:inline>
+    bodyHtml: `${widgetHtml}${placementHtml}<script is:inline>
 (function() {
   var inputName = ${input};
   var containerId = ${JSON.stringify(containerIdValue)};

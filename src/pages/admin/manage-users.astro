@@ -26,27 +26,25 @@ if (keywords) {
 
 const where = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
 
-const countResult = await db.select({ count: sql<number>`count(*)` }).from(schema.users).where(where);
+const [countResult, userRows] = await db.batch([
+  db.select({ count: sql<number>`count(*)` }).from(schema.users).where(where),
+  db.select({
+    user: schema.users,
+    postCount: sql<number>`(
+      SELECT count(*) FROM ${schema.contents}
+      WHERE ${schema.contents.authorId} = ${schema.users.uid}
+        AND ${schema.contents.type} = 'post'
+    )`,
+  }).from(schema.users)
+    .where(where)
+    .orderBy(desc(schema.users.uid))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize),
+]);
+const users = userRows.map(row => row.user);
 const totalUsers = countResult[0]?.count || 0;
 const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
-
-const users = await db.select().from(schema.users)
-  .where(where)
-  .orderBy(desc(schema.users.uid))
-  .limit(pageSize)
-  .offset((page - 1) * pageSize);
-
-// Get post counts per user
-const userIds = users.map(u => u.uid);
-const postCounts = userIds.length > 0
-  ? await db.select({
-      authorId: schema.contents.authorId,
-      count: sql<number>`count(*)`
-    }).from(schema.contents)
-      .where(sql`${schema.contents.authorId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)}) AND ${schema.contents.type} = 'post'`)
-      .groupBy(schema.contents.authorId)
-  : [];
-const postCountMap = new Map(postCounts.map(p => [p.authorId, p.count]));
+const postCountMap = new Map(userRows.map(row => [row.user.uid, row.postCount]));
 
 const groupNames: Record<string, string> = {
   administrator: '管理员',

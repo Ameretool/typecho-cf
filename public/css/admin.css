@@ -186,6 +186,10 @@ select { border: 1px solid #CCC; height: 28px; }
 
 .typecho-head-nav .operate a:hover { background-color: #202328; }
 
+.typecho-head-nav .operate .logout-form { display: inline-block; margin: 0; padding: 0; }
+.typecho-head-nav .operate .logout-form button { display: inline-block; margin-left: -1px; padding: 0 10px; border: 1px solid #383D45; border-width: 0 1px; background: transparent; color: #AAA; font: inherit; line-height: 36px; cursor: pointer; }
+.typecho-head-nav .operate .logout-form button:hover { background-color: #202328; color: #FFF; }
+
 @media (max-width: 575px) { @keyframes out { from { left: 0%; }
     to { left: -100%; } }
   @keyframes in { from { left: -100%; }

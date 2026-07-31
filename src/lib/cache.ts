@@ -27,7 +27,7 @@ function optionsCacheKey(version: string | number): Request {
 // on PoP-A takes at most this long to be seen on PoP-B. In exchange we
 // avoid a D1 read on every loadOptions() call — worth the small
 // staleness for read-heavy endpoints.
-const CACHE_VERSION_MEMO_TTL_MS = 5_000;
+const CACHE_VERSION_MEMO_TTL_MS = 60_000;
 let cachedVersion: string | null = null;
 let cachedVersionAt = 0;
 

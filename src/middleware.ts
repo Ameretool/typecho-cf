@@ -8,9 +8,7 @@ import { applySecurityHeaders } from '@/lib/security-headers';
 import { setRequestCoreContext } from '@/lib/context';
 import { compilePermalinkPattern } from '@/lib/permalink-pattern';
 import {
-  ensureTablesReady,
-  ensurePasswordResetSchema,
-  ensureIndexes,
+  ensureDatabaseReady,
   TablesMissingError,
 } from '@/lib/isolate-boot';
 import { eq, and } from 'drizzle-orm';
@@ -46,6 +44,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     path.startsWith('/themes/') ||
     path.startsWith('/vendor/') ||
     path.startsWith('/plugin-assets/') ||
+    path.startsWith('/usr/uploads/') ||
     path === '/install' ||
     path === '/api/install'
   ) {
@@ -73,8 +72,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const d1 = env.DB;
 
   try {
-    await ensureTablesReady(d1);
-    await ensurePasswordResetSchema(d1);
+    await ensureDatabaseReady(d1);
   } catch (err) {
     if (err instanceof TablesMissingError) {
       return redirectToInstall(context.request);
@@ -84,8 +82,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     console.error('[middleware] ensureTablesReady failed:', err);
     return applySecurityHeaders(new Response('Service unavailable', { status: 500 }), { request: context.request });
   }
-
-  ensureIndexes(d1, context.locals.cfContext);
 
   const db = getDb(d1);
 

@@ -15,8 +15,12 @@ let testDb: TestDatabase;
 // anything except middleware's table-existence check.
 function createD1Stub(db: TestDatabase) {
   return {
-    prepare: (_sql: string) => ({
-      first: () => Promise.resolve({ name: 'typecho_options' } as any),
+    prepare: (sql: string) => ({
+      first: () => Promise.resolve(
+        sql.includes('runtimeSchemaVersion')
+          ? { runtimeSchemaVersion: '20260730' }
+          : { name: 'typecho_options' } as any,
+      ),
       all: () => Promise.resolve({
         results: [
           { name: 'email' },
@@ -26,6 +30,7 @@ function createD1Stub(db: TestDatabase) {
           { name: 'expiresAt' },
         ],
       }),
+      run: () => Promise.resolve({}),
       bind: (): any => ({}),
     }),
     batch: (_stmts: any[]) => Promise.resolve([]),
@@ -68,6 +73,7 @@ const routes: TestCase[] = [
   { method: 'GET', path: '/vendor/jquery.js', expectStatus: 200 },
   { method: 'GET', path: '/js/test.js', expectStatus: 200 },
   { method: 'GET', path: '/plugin-assets/x/y.js', expectStatus: 200 },
+  { method: 'GET', path: '/usr/uploads/2026/07/image.jpg', expectStatus: 200 },
 
   // Public pages
   { method: 'GET', path: '/', expectStatus: 200 },
@@ -143,6 +149,33 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     expect(putSpy).toHaveBeenCalledOnce();
     expect(waitUntil).toHaveBeenCalledWith(putSpy.mock.results[0].value);
     putSpy.mockRestore();
+  });
+
+  it('bypasses all D1 bootstrap work for public uploads', async () => {
+    resetIsolateBoot();
+    d1Stub = {
+      prepare: vi.fn(() => {
+        throw new Error('uploads must not touch D1');
+      }),
+      batch: vi.fn(() => {
+        throw new Error('uploads must not touch D1');
+      }),
+    } as any;
+
+    const request = new Request(`${SITE}/usr/uploads/2026/07/image.jpg`);
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: {},
+    } as any;
+    const response = await onRequest(
+      ctx,
+      async () => new Response('image', { status: 200 }),
+    ) as Response;
+
+    expect(response.status).toBe(200);
+    expect(d1Stub.prepare).not.toHaveBeenCalled();
+    expect(d1Stub.batch).not.toHaveBeenCalled();
   });
 
   // ── Error handling: specific error types ──

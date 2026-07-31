@@ -25,6 +25,7 @@ const AUTH_CODE = 'authcodeprof';
 beforeEach(async () => {
   testDb = await createTestDb();
   await seedAdmin(testDb, { secret: SECRET, authCode: AUTH_CODE });
+  await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: 'https://example.com' });
 });
 
 afterEach(async () => {
@@ -35,7 +36,7 @@ describe('POST /api/admin/profile', () => {
   it('returns 401 without auth cookie', async () => {
     const formData = new URLSearchParams({ screenName: 'Test', mail: 'test@example.com' });
     const req = new Request('https://example.com/api/admin/profile', {
-      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -47,7 +48,7 @@ describe('POST /api/admin/profile', () => {
     const formData = new URLSearchParams({ screenName: 'New Name' });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -59,7 +60,7 @@ describe('POST /api/admin/profile', () => {
     const formData = new URLSearchParams({ mail: 'not-an-email' });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -74,7 +75,7 @@ describe('POST /api/admin/profile', () => {
     });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -94,7 +95,7 @@ describe('POST /api/admin/profile', () => {
     });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -114,7 +115,7 @@ describe('POST /api/admin/profile', () => {
     });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -130,7 +131,7 @@ describe('POST /api/admin/profile', () => {
     });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -145,7 +146,7 @@ describe('POST /api/admin/profile', () => {
     });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);
@@ -163,7 +164,7 @@ describe('POST /api/admin/profile', () => {
     });
     const req = new Request('https://example.com/api/admin/profile', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
       body: formData.toString(),
     });
     const res = await POST({ request: req, locals: {} } as any);

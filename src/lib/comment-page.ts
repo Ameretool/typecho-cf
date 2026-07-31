@@ -22,6 +22,7 @@ export interface CommentPage {
 }
 
 const COMMENT_PAGE_SIZE_MAX = 100;
+const COMMENT_UNPAGED_MAX = 200;
 
 function pageUrl(requestUrl: string, page: number): string {
   const url = new URL(requestUrl);
@@ -76,7 +77,7 @@ export async function loadCommentPage(
   options: SiteOptions,
   requestUrl: string,
 ): Promise<CommentPage> {
-  const enabled = !!options.commentsPageBreak;
+  let enabled = !!options.commentsPageBreak;
   const threaded = !!options.commentsThreaded;
   const pageSize = Math.min(
     COMMENT_PAGE_SIZE_MAX,
@@ -109,23 +110,37 @@ export async function loadCommentPage(
   );
 
   if (!enabled) {
-    const rows = await db
-      .select()
-      .from(schema.comments)
-      .where(approvedForContent)
-      .orderBy(orderExpression);
-    return {
-      rows,
-      pagination: buildPagination(
-        requestUrl,
-        false,
-        null,
-        display,
-        pageSize,
-        rows.length,
-        rows.length,
-      ),
-    };
+    // Probe the total with the same round trip as the bounded row fetch. Small
+    // unpaged comment sets retain the legacy response shape; larger sets are
+    // transparently promoted to paged mode instead of materialising everything.
+    const [countResult, rows] = await db.batch([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.comments)
+        .where(approvedForContent),
+      db
+        .select()
+        .from(schema.comments)
+        .where(approvedForContent)
+        .orderBy(orderExpression)
+        .limit(COMMENT_UNPAGED_MAX),
+    ]);
+    const totalComments = Number(countResult[0]?.count || 0);
+    if (totalComments <= COMMENT_UNPAGED_MAX) {
+      return {
+        rows,
+        pagination: buildPagination(
+          requestUrl,
+          false,
+          null,
+          display,
+          pageSize,
+          totalComments,
+          totalComments,
+        ),
+      };
+    }
+    enabled = true;
   }
 
   const countStatements = [

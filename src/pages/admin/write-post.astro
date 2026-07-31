@@ -17,32 +17,39 @@ const isEditor = hasPermission(user!.group || 'visitor', 'editor');
 // Check if editing existing post
 const cid = Astro.url.searchParams.get('cid');
 type ContentRow = typeof schema.contents.$inferSelect;
+type MetaRow = typeof schema.metas.$inferSelect;
+interface PostAttachmentItem { cid: number; title: string | null; url: string; size: number; isImage: boolean; }
 let post: ContentRow | null = null;
 let isEdit = false;
 let postCategories: number[] = [];
 let postTags: string[] = [];
 let customFields: { name: string; type: string; value: string }[] = [];
+let categories: MetaRow[] = [];
+let attachments: PostAttachmentItem[] = [];
 
-if (cid) {
-  post = await db.query.contents.findFirst({
-    where: eq(schema.contents.cid, parseInt(cid, 10)),
-  });
+const cidNum = cid ? parseInt(cid, 10) : 0;
+if (cidNum > 0) {
+  const [postRows, rels, tagRows, fieldRows, categoryRows, attachmentRows] = await db.batch([
+    db.select().from(schema.contents).where(eq(schema.contents.cid, cidNum)).limit(1),
+    db.select({ mid: schema.relationships.mid }).from(schema.relationships)
+      .where(eq(schema.relationships.cid, cidNum)),
+    db.select({ name: schema.metas.name }).from(schema.metas)
+      .innerJoin(schema.relationships, eq(schema.metas.mid, schema.relationships.mid))
+      .where(and(eq(schema.relationships.cid, cidNum), eq(schema.metas.type, 'tag'))),
+    db.select().from(schema.fields).where(eq(schema.fields.cid, cidNum)),
+    db.select().from(schema.metas)
+      .where(eq(schema.metas.type, 'category'))
+      .orderBy(schema.metas.order),
+    db.select().from(schema.contents)
+      .where(and(eq(schema.contents.type, 'attachment'), eq(schema.contents.parent, cidNum)))
+      .orderBy(schema.contents.created),
+  ]);
+  post = postRows[0] || null;
+  categories = categoryRows;
   if (post) {
     isEdit = true;
-    const rels = await db.select({ mid: schema.relationships.mid })
-      .from(schema.relationships)
-      .where(eq(schema.relationships.cid, post.cid));
     postCategories = rels.map(r => r.mid);
-
-    const tagRows = await db.select({ name: schema.metas.name })
-      .from(schema.metas)
-      .innerJoin(schema.relationships, eq(schema.metas.mid, schema.relationships.mid))
-      .where(and(eq(schema.relationships.cid, post.cid), eq(schema.metas.type, 'tag')));
     postTags = tagRows.map(t => t.name || '');
-
-    // Load custom fields
-    const fieldRows = await db.select().from(schema.fields)
-      .where(eq(schema.fields.cid, post.cid));
     customFields = fieldRows.map(f => ({
       name: f.name,
       type: f.type || 'str',
@@ -50,13 +57,23 @@ if (cid) {
            : f.type === 'float' ? String(f.float_value || 0)
            : (f.str_value || ''),
     }));
+    attachments = attachmentRows.map(row => {
+      let meta: Record<string, unknown> = {};
+      try { meta = JSON.parse(row.text || '{}'); } catch {}
+      return {
+        cid: row.cid,
+        title: row.title,
+        url: (meta.url as string) || '',
+        size: (meta.size as number) || 0,
+        isImage: ((meta.type as string) || '').startsWith('image/'),
+      };
+    });
   }
+} else {
+  categories = await db.select().from(schema.metas)
+    .where(eq(schema.metas.type, 'category'))
+    .orderBy(schema.metas.order);
 }
-
-// Fetch all categories
-const categories = await db.select().from(schema.metas)
-  .where(eq(schema.metas.type, 'category'))
-  .orderBy(schema.metas.order);
 
 const isMarkdown = !post || (post.text && post.text.indexOf('<!--markdown-->') >= 0);
 
@@ -64,26 +81,6 @@ const isMarkdown = !post || (post.text && post.text.indexOf('<!--markdown-->') >
 const previewUrl = isEdit && post ? buildPermalink(post, urls.siteUrl, options.permalinkPattern) : '';
 const writePostBottomHtml = await applyFilterSafely(ctx, 'admin:writePost:bottom', '', { options, post, user, isEdit });
 
-// Fetch existing attachments for this post
-interface PostAttachmentMeta { url?: string; size?: number; type?: string; }
-interface PostAttachmentItem { cid: number; title: string | null; url: string; size: number; isImage: boolean; }
-let attachments: PostAttachmentItem[] = [];
-if (isEdit && post) {
-  const rows = await db.select().from(schema.contents)
-    .where(and(eq(schema.contents.type, 'attachment'), eq(schema.contents.parent, post.cid)))
-    .orderBy(schema.contents.created);
-  attachments = rows.map(row => {
-    let meta: Record<string, unknown> = {};
-    try { meta = JSON.parse(row.text || '{}'); } catch {}
-    return {
-      cid: row.cid,
-      title: row.title,
-      url: (meta.url as string) || '',
-      size: (meta.size as number) || 0,
-      isImage: ((meta.type as string) || '').startsWith('image/'),
-    };
-  });
-}
 ---
 <Admin
   title={isEdit ? '编辑文章' : '撰写新文章'}

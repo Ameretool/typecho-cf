@@ -11,17 +11,19 @@ if (authCheck) return authCheck;
 
 const { db, options, urls, user, csrfToken } = ctx;
 
-// Stats
-const postCount = await db.select({ count: sql<number>`count(*)` }).from(schema.contents)
-  .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), eq(schema.contents.authorId, user!.uid)));
-
-const commentCount = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.ownerId, user!.uid));
-
-const catCount = await db.select({ count: sql<number>`count(*)` }).from(schema.metas)
-  .where(eq(schema.metas.type, 'category'));
-
-const gravatarUrl = await buildGravatarUrl(user!.mail, { size: 220, defaultImage: 'mp' });
+// Stats share one D1 round trip; Gravatar hashing is independent CPU work.
+const [stats, gravatarUrl] = await Promise.all([
+  db.batch([
+    db.select({ count: sql<number>`count(*)` }).from(schema.contents)
+      .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), eq(schema.contents.authorId, user!.uid))),
+    db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+      .where(eq(schema.comments.ownerId, user!.uid)),
+    db.select({ count: sql<number>`count(*)` }).from(schema.metas)
+      .where(eq(schema.metas.type, 'category')),
+  ]),
+  buildGravatarUrl(user!.mail, { size: 220, defaultImage: 'mp' }),
+]);
+const [postCount, commentCount, catCount] = stats;
 ---
 <Admin title="个人设置" options={options} urls={urls} user={user} activeMenu="profile" pluginCtx={ctx}>
   <div class="col-mb-12 col-tb-3">

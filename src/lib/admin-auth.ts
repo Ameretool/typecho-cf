@@ -35,10 +35,18 @@ interface RequireAdminActionOptions {
  * fall back to permissive — there is no trust anchor to compare against.
  */
 export function isSameOriginRequest(request: Request, siteUrl: string): boolean {
-  if (!siteUrl) return true;
+  if (!siteUrl) {
+    const source = request.headers.get('origin') || request.headers.get('referer');
+    if (!source) return false;
+    try {
+      return new URL(source).origin === new URL(request.url).origin;
+    } catch {
+      return false;
+    }
+  }
   let expected = '';
-  try { expected = new URL(siteUrl).origin; } catch { return true; }
-  if (!expected) return true;
+  try { expected = new URL(siteUrl).origin; } catch { return false; }
+  if (!expected) return false;
 
   const headerCheck = (raw: string | null): boolean | null => {
     if (!raw) return null;

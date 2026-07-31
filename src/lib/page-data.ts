@@ -29,6 +29,8 @@ import type {
 
 type ContentRow = typeof schema.contents.$inferSelect;
 type CommentRow = typeof schema.comments.$inferSelect;
+type MetaRow = typeof schema.metas.$inferSelect;
+type UserRow = typeof schema.users.$inferSelect;
 type CategoryEntry = { name: string; slug: string; permalink: string };
 type CategoryMap = Map<number, CategoryEntry[]>;
 type AuthorEntry = { uid: number; name: string | null; screenName: string | null };
@@ -568,10 +570,13 @@ export async function prepareCategoryData(
   requestUrl: string,
   locals: Record<string, unknown>,
   url: URL,
+  preloadedCategory?: MetaRow | null,
 ): Promise<ThemeArchiveProps | Response> {
-  const category = await ctx.db.query.metas.findFirst({
-    where: and(eq(schema.metas.slug, slug), eq(schema.metas.type, 'category')),
-  });
+  const category = preloadedCategory === undefined
+    ? await ctx.db.query.metas.findFirst({
+        where: and(eq(schema.metas.slug, slug), eq(schema.metas.type, 'category')),
+      })
+    : preloadedCategory;
   if (!category) return new Response('Not Found', { status: 404 });
 
   return prepareArchiveData(ctx, requestUrl, locals, url, {
@@ -588,10 +593,13 @@ export async function prepareTagData(
   requestUrl: string,
   locals: Record<string, unknown>,
   url: URL,
+  preloadedTag?: MetaRow | null,
 ): Promise<ThemeArchiveProps | Response> {
-  const tag = await ctx.db.query.metas.findFirst({
-    where: and(eq(schema.metas.slug, slug), eq(schema.metas.type, 'tag')),
-  });
+  const tag = preloadedTag === undefined
+    ? await ctx.db.query.metas.findFirst({
+        where: and(eq(schema.metas.slug, slug), eq(schema.metas.type, 'tag')),
+      })
+    : preloadedTag;
   if (!tag) return new Response('Not Found', { status: 404 });
 
   return prepareArchiveData(ctx, requestUrl, locals, url, {
@@ -608,10 +616,11 @@ export async function prepareAuthorData(
   requestUrl: string,
   locals: Record<string, unknown>,
   url: URL,
+  preloadedAuthor?: UserRow | null,
 ): Promise<ThemeArchiveProps | Response> {
-  const author = await ctx.db.query.users.findFirst({
-    where: eq(schema.users.uid, uidNum),
-  });
+  const author = preloadedAuthor === undefined
+    ? await ctx.db.query.users.findFirst({ where: eq(schema.users.uid, uidNum) })
+    : preloadedAuthor;
   if (!author) return new Response('Not Found', { status: 404 });
 
   const authorMap: AuthorMap = new Map([[author.uid, author]]);

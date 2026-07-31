@@ -13,33 +13,36 @@ if (authCheck) return authCheck;
 const { db, options, urls, user } = ctx;
 const uid = user!.uid;
 
-// Stats
-const postCount = await db.select({ count: sql<number>`count(*)` }).from(schema.contents)
-  .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), eq(schema.contents.authorId, uid)));
-
-const commentCount = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.ownerId, uid));
-
-const catCount = await db.select({ count: sql<number>`count(*)` }).from(schema.metas)
-  .where(eq(schema.metas.type, 'category'));
-
-const waitingComments = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.status, 'waiting'));
-
-const spamComments = await db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-  .where(eq(schema.comments.status, 'spam'));
-
-// Recent posts
-const recentPosts = await db.select().from(schema.contents)
-  .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish')))
-  .orderBy(desc(schema.contents.created))
-  .limit(10);
-
-// Recent comments
-const recentComments = await db.select().from(schema.comments)
-  .where(eq(schema.comments.status, 'approved'))
-  .orderBy(desc(schema.comments.created))
-  .limit(10);
+// All dashboard cards are independent; one D1 batch avoids seven
+// inter-region round-trips on every admin landing-page request.
+const [
+  postCount,
+  commentCount,
+  catCount,
+  waitingComments,
+  spamComments,
+  recentPosts,
+  recentComments,
+] = await db.batch([
+  db.select({ count: sql<number>`count(*)` }).from(schema.contents)
+    .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), eq(schema.contents.authorId, uid))),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .where(eq(schema.comments.ownerId, uid)),
+  db.select({ count: sql<number>`count(*)` }).from(schema.metas)
+    .where(eq(schema.metas.type, 'category')),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .where(eq(schema.comments.status, 'waiting')),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .where(eq(schema.comments.status, 'spam')),
+  db.select().from(schema.contents)
+    .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish')))
+    .orderBy(desc(schema.contents.created))
+    .limit(10),
+  db.select().from(schema.comments)
+    .where(eq(schema.comments.status, 'approved'))
+    .orderBy(desc(schema.comments.created))
+    .limit(10),
+]);
 
 const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
 const isContributor = hasPermission(user!.group || 'visitor', 'contributor');

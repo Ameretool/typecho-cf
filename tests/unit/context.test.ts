@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createContext,
+  createContextAlongside,
   getClientIp,
   setRequestCoreContext,
 } from '@/lib/context';
@@ -86,5 +87,28 @@ describe('request context reuse', () => {
     expect(first.db).toBe(db);
     expect(first.options).toBe(options);
     expect(first.activatedPlugins).toBe(pluginCtx.activatedPlugins);
+  });
+
+  it('starts a route read immediately from the middleware DB core', async () => {
+    const locals = {} as App.Locals;
+    const db = { marker: 'shared-db' } as any;
+    const options = { siteUrl: 'https://example.com', secret: '', activatedPlugins: '[]' } as any;
+    setRequestCoreContext(locals, {
+      db,
+      options,
+      pluginCtx: { activatedPlugins: new Set<string>() },
+    });
+
+    let started = false;
+    const pending = createContextAlongside(locals, makeRequest({}), async receivedDb => {
+      started = true;
+      expect(receivedDb).toBe(db);
+      return 'loaded';
+    });
+
+    expect(started).toBe(true);
+    const [ctx, value] = await pending;
+    expect(ctx.db).toBe(db);
+    expect(value).toBe('loaded');
   });
 });

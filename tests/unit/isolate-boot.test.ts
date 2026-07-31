@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   resetIsolateBoot,
+  ensureDatabaseReady,
   ensureTablesReady,
   ensurePasswordResetSchema,
   ensureIndexes,
@@ -39,6 +40,12 @@ describe('ensureTablesReady', () => {
     expect(d1.prepare).toHaveBeenCalledTimes(1);
   });
 
+  it('coalesces concurrent checks into one D1 request', async () => {
+    const d1 = mockD1(true);
+    await Promise.all([ensureTablesReady(d1), ensureTablesReady(d1)]);
+    expect(d1.prepare).toHaveBeenCalledTimes(1);
+  });
+
   it('throws TablesMissingError when table absent', async () => {
     const d1 = mockD1(false);
     await expect(ensureTablesReady(d1)).rejects.toThrow(TablesMissingError);
@@ -62,6 +69,81 @@ describe('ensureTablesReady', () => {
     resetIsolateBoot();
     const d1b = mockD1(false);
     await expect(ensureTablesReady(d1b)).rejects.toThrow(TablesMissingError);
+  });
+});
+
+describe('ensureDatabaseReady', () => {
+  it('uses the persistent schema version fast path on a cold isolate', async () => {
+    const first = vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260730' });
+    const d1 = {
+      prepare: vi.fn().mockReturnValue({ first }),
+      batch: vi.fn(),
+    } as unknown as D1Database;
+
+    await ensureDatabaseReady(d1);
+
+    expect(d1.prepare).toHaveBeenCalledOnce();
+    expect(d1.batch).not.toHaveBeenCalled();
+  });
+
+  it('creates the login failure table for an older installation', async () => {
+    const createRun = vi.fn().mockResolvedValue({});
+    const prepare = vi.fn((sql: string) => {
+      if (sql.startsWith('SELECT (SELECT value')) {
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260730', loginFailuresExists: 0 }) };
+      }
+      return { run: createRun };
+    });
+    const d1 = { prepare, batch: vi.fn() } as unknown as D1Database;
+
+    await ensureDatabaseReady(d1);
+
+    expect(createRun).toHaveBeenCalledOnce();
+    expect(prepare.mock.calls[1][0]).toContain('CREATE TABLE IF NOT EXISTS typecho_login_failures');
+  });
+
+  it('coalesces concurrent cold-isolate initialization', async () => {
+    let release!: (value: { user_version: number }) => void;
+    const first = vi.fn(() => new Promise(resolve => { release = resolve; }));
+    const d1 = {
+      prepare: vi.fn().mockReturnValue({ first }),
+      batch: vi.fn(),
+    } as unknown as D1Database;
+
+    const a = ensureDatabaseReady(d1);
+    const b = ensureDatabaseReady(d1);
+    release({ runtimeSchemaVersion: '20260730' } as any);
+    await Promise.all([a, b]);
+
+    expect(d1.prepare).toHaveBeenCalledOnce();
+  });
+
+  it('upgrades a stale marker and persists the current schema version', async () => {
+    const markerRun = vi.fn().mockResolvedValue({});
+    const prepare = vi.fn((sql: string) => {
+      if (sql.startsWith('SELECT (SELECT value')) {
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      }
+      if (sql.includes("name IN ('typecho_password_reset_requests'")) {
+        return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
+      }
+      if (sql.startsWith('PRAGMA table_info')) {
+        return { all: vi.fn().mockResolvedValue({
+          results: ['email', 'lastSentAt', 'uid', 'tokenHash', 'expiresAt'].map(name => ({ name })),
+        }) };
+      }
+      if (sql.startsWith('INSERT INTO typecho_options')) {
+        return { bind: vi.fn(() => ({ run: markerRun })) };
+      }
+      return { sql };
+    });
+    const batch = vi.fn().mockResolvedValue([]);
+    const d1 = { prepare, batch } as unknown as D1Database;
+
+    await ensureDatabaseReady(d1);
+
+    expect(batch).toHaveBeenCalledOnce();
+    expect(markerRun).toHaveBeenCalledOnce();
   });
 });
 

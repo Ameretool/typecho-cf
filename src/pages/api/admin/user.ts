@@ -6,13 +6,6 @@ import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { normalizeHttpUrl } from '@/lib/url';
 import { and, eq, ne, sql } from 'drizzle-orm';
 
-async function countAdministrators(db: ReturnType<typeof getDb>): Promise<number> {
-  const rows = await db.select({ count: sql<number>`count(*)` })
-    .from(schema.users)
-    .where(eq(schema.users.group, 'administrator'));
-  return rows[0]?.count || 0;
-}
-
 export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await requireAdminAction(request, 'administrator');
   if (isAdminActionResponse(auth)) return auth;
@@ -42,18 +35,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response('两次输入的密码不一致', { status: 400 });
     }
 
-    // Check if name exists
-    const existingName = await db.query.users.findFirst({
-      where: eq(schema.users.name, name),
-    });
+    const [[[existingName], [existingMail]], hashedPassword] = await Promise.all([
+      db.batch([
+        db.select({ uid: schema.users.uid }).from(schema.users)
+          .where(eq(schema.users.name, name)).limit(1),
+        db.select({ uid: schema.users.uid }).from(schema.users)
+          .where(eq(schema.users.mail, mail)).limit(1),
+      ]),
+      hashPassword(password),
+    ]);
     if (existingName) {
       return new Response('用户名已被使用', { status: 409 });
     }
-
-    // Check if mail exists
-    const existingMail = await db.query.users.findFirst({
-      where: eq(schema.users.mail, mail),
-    });
     if (existingMail) {
       return new Response('邮箱已被使用', { status: 409 });
     }
@@ -69,7 +62,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
       normalizedUrl = parsed;
     }
 
-    const hashedPassword = await hashPassword(password);
     const authCode = generateRandomString(32);
     const now = Math.floor(Date.now() / 1000);
 
@@ -93,9 +85,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   if (action === 'update' && uid) {
-    const existing = await db.query.users.findFirst({
-      where: eq(schema.users.uid, uid),
-    });
+    const [[existing], [existingMail], adminCounts] = await db.batch([
+      db.select().from(schema.users).where(eq(schema.users.uid, uid)).limit(1),
+      db.select({ uid: schema.users.uid }).from(schema.users)
+        .where(and(eq(schema.users.mail, mail), ne(schema.users.uid, uid))).limit(1),
+      db.select({ count: sql<number>`count(*)` }).from(schema.users)
+        .where(eq(schema.users.group, 'administrator')),
+    ]);
     if (!existing) {
       return new Response('用户不存在', { status: 404 });
     }
@@ -107,14 +103,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response('邮箱格式不正确', { status: 400 });
     }
 
-    const existingMail = await db.query.users.findFirst({
-      where: and(eq(schema.users.mail, mail), ne(schema.users.uid, uid)),
-    });
     if (existingMail) {
       return new Response('邮箱已被使用', { status: 409 });
     }
 
-    if (existing.group === 'administrator' && group !== 'administrator' && await countAdministrators(db) <= 1) {
+    if (existing.group === 'administrator' && group !== 'administrator' && (adminCounts[0]?.count || 0) <= 1) {
       return new Response('不能降级最后一个管理员', { status: 400 });
     }
 
@@ -140,6 +133,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         return new Response('两次输入的密码不一致', { status: 400 });
       }
       updateData.password = await hashPassword(password);
+      // Password changes revoke every existing session for this user.
+      updateData.authCode = generateRandomString(32);
     }
 
     await db.update(schema.users).set(updateData).where(eq(schema.users.uid, uid));

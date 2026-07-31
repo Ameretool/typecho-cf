@@ -56,6 +56,7 @@ async function seedOptions(
 ) {
   const defaults: Record<string, string> = {
     secret: 'test-secret',
+    siteUrl: 'https://example.com',
     commentsRequireMail: '0',
     commentsRequireURL: '0',
     commentsPostIntervalEnable: '0',
@@ -81,6 +82,7 @@ function makeCommentRequest(
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
       'user-agent': 'TestAgent/1.0',
+      'origin': 'https://example.com',
       'referer': 'https://example.com/',
       ...headers,
     },

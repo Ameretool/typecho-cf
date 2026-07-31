@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTestDb, type TestDatabase } from '../helpers';
+import * as schema from '@/db/schema';
 
 let testDb: TestDatabase;
 
@@ -13,12 +14,13 @@ import { POST } from '@/pages/api/users/login';
 describe('POST /api/users/login flash errors', () => {
   beforeEach(async () => {
     testDb = await createTestDb();
+    await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: 'https://example.com' });
   });
 
   it('redirects validation errors without exposing the message in the URL', async () => {
     const request = new Request('https://example.com/api/users/login', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://example.com' },
       body: new URLSearchParams({ password: 'secret' }).toString(),
     });
 
