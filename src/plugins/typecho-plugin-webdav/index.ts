@@ -18,7 +18,7 @@ export {
   readObject, readPluginSettings, normalizeRoutePath, parseMounts,
   resolveWebDavTarget, normalizeConfig, getWebDavClientIp, isWebDavClientBanned,
   recordWebDavAuthFailure, clearWebDavAuthFailures, matchWebDavRoute,
-  parseBasicCredentials,
+  parseBasicCredentials, hasExplicitSessionCookie,
 } from './config';
 export { createStorageAdapter } from './protocol';
 

@@ -1,5 +1,6 @@
-import { encodePathSegment, encodeKeyPath, withMountPrefix } from './config';
+import { encodePathSegment, encodeKeyPath, withMountPrefix, hasExplicitSessionCookie } from './config';
 import type { StorageMount, S3Object, S3ListResult } from './types';
+import { fetchWithTimeout } from 'typecho/plugin-sdk';
 
 // --- Constants ---
 
@@ -100,14 +101,19 @@ async function followRedirects(url: string, cookies: string[], referer?: string)
   let currentReferer = referer || 'https://cloud.189.cn/';
 
   for (let i = 0; i < 10; i++) {
-    const resp = await fetch(currentUrl, {
-      redirect: 'manual',
-      headers: {
-        Cookie: collected.join('; '),
-        Referer: currentReferer,
-        'User-Agent': TIANYI_UA,
+    const resp = await fetchWithTimeout(
+      currentUrl,
+      {
+        redirect: 'manual',
+        headers: {
+          Cookie: collected.join('; '),
+          Referer: currentReferer,
+          'User-Agent': TIANYI_UA,
+        },
       },
-    });
+      10_000,
+      '天翼云盘登录请求超时：cloud.189.cn 无法从当前网络访问，请在插件配置中改用已登录的 Cookie',
+    );
 
     collectCookie(collected, resp.headers);
 
@@ -234,7 +240,7 @@ async function tianyiLogin(username: string, password: string): Promise<string> 
 export async function tianyiEnsureSession(mount: StorageMount): Promise<string> {
   if (mount.sessionCookie) return mount.sessionCookie;
   if (!mount.username || !mount.password) {
-    throw new Error('天翼云盘未配置用户名和密码');
+    throw new Error('天翼云盘未配置用户名和密码，也未提供已登录的 Cookie');
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -291,7 +297,12 @@ async function tianyiApiCall(mount: StorageMount, endpoint: string, params: Reco
   if (body) headers['Content-Type'] = 'application/x-www-form-urlencoded';
   url.searchParams.set('noCache', String(Math.random()));
 
-  const response = await fetch(url.toString(), { method, headers, body });
+  const response = await fetchWithTimeout(
+    url.toString(),
+    { method, headers, body },
+    15_000,
+    '天翼云盘 API 请求超时，请检查网络或改用已登录的 Cookie',
+  );
 
   let json: Record<string, unknown> = {};
   let rawText = '';
@@ -302,6 +313,9 @@ async function tianyiApiCall(mount: StorageMount, endpoint: string, params: Reco
 
   const errorCode = json.errorCode;
   if (retriesLeft > 0 && errorCode === 'InvalidSessionKey') {
+    if (hasExplicitSessionCookie(mount)) {
+      throw new Error('天翼云盘 Cookie 已失效，请在插件配置中更新已登录的 Cookie');
+    }
     mount.sessionCookie = '';
     return tianyiApiCall(mount, endpoint, params, method, body, retriesLeft - 1);
   }

@@ -55,6 +55,7 @@ vi.mock('cloudflare:workers', () => ({
 }));
 
 import { schema } from '@/db';
+import { advanceOptionsSnapshotGeneration } from '@/lib/options-snapshot-generation';
 import { onRequest } from '@/middleware';
 
 const SITE = 'http://localhost:4321';
@@ -210,3 +211,74 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     expect(response.status).toBe(500);
   });
 });
+describe('Middleware: activated plugin routes (registry imported by middleware)', () => {
+  // The middleware statically imports virtual:typecho-plugin-registry (stubbed
+  // in tests/__mocks__/plugin-registry.ts with the workspace plugin loaders),
+  // so loaders are already registered before setActivatedPlugins runs on this
+  // first request — the exact ordering production relies on for a cold
+  // isolate. Without that import this test 404s, proving the regression.
+  beforeAll(async () => {
+    // Later error-handling tests replace d1Stub and reset isolate boot; the
+    // plugin-route tests need a healthy D1 stub again.
+    d1Stub = createD1Stub(testDb);
+    resetIsolateBoot();
+    // Invalidate any 60s options snapshot so loadOptions re-reads the rows below.
+    advanceOptionsSnapshotGeneration(testDb as any);
+    await testDb.insert(schema.options).values({
+      name: 'activatedPlugins',
+      user: 0,
+      value: JSON.stringify(['typecho-plugin-webdav']),
+    });
+    await testDb.insert(schema.options).values({
+      name: 'plugin:typecho-plugin-webdav',
+      user: 0,
+      value: JSON.stringify({
+        routePath: '/webdav',
+        protocolEnabled: 'true',
+        mounts: [{ mount: '', provider: 'r2', bindingName: 'BUCKET', prefix: '' }],
+      }),
+    });
+  });
+
+  it('claims GET /webdav with a Basic-auth challenge instead of 404', async () => {
+    const request = new Request(`${SITE}/webdav`, { method: 'GET' });
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: {},
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+    const response = await onRequest(ctx, async () => new Response('not found', { status: 404 })) as Response;
+    expect(response.status).toBe(401);
+    expect(response.headers.get('WWW-Authenticate')).toContain('Basic realm="Typecho WebDAV"');
+  });
+
+  it('answers OPTIONS /webdav with 204 and DAV capabilities', async () => {
+    const request = new Request(`${SITE}/webdav`, { method: 'OPTIONS' });
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: {},
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+    const response = await onRequest(ctx, async () => new Response('not found', { status: 404 })) as Response;
+    expect(response.status).toBe(204);
+    expect(response.headers.get('DAV')).toBe('1, 2');
+  });
+
+  it('leaves non-WebDAV paths untouched (still 404)', async () => {
+    const request = new Request(`${SITE}/webdavish`, { method: 'GET' });
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: {},
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+    const response = await onRequest(ctx, async () => new Response('not found', { status: 404 })) as Response;
+    expect(response.status).toBe(404);
+  });
+});
+

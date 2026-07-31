@@ -11,6 +11,7 @@ import init, {
   parseMounts,
   recordWebDavAuthFailure,
   resolveWebDavTarget,
+  hasExplicitSessionCookie,
 } from './index';
 
 const VALID_MOUNTS = [
@@ -377,12 +378,28 @@ describe('typecho-plugin-webdav config', () => {
     }]));
     expect(mounts).toHaveLength(1);
     expect(mounts[0]).toMatchObject({ mount: 'cloud', provider: 'tianyi', username: '13800138000', password: 'test-password', rootDir: '-11' });
+    expect(hasExplicitSessionCookie(mounts[0])).toBe(false);
   });
 
-  it('rejects tianyi provider without username and password', () => {
+  it('accepts tianyi provider with session cookie only', () => {
+    const mounts = parseMounts(JSON.stringify([{
+      mount: 'cloud', provider: 'tianyi', sessionCookie: 'COOKIE_A=aaa; COOKIE_B=bbb',
+    }]));
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0]).toMatchObject({
+      mount: 'cloud',
+      provider: 'tianyi',
+      username: '',
+      password: '',
+      sessionCookie: 'COOKIE_A=aaa; COOKIE_B=bbb',
+    });
+    expect(hasExplicitSessionCookie(mounts[0])).toBe(true);
+  });
+
+  it('rejects tianyi provider without username/password or session cookie', () => {
     expect(() => parseMounts(JSON.stringify([{
       mount: 'cloud', provider: 'tianyi',
-    }]))).toThrow('需要填写用户名和密码');
+    }]))).toThrow('需要填写用户名和密码，或填写已登录的 Cookie');
   });
 
   it('accepts mixed provider types (r2 + s3 + tianyi)', () => {

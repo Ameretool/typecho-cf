@@ -197,6 +197,7 @@ addHook(hookPoint, pluginId, handler, priority = 10)
 - 插件 `init()` **不在 build 时直接执行**；`plugin-loader.ts` 通过 `registerPluginLoaders()` 登记字面量动态 import，未激活插件的模块不会在 isolate 启动时求值
 - 真正的 `init({ addHook, pluginId })` 由异步的 `setActivatedPlugins(activatedIds)` 在第一次激活时按需触发；调用方必须 `await`，未激活的插件不会注入任何 hook（G6）
 - 插件不要在模块顶层做副作用（数据库读写、外部请求、`addHook` 写入），所有注册逻辑必须放在导出的 `init()` 内
+- `plugin-loader.ts` 生成的注册代码同时以 `virtual:typecho-plugin-registry` 虚拟模块暴露，并由 `src/middleware.ts` 静态导入；保证冷启动 isolate 的第一次请求（例如直接访问插件路由 `/webdav`）在 `setActivatedPlugins` 执行前 loader 表已就绪（page-ssr 注入只在页面 chunk 加载后才运行，无法覆盖插件路由）
 
 ### 6.3 插件管理路径注册
 

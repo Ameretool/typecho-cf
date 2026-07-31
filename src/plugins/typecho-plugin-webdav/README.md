@@ -40,15 +40,17 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 | `secretAccessKey` | password (S3) | — | S3 Secret Access Key |
 | `username` | text (天翼) | — | 天翼云盘登录手机号 |
 | `password` | password (天翼) | — | 天翼云盘登录密码 |
+| `sessionCookie` | textarea (天翼) | — | 已登录的 Cookie。Workers 出口无法访问 cloud.189.cn 或登录需要验证码时必须使用 |
 | `rootDir` | text (天翼) | `-11` | 天翼云盘根目录 folderId |
 | `prefix` | text | — | 桶内前缀，限制可访问范围 |
 | `pathStyle` | select (S3) | Path-style | S3 URL 路径风格 |
 
 ### 天翼云盘配置说明
 
-天翼云盘通过账号密码方式登录，使用 [天翼云盘 API](https://cloud.189.cn) 接入。
+天翼云盘支持两种认证方式，使用 [天翼云盘 API](https://cloud.189.cn) 接入：
 
-在 `username` 字段填写登录手机号，`password` 字段填写登录密码。保存后插件会自动通过 RSA 加密登录获取 session，后续 API 调用均携带 session cookie。
+- **Cookie 模式（推荐）**：在 `sessionCookie` 字段粘贴浏览器登录天翼云盘后的 Cookie。当 Workers 出口无法访问 `cloud.189.cn`（账号密码登录会请求超时）或登录需要验证码时，只能使用该模式。Cookie 失效时插件会提示更新配置，不会自动回退到密码登录。
+- **账号密码模式**：在 `username` 字段填写登录手机号，`password` 字段填写登录密码。保存后插件通过 RSA 加密登录获取 session，后续 API 调用均携带该 session cookie。
 
 天翼云盘使用 folderId 而非路径来定位文件，因此首次访问目录时可能有额外延迟（路径解析需要逐层遍历）。
 

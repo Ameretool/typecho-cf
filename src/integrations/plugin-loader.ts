@@ -205,13 +205,35 @@ function tryLoadPlugin(packageName: string, packageDir: string, importBase?: str
   };
 }
 
+/**
+ * Generate the plugin registration + lazy loader table source.
+ *
+ * Used both for the page-ssr injection and the `virtual:typecho-plugin-registry`
+ * module that the middleware imports statically. The middleware import is what
+ * guarantees the loader table exists before the first request of a cold
+ * isolate runs `setActivatedPlugins` — page-ssr scripts only execute once a
+ * page chunk loads, which never happens for a plugin route like /webdav.
+ */
+function buildRegistryCode(discoveredPlugins: DiscoveredPlugin[]): string {
+  const registrations = discoveredPlugins.map((plugin) => {
+    const manifest = JSON.stringify(plugin.manifest);
+    return `registerPlugin(${JSON.stringify(plugin.packageName)}, ${manifest});`;
+  }).join('\n');
+
+  const pluginEntries = discoveredPlugins.map((plugin) => {
+    return `  ${JSON.stringify(plugin.id)}: () => import(${JSON.stringify(plugin.importPath)}).then((module) => module.default),`;
+  }).join('\n');
+
+  return `import { registerPlugin, registerPluginLoaders, addHook, HookPoints } from '@/lib/plugin';\n${registrations}\nregisterPluginLoaders({\n${pluginEntries}\n}, { addHook, HookPoints });`;
+}
+
 export default function pluginLoaderIntegration(): AstroIntegration {
   let discoveredPlugins: DiscoveredPlugin[] = [];
 
   return {
     name: 'typecho-plugin-loader',
     hooks: {
-      'astro:config:setup': ({ config, injectScript }) => {
+      'astro:config:setup': ({ config, injectScript, updateConfig }) => {
         const rootDir = config.root ? config.root.pathname.replace(/^\/([A-Z]:)/, '$1') : process.cwd();
 
         // Discover plugins
@@ -226,29 +248,33 @@ export default function pluginLoaderIntegration(): AstroIntegration {
           console.log('[plugin-loader] No npm plugins found.');
         }
 
-        // Inject plugin registration + lazy initializer table.
-        //
-        // G6-3: instead of eagerly executing every plugin's init() on
-        // every page SSR, we expose a __typechoPluginInits map keyed
-        // by plugin id. The runtime (context.ts via setActivatedPlugins)
-        // calls each entry once per isolate, so disabled plugins never
-        // touch hookRegistry and modules whose init has side effects
-        // (e.g. webdav's module-scope authFailureStates) never get
-        // constructed unless the plugin is actually activated.
+        const registryCode = buildRegistryCode(discoveredPlugins);
+
+        // Expose the generated registry as a Vite virtual module that
+        // src/middleware.ts imports statically. Without it, plugin loaders
+        // are only registered after a page chunk (page-ssr script) loads,
+        // so a cold isolate's FIRST request — e.g. a WebDAV client hitting
+        // /webdav directly — runs setActivatedPlugins before any loader is
+        // registered and the plugin route falls through to a 404.
+        updateConfig({
+          vite: {
+            plugins: [{
+              name: 'typecho-plugin-registry',
+              resolveId(id: string) {
+                if (id === 'virtual:typecho-plugin-registry') return '\0virtual:typecho-plugin-registry';
+              },
+              load(id: string) {
+                if (id === '\0virtual:typecho-plugin-registry') return registryCode;
+              },
+            }],
+          },
+        });
+
+        // Inject the same registration into page bundles (idempotent with
+        // the middleware import) so pre-existing environments that bypass
+        // the middleware still register plugin loaders.
         if (discoveredPlugins.length > 0) {
-          const registrations = discoveredPlugins.map((plugin) => {
-            const manifest = JSON.stringify(plugin.manifest);
-            return `registerPlugin(${JSON.stringify(plugin.packageName)}, ${manifest});`;
-          }).join('\n');
-
-          const pluginEntries = discoveredPlugins.map((plugin) => {
-            return `  ${JSON.stringify(plugin.id)}: () => import(${JSON.stringify(plugin.importPath)}).then((module) => module.default),`;
-          }).join('\n');
-
-          injectScript(
-            'page-ssr',
-            `import { registerPlugin, registerPluginLoaders, addHook, HookPoints } from '@/lib/plugin';\n${registrations}\nregisterPluginLoaders({\n${pluginEntries}\n}, { addHook, HookPoints });`,
-          );
+          injectScript('page-ssr', registryCode);
         }
       },
 

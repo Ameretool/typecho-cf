@@ -15,6 +15,14 @@ import { eq, and } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 import { publishedPostCondition } from '@/lib/content-visibility';
 
+// Plugin loader registration (generated at build time by plugin-loader.ts).
+// Statically imported so the lazy plugin loader table exists before the first
+// request of a cold isolate runs setActivatedPlugins. Page-ssr scripts only
+// execute after a page chunk loads, which may never happen before a plugin
+// route like /webdav is requested. Vitest resolves this to a stub that
+// mirrors the generated registry.
+import 'virtual:typecho-plugin-registry';
+
 const redirectToInstall = (request: Request) =>
   applySecurityHeaders(new Response(null, { status: 302, headers: { Location: '/install' } }), { request });
 

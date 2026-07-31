@@ -134,6 +134,16 @@
                 "value": "tianyi"
               }
             },
+            "sessionCookie": {
+              "type": "textarea",
+              "label": "登录 Cookie",
+              "default": "",
+              "description": "可选。登录天翼云盘后从浏览器复制 Cookie 填入，可绕过账号密码登录（Workers 出口无法访问 cloud.189.cn 或登录需要验证码时，必须使用 Cookie 模式）。",
+              "showWhen": {
+                "field": "provider",
+                "value": "tianyi"
+              }
+            },
             "bindingName": {
               "type": "select",
               "label": "R2 绑定",

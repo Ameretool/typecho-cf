@@ -34,6 +34,15 @@ const DEFAULT_MOUNTS = `[
 
 const authFailureStates = new Map<string, AuthFailureState>();
 
+// Mounts whose sessionCookie came from the plugin config (not a password
+// login). User-supplied cookies must never be silently cleared to fall back
+// to password login, which can hang when the login host is unreachable.
+const explicitCookieMounts = new WeakSet<StorageMount>();
+
+export function hasExplicitSessionCookie(mount: StorageMount): boolean {
+  return explicitCookieMounts.has(mount);
+}
+
 // --- Config helpers ---
 
 export function readObject(value: unknown): Record<string, unknown> {
@@ -138,14 +147,15 @@ export function parseMounts(value: unknown): StorageMount[] {
     const username = String(record.username || '').trim();
     const password = String(record.password || '');
     const rootDir = String(record.rootDir || '-11').trim();
+    const sessionCookie = String(record.sessionCookie || '').trim();
 
     if (provider === 'r2') {
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(bindingName)) {
         throw new Error(`挂载 ${mount} 的 R2 绑定名格式不正确`);
       }
     } else if (provider === 'tianyi') {
-      if (!username || !password) {
-        throw new Error(`挂载 ${mount} 的天翼云盘需要填写用户名和密码`);
+      if (!username && !sessionCookie) {
+        throw new Error(`挂载 ${mount} 的天翼云盘需要填写用户名和密码，或填写已登录的 Cookie`);
       }
     } else {
       try {
@@ -161,7 +171,7 @@ export function parseMounts(value: unknown): StorageMount[] {
       }
     }
 
-    return {
+    const mountConfig: StorageMount = {
       mount,
       provider,
       bindingName,
@@ -175,8 +185,10 @@ export function parseMounts(value: unknown): StorageMount[] {
       username,
       password,
       rootDir,
-      sessionCookie: '',
+      sessionCookie,
     };
+    if (sessionCookie) explicitCookieMounts.add(mountConfig);
+    return mountConfig;
   });
 }
 
