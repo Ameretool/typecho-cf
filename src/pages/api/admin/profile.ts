@@ -1,6 +1,11 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
-import { hashPassword } from '@/lib/auth';
+import {
+  clearAuthCookieHeaders,
+  generateRandomString,
+  hashPassword,
+  verifyPassword,
+} from '@/lib/auth';
 import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { normalizeHttpUrl } from '@/lib/url';
@@ -16,6 +21,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const url = formData.get('url')?.toString()?.trim() || '';
   const password = formData.get('password')?.toString() || '';
   const passwordConfirm = formData.get('passwordConfirm')?.toString() || '';
+  const currentPassword = formData.get('currentPassword')?.toString() || '';
 
   if (!mail) return new Response('邮箱不能为空', { status: 400 });
 
@@ -47,6 +53,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   if (password) {
+    if (!currentPassword) {
+      return new Response('请输入当前密码', { status: 400 });
+    }
+    if (!auth.user.password || await verifyPassword(currentPassword, auth.user.password) !== true) {
+      return new Response('当前密码不正确', { status: 403 });
+    }
     if (password !== passwordConfirm) {
       return new Response('两次输入的密码不一致', { status: 400 });
     }
@@ -54,12 +66,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response(`密码长度至少${PASSWORD_MIN_LENGTH}位`, { status: 400 });
     }
     updateData.password = await hashPassword(password);
+    updateData.authCode = generateRandomString(32);
   }
 
   await auth.db.update(schema.users).set(updateData).where(eq(schema.users.uid, auth.uid));
 
-  return new Response(null, {
-    status: 302,
-    headers: { Location: '/admin/profile' },
-  });
+  if (password) {
+    const headers = new Headers({ Location: '/admin/login?password=changed' });
+    for (const cookie of clearAuthCookieHeaders(request)) headers.append('Set-Cookie', cookie);
+    return new Response(null, { status: 302, headers });
+  }
+
+  return new Response(null, { status: 302, headers: { Location: '/admin/profile' } });
 };

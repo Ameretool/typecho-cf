@@ -152,7 +152,7 @@ describe('password reset flow', () => {
     });
 
     const first = await resetPassword({
-      request: formRequest('/api/users/reset-password', { token, password: 'new-password' }),
+      request: formRequest('/api/users/reset-password', { token, password: 'new-password', confirm: 'new-password' }),
     } as any);
     expect(first.status).toBe(302);
 
@@ -162,9 +162,34 @@ describe('password reset flow', () => {
     expect((await testDb.query.passwordResetRequests.findFirst())?.tokenHash).toBeNull();
 
     const second = await resetPassword({
-      request: formRequest('/api/users/reset-password', { token, password: 'another-password' }),
+      request: formRequest('/api/users/reset-password', { token, password: 'another-password', confirm: 'another-password' }),
     } as any);
     expect(second.status).toBe(400);
     expect(await verifyPassword('new-password', (await testDb.query.users.findFirst())?.password || '')).toBe(true);
+  });
+
+  it('rejects a confirmation mismatch without consuming the reset token', async () => {
+    const user = await seedUser();
+    const token = generateResetToken();
+    const tokenHash = await hashResetToken(token);
+    const now = Math.floor(Date.now() / 1000);
+    await testDb.insert(schema.passwordResetRequests).values({
+      email: user.mail!,
+      lastSentAt: now,
+      uid: user.uid,
+      tokenHash,
+      expiresAt: now + 3600,
+    });
+
+    const response = await resetPassword({
+      request: formRequest('/api/users/reset-password', {
+        token,
+        password: 'new-password',
+        confirm: 'different-password',
+      }),
+    } as any);
+    expect(response.status).toBe(400);
+    expect((await testDb.query.passwordResetRequests.findFirst())?.tokenHash).toBe(tokenHash);
+    expect((await testDb.query.users.findFirst())?.authCode).toBe('existing-session-code');
   });
 });

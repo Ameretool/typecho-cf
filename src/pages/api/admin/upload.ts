@@ -1,27 +1,19 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
-import { canManageResource } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { uploadToR2, deleteFromR2 } from '@/lib/upload';
+import { uploadToR2 } from '@/lib/upload';
+import { deleteAttachments } from '@/lib/attachment-lifecycle';
 import { applyFilter, doHook } from '@/lib/plugin';
 import { trackSlidingWindow } from '@/lib/login-rate-limit';
-import { UPLOAD_RATE_LIMIT } from '@/lib/constants';
+import { REQUEST_BODY_LIMITS, UPLOAD_RATE_LIMIT } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
 import { jsonError, jsonOk } from '@/lib/http';
-import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
 /**
  * R2 attachment metadata JSON persisted in contents.text for type='attachment'.
  * Written by POST /api/admin/upload; consumed by DELETE for cleanup.
  */
-interface AttachmentMeta {
-  name: string;
-  path: string;
-  size: number;
-  type: string;
-  url: string;
-}
-
 /**
  * Per-user upload rate limit (G5-4). See `src/lib/constants.ts` for values.
  * Human editors won't hit this; it bounds the blast radius of a stolen admin
@@ -43,7 +35,7 @@ function jsonAuthError(response: Response): Response {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const ctx = await requireAdminAction(request, 'contributor');
+  const ctx = await requireAdminAction(request, 'contributor', { maxBodyBytes: REQUEST_BODY_LIMITS.uploadEnvelope });
   if (isAdminActionResponse(ctx)) return jsonAuthError(ctx);
   const { db, options, pluginCtx } = ctx;
 
@@ -54,7 +46,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    const formData = await request.formData();
+    const formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.uploadEnvelope);
     const file = formData.get('file') as File | null;
 
     if (!file) {
@@ -113,6 +105,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       },
     ]);
   } catch (error) {
+    if (error instanceof InputError) return jsonError(error.status, error.message);
     return jsonError(500, error instanceof Error ? error.message : '上传失败');
   }
 };
@@ -123,51 +116,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
 export const DELETE: APIRoute = async ({ request, locals, url }) => {
   const ctx = await requireAdminAction(request, 'contributor');
   if (isAdminActionResponse(ctx)) return jsonAuthError(ctx);
-  const { db, pluginCtx } = ctx;
-
   const cid = parseInt(url.searchParams.get('cid') || '0', 10);
   if (!cid) {
     return jsonError(400, '缺少 cid 参数');
   }
 
   try {
-    const attachment = await db.query.contents.findFirst({
-      where: eq(schema.contents.cid, cid),
-    });
-
-    if (!attachment || attachment.type !== 'attachment') {
-      return jsonError(404, '附件不存在');
-    }
-
-    // Check ownership: non-admins can only delete their own attachments
-    if (!canManageResource(ctx.user, attachment)) {
-      return jsonError(403, '无权删除此附件');
-    }
-
-    // Delete file from R2
-    let meta: AttachmentMeta | null = null;
-    try {
-      meta = JSON.parse(attachment.text || '{}') as AttachmentMeta;
-      if (meta.path) {
-        const bucket = env.BUCKET;
-        await deleteFromR2(bucket, meta.path);
-      }
-    } catch (err) {
-      // Malformed metadata means we can't reach the R2 object → it will
-      // orphan when the DB row goes away. Surface it in logs so operators
-      // can reconcile, but still allow the DB row to be removed (blocking
-      // the delete would leave the admin unable to clean up either).
-      console.warn(`[upload] failed to reach R2 for attachment cid=${cid}; DB row will be removed but R2 object may orphan:`, err);
-    }
-
-    // G5-5: upload:delete fires before the DB row vanishes so plugins
-    // can mirror the deletion (e.g. CDN purge, external storage).
-    await doHook(pluginCtx, 'upload:delete', { cid, ...(meta || {}) }, { request, options: ctx.options, user: ctx.user });
-
-    // Delete DB record
-    await db.delete(schema.contents).where(eq(schema.contents.cid, cid));
-
-    return jsonOk({ success: true });
+    const result = await deleteAttachments({
+      db: ctx.db,
+      bucket: env.BUCKET,
+      pluginCtx: ctx.pluginCtx,
+      actor: { uid: ctx.uid, group: ctx.user.group, user: ctx.user },
+      request,
+      options: ctx.options,
+    }, [cid]);
+    if (result.missing.includes(cid)) return jsonError(404, '附件不存在');
+    if (result.forbidden.includes(cid)) return jsonError(403, '无权删除此附件');
+    return jsonOk({ success: true, orphanRisk: result.orphanRisk });
   } catch (error) {
     return jsonError(500, error instanceof Error ? error.message : '删除失败');
   }

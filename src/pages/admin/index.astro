@@ -12,6 +12,12 @@ if (authCheck) return authCheck;
 
 const { db, options, urls, user } = ctx;
 const uid = user!.uid;
+const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
+const ownedCommentCondition = eq(schema.contents.authorId, uid);
+const visibleCommentCondition = (status: string) => and(
+  eq(schema.comments.status, status),
+  ...(!isAdmin ? [ownedCommentCondition] : []),
+);
 
 // All dashboard cards are independent; one D1 batch avoids seven
 // inter-region round-trips on every admin landing-page request.
@@ -27,24 +33,33 @@ const [
   db.select({ count: sql<number>`count(*)` }).from(schema.contents)
     .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish'), eq(schema.contents.authorId, uid))),
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .where(eq(schema.comments.ownerId, uid)),
+    .innerJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(ownedCommentCondition),
   db.select({ count: sql<number>`count(*)` }).from(schema.metas)
     .where(eq(schema.metas.type, 'category')),
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .where(eq(schema.comments.status, 'waiting')),
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(visibleCommentCondition('waiting')),
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .where(eq(schema.comments.status, 'spam')),
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(visibleCommentCondition('spam')),
   db.select().from(schema.contents)
     .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'publish')))
     .orderBy(desc(schema.contents.created))
     .limit(10),
-  db.select().from(schema.comments)
-    .where(eq(schema.comments.status, 'approved'))
+  db.select({
+    coid: schema.comments.coid,
+    cid: schema.comments.cid,
+    author: schema.comments.author,
+    text: schema.comments.text,
+    created: schema.comments.created,
+  }).from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(visibleCommentCondition('approved'))
     .orderBy(desc(schema.comments.created))
     .limit(10),
 ]);
 
-const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
 const isContributor = hasPermission(user!.group || 'visitor', 'contributor');
 ---
 <Admin title="控制台" options={options} urls={urls} user={user} activeMenu="dashboard" bodyClass="typecho-dashboard" pluginCtx={ctx}>

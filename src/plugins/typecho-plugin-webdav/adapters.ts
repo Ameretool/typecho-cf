@@ -16,6 +16,65 @@ const TIANYI_LIST_PARAMS: Record<string, string> = {
   orderBy: 'lastOpTime', descending: 'true',
 };
 
+// Generated Tianyi cookies are safe to reuse across requests in one Worker
+// isolate. Store only a credential hash as the key, bound memory usage, and
+// coalesce concurrent logins so a burst does not authenticate repeatedly.
+const TIANYI_SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
+const TIANYI_SESSION_CACHE_MAX_ENTRIES = 64;
+interface TianyiSessionCacheEntry {
+  cookie: string;
+  expiresAt: number;
+}
+const tianyiSessionCache = new Map<string, TianyiSessionCacheEntry>();
+const pendingTianyiLogins = new Map<string, Promise<string>>();
+let tianyiSessionCacheGeneration = 0;
+
+async function tianyiCredentialKey(mount: StorageMount): Promise<string> {
+  const credentialBytes = new TextEncoder().encode(`${mount.username}\0${mount.password}`);
+  const digest = await crypto.subtle.digest('SHA-256', credentialBytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function readCachedTianyiSession(key: string, now = Date.now()): string | null {
+  const cached = tianyiSessionCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt <= now) {
+    tianyiSessionCache.delete(key);
+    return null;
+  }
+  // Refresh insertion order to approximate LRU eviction.
+  tianyiSessionCache.delete(key);
+  tianyiSessionCache.set(key, cached);
+  return cached.cookie;
+}
+
+function cacheTianyiSession(key: string, cookie: string, generation: number): void {
+  if (!cookie || generation !== tianyiSessionCacheGeneration) return;
+  const now = Date.now();
+  for (const [cachedKey, entry] of tianyiSessionCache) {
+    if (entry.expiresAt <= now) tianyiSessionCache.delete(cachedKey);
+  }
+  tianyiSessionCache.delete(key);
+  while (tianyiSessionCache.size >= TIANYI_SESSION_CACHE_MAX_ENTRIES) {
+    const oldestKey = tianyiSessionCache.keys().next().value as string | undefined;
+    if (!oldestKey) break;
+    tianyiSessionCache.delete(oldestKey);
+  }
+  tianyiSessionCache.set(key, { cookie, expiresAt: now + TIANYI_SESSION_CACHE_TTL_MS });
+}
+
+async function invalidateGeneratedTianyiSession(mount: StorageMount): Promise<void> {
+  if (!mount.username || !mount.password) return;
+  tianyiSessionCache.delete(await tianyiCredentialKey(mount));
+}
+
+/** Clear generated sessions after configuration changes and in tests. */
+export function clearTianyiSessionCache(): void {
+  tianyiSessionCacheGeneration += 1;
+  tianyiSessionCache.clear();
+  pendingTianyiLogins.clear();
+}
+
 // --- RSA Encryption (PKCS#1 v1.5, manual implementation for CF Workers) ---
 
 function base64UrlToBigInt(b64url: string): bigint {
@@ -141,7 +200,7 @@ async function tianyiLogin(username: string, password: string): Promise<string> 
     if (!cookies.includes(c)) cookies.push(c);
   }
   if (finalUrl === 'https://cloud.189.cn/web/main') {
-    return '';
+    return cookies.join('; ');
   }
 
   const redirectUrl = new URL(finalUrl);
@@ -243,8 +302,40 @@ export async function tianyiEnsureSession(mount: StorageMount): Promise<string> 
     throw new Error('天翼云盘未配置用户名和密码，也未提供已登录的 Cookie');
   }
 
+  const cacheKey = await tianyiCredentialKey(mount);
+  const cachedCookie = readCachedTianyiSession(cacheKey);
+  if (cachedCookie) {
+    mount.sessionCookie = cachedCookie;
+    return cachedCookie;
+  }
+
+  const pendingLogin = pendingTianyiLogins.get(cacheKey);
+  if (pendingLogin) {
+    const cookie = await pendingLogin;
+    mount.sessionCookie = cookie;
+    return cookie;
+  }
+
+  const generation = tianyiSessionCacheGeneration;
+  const loginPromise = loginAndValidateTianyiSession(mount, cacheKey, generation);
+  pendingTianyiLogins.set(cacheKey, loginPromise);
+  try {
+    return await loginPromise;
+  } finally {
+    if (pendingTianyiLogins.get(cacheKey) === loginPromise) {
+      pendingTianyiLogins.delete(cacheKey);
+    }
+  }
+}
+
+async function loginAndValidateTianyiSession(
+  mount: StorageMount,
+  cacheKey: string,
+  generation: number,
+): Promise<string> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const cookie = await tianyiLogin(mount.username, mount.password);
+    if (!cookie) throw new Error('天翼云盘登录未返回有效 Cookie');
     mount.sessionCookie = cookie;
 
     try {
@@ -257,6 +348,7 @@ export async function tianyiEnsureSession(mount: StorageMount): Promise<string> 
         orderBy: 'lastOpTime',
         descending: 'true',
       }, 'GET', undefined, 0);
+      cacheTianyiSession(cacheKey, cookie, generation);
       return cookie;
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';
@@ -265,8 +357,10 @@ export async function tianyiEnsureSession(mount: StorageMount): Promise<string> 
         continue;
       }
       if (msg.includes('FileNotFound') || msg.includes('file not found')) {
+        cacheTianyiSession(cacheKey, cookie, generation);
         return cookie;
       }
+      cacheTianyiSession(cacheKey, cookie, generation);
       return cookie;
     }
   }
@@ -312,12 +406,16 @@ async function tianyiApiCall(mount: StorageMount, endpoint: string, params: Reco
   }
 
   const errorCode = json.errorCode;
-  if (retriesLeft > 0 && errorCode === 'InvalidSessionKey') {
+  if (errorCode === 'InvalidSessionKey') {
     if (hasExplicitSessionCookie(mount)) {
       throw new Error('天翼云盘 Cookie 已失效，请在插件配置中更新已登录的 Cookie');
     }
+    await invalidateGeneratedTianyiSession(mount);
     mount.sessionCookie = '';
-    return tianyiApiCall(mount, endpoint, params, method, body, retriesLeft - 1);
+    if (retriesLeft > 0) {
+      return tianyiApiCall(mount, endpoint, params, method, body, retriesLeft - 1);
+    }
+    throw new Error('InvalidSessionKey');
   }
 
   const resCode = json.res_code;

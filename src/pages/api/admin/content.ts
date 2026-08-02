@@ -3,11 +3,13 @@ import { schema } from '@/db';
 import { type SiteOptions } from '@/lib/options';
 import { canManageResource } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { generateSlug } from '@/lib/content';
+import { normalizeSlug } from '@/lib/input';
+import { resolveUniqueContentSlug, resolveUniqueMetaSlug } from '@/lib/slug';
 import { applyFilter, doHook } from '@/lib/plugin';
 import { bumpCacheVersion } from '@/lib/cache';
 import { jsonError, jsonOk } from '@/lib/http';
 import { eq, and, sql } from 'drizzle-orm';
+import { validateFilteredContent, WriteFilterError } from '@/lib/write-filter';
 
 // Typecho convention: visibility dropdown maps to db status column.
 // 'password' visibility stores the password in a separate column, status falls back to 'publish'.
@@ -54,15 +56,16 @@ function parseTagNames(tags: string): string[] {
 
 async function attachTags(db: any, cid: number, tags: string) {
   for (const tagName of parseTagNames(tags)) {
-    const tagSlug = generateSlug(tagName) || tagName.toLowerCase().replace(/\s+/g, '-');
+    const tagSlug = normalizeSlug(tagName, 'tag');
     let tagRow = await db.query.metas.findFirst({
       where: and(eq(schema.metas.slug, tagSlug), eq(schema.metas.type, 'tag')),
     });
 
     if (!tagRow) {
+      const uniqueTagSlug = await resolveUniqueMetaSlug(db, tagSlug, 'tag', 0, tagName);
       const inserted = await db.insert(schema.metas).values({
         name: tagName,
-        slug: tagSlug,
+        slug: uniqueTagSlug,
         type: 'tag',
         count: 0,
       }).returning({ mid: schema.metas.mid });
@@ -85,21 +88,6 @@ async function attachTags(db: any, cid: number, tags: string) {
         .set({ count: sql`${schema.metas.count} + 1` })
         .where(eq(schema.metas.mid, tagRow.mid)),
     ]);
-  }
-}
-
-async function resolveUniqueContentSlug(db: any, desiredSlug: string, cid: number): Promise<string> {
-  const base = desiredSlug || String(cid);
-  let candidate = base;
-  let suffix = 0;
-
-  while (true) {
-    const existing = await db.query.contents.findFirst({
-      where: and(eq(schema.contents.slug, candidate), sql`${schema.contents.cid} != ${cid}`),
-    });
-    if (!existing) return candidate;
-    suffix += 1;
-    candidate = suffix === 1 ? `${base}-${cid}` : `${base}-${cid}-${suffix}`;
   }
 }
 
@@ -152,7 +140,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     text = '<!--markdown-->' + text;
   }
   // Slug: use provided value, otherwise leave empty and fill with cid after insert (Typecho convention)
-  const slugInput = formData.get('slug')?.toString()?.trim() || '';
+  const slugInput = normalizeSlug(formData.get('slug')?.toString() || '');
   const submitAction = formData.get('status')?.toString() || 'publish'; // 'draft' or 'publish' from submit button
   const isDraft = submitAction === 'draft';
   const status = VISIBILITY_TO_STATUS[formData.get('visibility')?.toString() || ''] || 'publish';
@@ -211,10 +199,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   if (action === 'create') {
-    // Build content data — slug will be backfilled with cid if empty
-    let contentData: Record<string, unknown> = {
+    const protectedContentData: Record<string, unknown> = {
       title,
-      slug: slugInput || `temp-${Date.now().toString(36)}`,
+      slug: slugInput,
       created,
       modified: now,
       text,
@@ -231,14 +218,28 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     // Apply post:write or page:write filter
     const hookName = type === 'page' ? 'page:write' : 'post:write';
-    contentData = await applyFilter(pluginCtx, hookName, contentData);
+    let contentData: Record<string, unknown>;
+    try {
+      const filtered = await applyFilter(pluginCtx, hookName, { ...protectedContentData }, {
+        request, formData, db, options, user: auth.user, action,
+      });
+      contentData = validateFilteredContent(protectedContentData, filtered);
+    } catch (error) {
+      if (error instanceof WriteFilterError) return jsonError(400, error.message);
+      throw error;
+    }
 
-    const result = await db.insert(schema.contents).values(contentData as any).returning({ cid: schema.contents.cid });
+    const insertData = {
+      ...contentData,
+      slug: (contentData.slug as string) || `temp-${Date.now().toString(36)}`,
+    };
+    const result = await db.insert(schema.contents).values(insertData as any).returning({ cid: schema.contents.cid });
 
     const newCid = result[0]?.cid;
     if (!newCid) return new Response('创建失败', { status: 500 });
 
-    const finalSlug = await resolveUniqueContentSlug(db, slugInput || String(newCid), newCid);
+    const finalSlug = await resolveUniqueContentSlug(db, (contentData.slug as string) || String(newCid), newCid);
+    contentData.slug = finalSlug;
     const createStatements: any[] = [
       db.update(schema.contents).set({ slug: finalSlug }).where(eq(schema.contents.cid, newCid)),
       ...buildCustomFieldStatements(db, newCid, formData),
@@ -287,7 +288,37 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response('Forbidden', { status: 403 });
     }
 
-    const finalSlug = await resolveUniqueContentSlug(db, slugInput || String(cid), cid);
+    const existingBaseType = existing.type?.startsWith('page') ? 'page' : 'post';
+    const protectedType = isDraft ? `${existingBaseType}_draft` : existingBaseType;
+    const protectedContentData: Record<string, unknown> = {
+      title,
+      slug: slugInput || existing.slug || String(cid),
+      created,
+      modified: now,
+      text,
+      order,
+      authorId: existing.authorId,
+      template,
+      type: protectedType,
+      status,
+      password,
+      allowComment,
+      allowPing,
+      allowFeed,
+    };
+    const hookName = existingBaseType === 'page' ? 'page:write' : 'post:write';
+    let contentData: Record<string, unknown>;
+    try {
+      const filtered = await applyFilter(pluginCtx, hookName, { ...protectedContentData }, {
+        request, formData, db, options, user: auth.user, action, existing,
+      });
+      contentData = validateFilteredContent(protectedContentData, filtered);
+    } catch (error) {
+      if (error instanceof WriteFilterError) return jsonError(400, error.message);
+      throw error;
+    }
+    const finalSlug = await resolveUniqueContentSlug(db, contentData.slug as string || String(cid), cid);
+    contentData.slug = finalSlug;
 
     // Update categories: remove old, add new. Snapshot old category/tag
     // slugs first so we can purge their archive pages after the writes —
@@ -301,21 +332,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const oldMids = oldRelMetas.map((r: any) => r.mid);
 
     const updateStatements: any[] = [
-      db.update(schema.contents).set({
-        title,
-        slug: finalSlug,
-        created,
-        modified: now,
-        text,
-        order,
-        template,
-        type: contentType,
-        status,
-        password,
-        allowComment,
-        allowPing,
-        allowFeed,
-      }).where(eq(schema.contents.cid, cid)),
+      db.update(schema.contents).set(contentData as any).where(eq(schema.contents.cid, cid)),
       ...buildCustomFieldStatements(db, cid, formData),
       db.delete(schema.relationships).where(eq(schema.relationships.cid, cid)),
     ];
@@ -348,8 +365,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     await purgeContentAndRelatedCache(db, options, cid, {
       ...existing,
-      type: contentType,
-      status,
+      ...contentData,
     });
 
     const editUrl = type === 'page' ? `/admin/write-page?cid=${cid}` : `/admin/write-post?cid=${cid}`;

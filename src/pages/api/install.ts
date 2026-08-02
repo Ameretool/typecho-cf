@@ -4,26 +4,9 @@ import { setOptionsBatch, deleteOption, getOption } from '@/lib/options';
 import { hashPassword, generateRandomString, timeSafeEqual } from '@/lib/auth';
 import { env } from 'cloudflare:workers';
 import { generateCreateSQL } from '@/lib/schema-sql';
-import { PASSWORD_MIN_LENGTH, SLUG_RESOLVE_MAX_SUFFIX } from '@/lib/constants';
-import { eq } from 'drizzle-orm';
-
-/**
- * Pick a slug that doesn't collide with an existing one. We append a
- * counter rather than a random suffix so the resulting URL stays
- * predictable for users who paste the install instructions verbatim.
- */
-async function resolveSlug(db: ReturnType<typeof getDb>, base: string): Promise<string> {
-  let candidate = base;
-  let suffix = 1;
-  while (suffix < SLUG_RESOLVE_MAX_SUFFIX) {
-    const existing = await db.query.contents.findFirst({ where: eq(schema.contents.slug, candidate) });
-    if (!existing) return candidate;
-    suffix += 1;
-    candidate = `${base}-${suffix}`;
-  }
-  // Fallback: timestamp suffix if we somehow hit the cap on pathological data.
-  return `${base}-${Date.now().toString(36)}`;
-}
+import { PASSWORD_MIN_LENGTH, REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
+import { resolveUniqueContentSlug } from '@/lib/slug';
 
 /**
  * Create all tables and indexes from Drizzle schema definitions.
@@ -67,7 +50,13 @@ export const POST: APIRoute = async ({ request }) => {
     // Tables not yet created → the install window is still open, fall through.
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.publicForm);
+  } catch (error) {
+    if (error instanceof InputError) return new Response(error.message, { status: error.status });
+    throw error;
+  }
   const siteTitle = formData.get('siteTitle')?.toString() || 'Hello World';
   const siteDescription = formData.get('siteDescription')?.toString() || '';
   const userName = formData.get('userName')?.toString()?.trim() || '';
@@ -82,7 +71,7 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response('安装令牌无效', { status: 403 });
     }
   } else {
-    console.warn('[install] INSTALL_TOKEN secret not set; the install form is open to the first caller until setup completes. Set `wrangler secret put INSTALL_TOKEN` to lock down the install window.');
+    console.warn({ event: 'install_token_missing', installWindowOpen: true });
   }
 
   if (!userName || !userPassword || !userMail) {
@@ -138,7 +127,8 @@ export const POST: APIRoute = async ({ request }) => {
       group: 'administrator',
       authCode,
     }).returning({ uid: schema.users.uid });
-    const adminUid = insertedAdmin[0]?.uid ?? 1;
+    const adminUid = insertedAdmin[0]?.uid;
+    if (!adminUid) throw new Error('install-admin-id-missing');
 
     // Create default category
     const insertedCategory = await db.insert(schema.metas).values({
@@ -149,13 +139,14 @@ export const POST: APIRoute = async ({ request }) => {
       count: 1,
       order: 1,
     }).returning({ mid: schema.metas.mid });
-    const categoryMid = insertedCategory[0]?.mid ?? 1;
+    const categoryMid = insertedCategory[0]?.mid;
+    if (!categoryMid) throw new Error('install-category-id-missing');
 
     // G7-8: probe slug uniqueness in case the worker reattached to an
     // already-populated D1 instance (e.g. mid-rollback). resolveSlug
     // appends a numeric suffix until no clash is found.
-    const helloSlug = await resolveSlug(db, 'hello-world');
-    const aboutSlug = await resolveSlug(db, 'about');
+    const helloSlug = await resolveUniqueContentSlug(db, 'hello-world', 0, 'hello-world');
+    const aboutSlug = await resolveUniqueContentSlug(db, 'about', 0, 'about');
 
     // Create welcome post
     const insertedHello = await db.insert(schema.contents).values({
@@ -171,7 +162,8 @@ export const POST: APIRoute = async ({ request }) => {
       allowPing: '1',
       allowFeed: '1',
     }).returning({ cid: schema.contents.cid });
-    const helloCid = insertedHello[0]?.cid ?? 1;
+    const helloCid = insertedHello[0]?.cid;
+    if (!helloCid) throw new Error('install-welcome-post-id-missing');
 
     // G7-2: link the welcome post to the default category by real ids.
     await db.insert(schema.relationships).values({ cid: helloCid, mid: categoryMid });
@@ -262,7 +254,10 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { Location: '/admin/login' },
     });
   } catch (error) {
-    console.error('Installation error:', error);
+    console.error({
+      event: 'installation_failed',
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    });
     // Best-effort lock release so a transient failure doesn't wedge the
     // install form permanently.
     try {

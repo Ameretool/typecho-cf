@@ -123,6 +123,18 @@ describe('upload endpoint (G5-4 + G5-5)', () => {
     expect(res.status).toBe(200);
     expect(beforeUploadHook).toHaveBeenCalledTimes(1);
     expect(uploadHook).toHaveBeenCalledTimes(1);
+    const putCalls = r2Put.mock.calls as unknown as unknown[][];
+    expect(putCalls[0]?.[1]).toBeInstanceOf(ReadableStream);
+  });
+
+  it('rejects an oversized declared upload before multipart parsing', async () => {
+    const cookie = await adminCookie();
+    const csrfToken = await csrf();
+    const request = buildUploadRequest(cookie, csrfToken);
+    request.headers.set('content-length', String(12 * 1024 * 1024));
+    const res = await POST({ request, locals: {} } as any);
+    expect(res.status).toBe(413);
+    expect(r2Put).not.toHaveBeenCalled();
   });
 
   it('upload:beforeUpload can reject the upload', async () => {

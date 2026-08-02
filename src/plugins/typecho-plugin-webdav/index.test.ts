@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateAuthToken, hashPassword } from '@/lib/auth';
 import init, {
   clearWebDavAuthFailures,
@@ -12,6 +12,9 @@ import init, {
   recordWebDavAuthFailure,
   resolveWebDavTarget,
   hasExplicitSessionCookie,
+  clearTianyiSessionCache,
+  tianyiEnsureSession,
+  tianyiListFiles,
 } from './index';
 
 const VALID_MOUNTS = [
@@ -89,6 +92,76 @@ class MemoryR2Bucket {
       cursor: undefined,
     };
   }
+}
+
+let tianyiTestPublicKey = '';
+
+beforeAll(async () => {
+  const keyPair = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 1024,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify'],
+  ) as CryptoKeyPair;
+  const bytes = new Uint8Array(await crypto.subtle.exportKey('spki', keyPair.publicKey));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  tianyiTestPublicKey = btoa(binary);
+});
+
+function createTianyiMount(username = '13800138000', password = 'test-password') {
+  return parseMounts([{
+    mount: 'cloud', provider: 'tianyi', username, password, rootDir: '-11',
+  }])[0];
+}
+
+function mockTianyiFetch() {
+  let loginCount = 0;
+  let invalidateNextList = false;
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/portal/loginUrl.action')) {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: 'https://open.e.189.cn/login?lt=test-lt&reqId=test-req&appId=test-app' },
+      });
+    }
+    if (url.startsWith('https://open.e.189.cn/login?')) return new Response('login page');
+    if (url.includes('/api/logbox/oauth2/appConf.do')) {
+      return Response.json({
+        result: 0,
+        data: { accountType: '01', returnUrl: 'https://cloud.189.cn/web/main', clientType: '10010', isOauth2: 'false' },
+      });
+    }
+    if (url.includes('/api/logbox/config/encryptConf.do')) {
+      return Response.json({ result: 0, data: { pubKey: tianyiTestPublicKey, pre: '' } });
+    }
+    if (url.includes('/api/logbox/oauth2/loginSubmit.do')) {
+      loginCount++;
+      return Response.json(
+        { result: 0, toUrl: 'https://cloud.189.cn/web/main' },
+        { headers: { 'Set-Cookie': `SESSION=session-${loginCount}; Path=/; HttpOnly` } },
+      );
+    }
+    if (url === 'https://cloud.189.cn/web/main') return new Response('main');
+    if (url.includes('/api/open/file/listFiles.action')) {
+      if (invalidateNextList) {
+        invalidateNextList = false;
+        return Response.json({ errorCode: 'InvalidSessionKey' });
+      }
+      return Response.json({ res_code: 0, fileListAO: { fileList: [], folderList: [], count: 0 } });
+    }
+    throw new Error(`Unexpected Tianyi request: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return {
+    get loginCount() { return loginCount; },
+    invalidateNextSession() { invalidateNextList = true; },
+  };
 }
 
 function collectHooks() {
@@ -452,6 +525,55 @@ describe('typecho-plugin-webdav auth parsing', () => {
 
     clearWebDavAuthFailures(ip);
     expect(isWebDavClientBanned(config, ip, 2_000)).toBe(false);
+  });
+});
+
+describe('typecho-plugin-webdav Tianyi session cache', () => {
+  beforeEach(() => clearTianyiSessionCache());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reuses a generated session across fresh mounts and coalesces concurrent logins', async () => {
+    const mocked = mockTianyiFetch();
+
+    const [firstCookie, concurrentCookie] = await Promise.all([
+      tianyiEnsureSession(createTianyiMount()),
+      tianyiEnsureSession(createTianyiMount()),
+    ]);
+    const laterCookie = await tianyiEnsureSession(createTianyiMount());
+
+    expect(firstCookie).toContain('SESSION=session-1');
+    expect(concurrentCookie).toBe(firstCookie);
+    expect(laterCookie).toBe(firstCookie);
+    expect(mocked.loginCount).toBe(1);
+  });
+
+  it('invalidates an expired generated session and logs in again automatically', async () => {
+    const mocked = mockTianyiFetch();
+    await tianyiEnsureSession(createTianyiMount());
+    mocked.invalidateNextSession();
+
+    const result = await tianyiListFiles(createTianyiMount(), '-11');
+
+    expect(result).toEqual({ objects: [], prefixes: [], total: 0 });
+    expect(mocked.loginCount).toBe(2);
+  });
+
+  it('clears generated sessions when plugin configuration is saved', async () => {
+    const mocked = mockTianyiFetch();
+    await tianyiEnsureSession(createTianyiMount());
+
+    const configHook = collectHooks().get('plugin:config:beforeSave')!;
+    const result = configHook(
+      { success: true },
+      {
+        pluginId: 'typecho-plugin-webdav',
+        settings: { mounts: [{ mount: 'cloud', provider: 'tianyi', username: '13800138000', password: 'test-password' }] },
+      },
+    );
+    await tianyiEnsureSession(createTianyiMount());
+
+    expect(result.success).toBe(true);
+    expect(mocked.loginCount).toBe(2);
   });
 });
 

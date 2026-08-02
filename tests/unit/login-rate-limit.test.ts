@@ -25,11 +25,12 @@ const cfg: LoginRateLimitConfig = {
   banSeconds: 30,
 };
 
-let db: TestDatabase;
+type RateLimitTestDatabase = TestDatabase & Parameters<typeof recordLoginFailure>[0];
+let db: RateLimitTestDatabase;
 
 describe('login-rate-limit', () => {
   beforeEach(async () => {
-    db = await createTestDb();
+    db = await createTestDb() as RateLimitTestDatabase;
   });
   afterEach(async () => {
     await disposeTestDb(db);
@@ -90,6 +91,21 @@ describe('login-rate-limit', () => {
     for (let i = 0; i < cfg.maxFailures; i++) await recordLoginFailure(db, '1.1.1.1', cfg);
     expect(await loginLockedUntil(db, '1.1.1.1', cfg)).toBeGreaterThan(0);
     expect(await loginLockedUntil(db, '2.2.2.2', cfg)).toBe(0);
+  });
+
+  it('records every concurrent failure and atomically sets the ban', async () => {
+    const now = Date.now();
+    const attempts = 12;
+    await Promise.all(Array.from({ length: attempts }, () =>
+      recordLoginFailure(db, '3.3.3.3', cfg, now),
+    ));
+
+    const row = await db.query.loginFailures.findFirst({
+      where: (table, { eq }) => eq(table.ip, '3.3.3.3'),
+    });
+    expect(row?.failures).toBe(attempts);
+    expect(row?.windowStartedAt).toBe(now);
+    expect(row?.bannedUntil).toBe(now + cfg.banSeconds * 1000);
   });
 
   it('purgeExpiredLoginFailures removes rows whose ban has passed', async () => {

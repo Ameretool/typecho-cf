@@ -10,6 +10,7 @@ import {
   matchConfiguredWebDavRoute,
 } from './config';
 import { handleWebDavRequest, createStorageAdapter } from './protocol';
+import { clearTianyiSessionCache } from './adapters';
 
 // Re-export public API
 export type { StorageProvider, WebDavConfig, StorageMount, WebDavStorageAdapter } from './types';
@@ -21,6 +22,7 @@ export {
   parseBasicCredentials, hasExplicitSessionCookie,
 } from './config';
 export { createStorageAdapter } from './protocol';
+export { clearTianyiSessionCache, tianyiEnsureSession, tianyiListFiles } from './adapters';
 
 // ── Admin Panel (in-plugin) ──
 
@@ -189,8 +191,8 @@ function adminPageHtml(csrf: string, pageSize: number): string {
     <div class="operate">
       <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all"></label>
       <div class="btn-group btn-drop">
-        <button class="btn dropdown-toggle btn-s" type="button">选中项 <i class="i-caret-down"></i></button>
-        <ul class="dropdown-menu"><li><a href="#" id="btn-delete-selected">删除</a></li></ul>
+        <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="webdav-actions">选中项 <i class="i-caret-down"></i></button>
+        <ul class="dropdown-menu" id="webdav-actions" role="menu"><li><a href="#" id="btn-delete-selected">删除</a></li></ul>
       </div>
       <button class="btn primary btn-s" id="btn-upload">上传文件</button>
       <button class="btn btn-s" id="btn-new-folder">新建文件夹</button>
@@ -280,6 +282,7 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
 
       try {
         const config = normalizeConfig(extra.settings || {});
+        clearTianyiSessionCache();
         return {
           success: true,
           settings: {

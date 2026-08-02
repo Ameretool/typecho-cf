@@ -58,9 +58,13 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
       { request, upload: true },
     );
     // Cache failures must never turn a successfully-read object into a 404.
-    const cacheWrite = cache.put(cacheKey, response.clone()).catch(
-      error => console.warn('[uploads] edge cache put failed:', error),
-    );
+    const cacheWrite = cache.put(cacheKey, response.clone()).catch((error: unknown) => {
+      console.warn({
+        event: 'upload_cache_write_failed',
+        path,
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+      });
+    });
     if (locals.cfContext) {
       locals.cfContext.waitUntil(cacheWrite);
     } else {

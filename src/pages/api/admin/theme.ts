@@ -7,6 +7,8 @@ import { setOption } from '@/lib/options';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { themeExists } from '@/lib/theme';
 import { bumpCacheVersion, purgeSiteCache } from '@/lib/cache';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { readBoundedJson } from '@/lib/input';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await requireAdminAction(request, 'administrator');
@@ -18,7 +20,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    const body = await request.json() as { theme?: string };
+    const body = await readBoundedJson(request, REQUEST_BODY_LIMITS.adminForm) as { theme?: string };
     const themeId = body.theme;
 
     if (!themeId || typeof themeId !== 'string') {

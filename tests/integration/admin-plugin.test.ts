@@ -111,7 +111,7 @@ describe('POST /api/admin/plugin', () => {
     const res = await POST({ request: req, locals: {} } as any);
     expect(res.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res.json<{ success: boolean; activatedPlugins: string[] }>();
     expect(body.success).toBe(true);
     expect(body.activatedPlugins).toContain('typecho-plugin-test');
 
@@ -141,7 +141,7 @@ describe('POST /api/admin/plugin', () => {
     const res = await POST({ request: req, locals: {} } as any);
     expect(res.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res.json<{ success: boolean; activatedPlugins: string[] }>();
     expect(body.success).toBe(true);
     expect(body.activatedPlugins).not.toContain('typecho-plugin-test');
 
@@ -174,8 +174,8 @@ describe('GET /api/admin/plugin', () => {
     const res = await GET({ request: req, locals: {} } as any);
     expect(res.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res.json<{ plugins: Array<{ id: string; isActive: boolean }> }>();
     expect(body.plugins).toBeDefined();
-    expect(body.plugins.some((p: any) => p.id === 'typecho-plugin-test' && p.isActive)).toBe(true);
+    expect(body.plugins.some((p) => p.id === 'typecho-plugin-test' && p.isActive)).toBe(true);
   });
 });

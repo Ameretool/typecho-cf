@@ -20,7 +20,7 @@ typecho-plugin-example/
 
 ## package.json
 
-Plugin metadata is unified under the `typecho.plugin` field — no separate `plugin.json` file.
+Plugin metadata should use the `typecho.plugin` field. The loader still accepts legacy `plugin.json`, but new plugins should not use it.
 
 ```json
 {
@@ -98,13 +98,15 @@ Use `repeatable` for multiple same-shaped config items, such as storage mounts:
 
 Fields may use `showWhen` for conditional display. Select fields may use `optionsSource: "r2Bindings"` to populate options from R2 bucket bindings in the current Worker environment.
 
+`password` and `hidden` values are returned to admin APIs and pages only as placeholders; plaintext is never sent to the browser. Secrets inside `repeatable` rows are masked recursively and restored to the correct row after removal or reordering through internal row metadata that is never stored. `plugin:config:beforeSave` receives restored values restricted to manifest-declared fields.
+
 ---
 
 ## index.ts Entry Point
 
 ```ts
 /**
- * Plugin entry function, called by the system at build time.
+ * Plugin entry function. Build registers only a lazy loader; init runs on first activation.
  * Register all hooks via addHook. Do NOT perform I/O here.
  */
 import type { PluginInitContext } from 'typecho/plugin-sdk';
@@ -157,52 +159,53 @@ Config storage: `typecho_options` table, `name = "plugin:<pluginId>"`, value is 
 
 ---
 
-## Complete Hook Reference
+## Currently Wired Hook Reference
+
+`HookPoints` retains some Typecho compatibility constants, but only the hooks below have explicit trigger sites in the current runtime. Plugins should not depend on unlisted reserved constants. Adding a trigger requires updating `HookPoints`, the call site, and this guide together.
 
 ### call type (side effects, no return value)
 
 | Hook | Trigger Location | Arguments |
 |------|-----------------|-----------|
 | `system:begin` | Every request init | `(context)` |
-| `admin:header` | Admin `<head>` | — |
-| `admin:footer` | Admin footer | — |
-| `admin:navBar` | Admin navigation | — |
-| `admin:writePost:option` | Post editor sidebar options | `(post)` |
-| `admin:writePost:advanceOption` | Post editor advanced options | `(post)` |
-| `admin:writePost:bottom` | Post editor bottom area | `(post)` |
-| `admin:writePage:option` | Page editor sidebar options | `(page)` |
-| `admin:writePage:advanceOption` | Page editor advanced options | `(page)` |
-| `admin:writePage:bottom` | Page editor bottom area | `(page)` |
 | `post:finishPublish` | After post published | `(post)` |
 | `post:finishSave` | After post saved | `(post)` |
 | `post:delete` | Before post deleted | `(post)` |
-| `post:finishDelete` | After post deleted | `(cid)` |
+| `post:finishDelete` | After post deleted | `(post)` |
 | `page:finishPublish` | After page published | `(page)` |
 | `page:finishSave` | After page saved | `(page)` |
 | `page:delete` | Before page deleted | `(page)` |
-| `page:finishDelete` | After page deleted | `(cid)` |
+| `page:finishDelete` | After page deleted | `(page)` |
 | `feedback:finishComment` | After comment saved | `(comment)` |
-| `upload:beforeUpload` | Before file upload | `(file)` |
-| `upload:upload` | After file uploaded | `(file)` |
-| `upload:delete` | File deletion | `(path)` |
+| `comment:action` | After a moderation action | `(comment, extra)` |
+| `upload:upload` | After file uploaded | `(upload, extra)` |
+| `upload:delete` | After attachment deletion | `(attachment, extra)` |
 
 ### filter type (must return a value)
 
 | Hook | Trigger Location | Arguments | Description |
 |------|-----------------|-----------|-------------|
+| `route:request` | Middleware route dispatch | `(result, extra)` | Handles plugin routes; admin/API paths also require `registerPluginAdminPath` |
+| `admin:header` / `admin:footer` | Admin head/footer | `(html, extra)` | Safe display-oriented HTML injection |
+| `admin:loginHead` / `admin:loginForm` | Login head/form | `(html, extra)` | Login-page HTML injection |
+| `admin:writePost:bottom` / `admin:writePage:bottom` | Editor footer | `(html, extra)` | Injects editor UI |
+| `admin:managePosts:titleActions` | Post-list title actions | `(html, extra)` | Adds per-post admin actions |
+| `admin:page` | `/admin/plugin/[slug]` | `(html, extra)` | Renders a plugin-owned admin page |
+| `archive:header` / `archive:footer` | Frontend head/footer | `(html, extra)` | Theme-independent frontend HTML/JS injection |
 | `content:markdown` | Before Markdown render | `(markdown, post)` | Filter raw Markdown text |
 | `content:content` | After Markdown render | `(html, post)` | Filter output HTML |
-| `content:title` | Title output | `(title, post)` | Filter post title |
-| `content:excerpt` | Excerpt output | `(excerpt, post)` | Filter post excerpt |
-| `comment:content` | Comment content output | `(html, comment)` | Filter comment HTML |
-| `comment:markdown` | Comment Markdown | `(markdown, comment)` | Filter raw comment text |
 | `post:write` | Before post save | `(data, extra)` | Filter post write data |
 | `page:write` | Before page save | `(data, extra)` | Filter page write data |
-| `admin:managePosts:titleActions` | Post list title action area | `(html, extra)` | Append management actions next to each post title |
 | `feedback:comment` | Before comment save | `(commentData, extra)` | Validate/modify comment; set `_rejected` to reject |
+| `user:login` | Before password verification | `(context, extra)` | Set `_rejected` to reject login |
+| `upload:beforeUpload` | Before upload write | `(result, extra)` | Return a rejection reason to stop upload |
 | `feed:item` | RSS/Atom generation | `(item, post)` | Filter feed item |
 | `widget:sidebar` | Sidebar render | `(sidebarData, context)` | Filter sidebar data |
+| `csp:directives` | Security-header generation | `(directives, extra)` | Append required CSP sources without clearing defaults |
+| `mail:send` | Mail adapter dispatch | `(result, extra)` | The first plugin returning `sent: true` completes delivery |
 | `plugin:config:beforeSave` | Before plugin config save | `(result, extra)` | Validate or normalize plugin config; return `{ success, settings?, error? }` |
+| `plugin:<id>:action:auth` | Plugin-action authorization | `(role, extra)` | Declares the minimum role for an action; default is administrator |
+| `plugin:<id>:action` | `/api/admin/plugin-action` | `(result, extra)` | Runs a plugin admin action and returns a handled result |
 
 `applyFilter` propagates plugin exceptions by default. Business flows such as content saving, comments, login, and plugin configuration will stop and surface the error. Presentation-only injection points can be wrapped by `applyFilterSafely`; when one plugin fails, that plugin output is skipped and rendering continues.
 
@@ -289,7 +292,7 @@ The host project supplies the `typecho` package at install time, and `typecho/pl
 | Category | Exports |
 |----------|---------|
 | Types | `PluginInitContext`, `PluginRouteResult`, `PluginManifest`, `PluginConfigField`, `AttachmentMeta`, `Database` |
-| Plugin system | `HookPoints`, `parsePluginOption`, `parsePluginConfigFormData`, `loadPluginConfig`, `escapeAttr`, `getClientIp` |
+| Plugin system | `HookPoints`, `parsePluginOption`, `parsePluginConfigFormData`, `loadPluginConfig`, `escapeAttr`, `registerPluginAdminPath`, `getClientIp` |
 | Auth | `hasPermission`, `verifyPassword` |
 | Content | `buildPermalink`, `formatDate`, `buildAuthorLink`, `buildCategoryLink` |
 | Markdown/HTML | `escapeHtml`, `renderMarkdown`, `renderMarkdownFiltered`, `renderContentExcerpt`, `generateExcerpt`, `autop`, `stripTypechoMarkers`, `stripHtmlTags` |

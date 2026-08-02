@@ -152,6 +152,23 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     putSpy.mockRestore();
   });
 
+  it('runs paginated URLs through bootstrap, cache policy, and finalization', async () => {
+    const request = new Request(`${SITE}/page/2/?sort=date`, { method: 'GET' });
+    const next = vi.fn(async () => new Response('page two', { status: 200 }));
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: {},
+    } as any;
+
+    const response = await onRequest(ctx, next) as Response;
+    expect(next).toHaveBeenCalledWith('/?sort=date');
+    expect(ctx.locals._page).toBe(2);
+    expect(ctx.locals._typechoCore?.db).toBe(testDb);
+    expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  });
+
   it('bypasses all D1 bootstrap work for public uploads', async () => {
     resetIsolateBoot();
     d1Stub = {
@@ -281,4 +298,3 @@ describe('Middleware: activated plugin routes (registry imported by middleware)'
     expect(response.status).toBe(404);
   });
 });
-

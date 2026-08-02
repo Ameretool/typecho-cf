@@ -3,6 +3,9 @@
   "type": "module",
   "version": "0.1.0",
   "description": "Typecho blog rewrite with Astro + Cloudflare Workers + D1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "exports": {
     "./plugin-sdk": "./src/lib/plugin-sdk.ts",
     "./db": "./src/db/index.ts"
@@ -11,6 +14,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "deploy": "pnpm build && wrangler deploy",
+    "lint": "eslint \"src/**/*.ts\"",
+    "types:workers": "node scripts/generate-worker-types.mjs",
+    "typecheck": "pnpm run types:workers && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -39,11 +45,15 @@
   "devDependencies": {
     "@libsql/client": "^0.17.4",
     "@types/sanitize-html": "^2.16.1",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "@vitest/coverage-v8": "^4.1.10",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.1",
+    "eslint": "^10.8.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
+    "typescript-eslint-typescript": "npm:typescript@6.0.2",
     "vitest": "^4.1.10",
     "wrangler": "^4.114.0"
   }

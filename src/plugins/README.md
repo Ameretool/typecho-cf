@@ -20,7 +20,7 @@ typecho-plugin-example/
 
 ## package.json
 
-插件元数据统一放在 `typecho.plugin` 字段中，不再使用独立的 `plugin.json` 文件。
+插件元数据推荐放在 `typecho.plugin` 字段中。加载器仍兼容旧的 `plugin.json`，但新插件不要再使用该格式。
 
 ```json
 {
@@ -98,13 +98,15 @@ typecho-plugin-example/
 
 字段可选 `showWhen` 做条件显示，可选 `optionsSource: "r2Bindings"` 将下拉选项填充为当前 Worker 环境中的 R2 bucket binding。
 
+`password` / `hidden` 值在管理 API 和页面中只返回占位符，原文不会下发浏览器。`repeatable` 内的 Secret 也会递归掩码，并通过内部行标识在删除或重排行后恢复到正确记录；该标识不会写入插件配置。`plugin:config:beforeSave` 收到的是已恢复且仅包含 manifest 声明字段的配置。
+
 ---
 
 ## index.ts 入口
 
 ```ts
 /**
- * 插件入口函数，由系统在构建时调用。
+ * 插件入口函数。构建时只登记懒加载器；插件首次激活时才调用 init。
  * 所有 Hook 注册通过 addHook 完成，此处不要执行 I/O。
  */
 import type { PluginInitContext } from 'typecho/plugin-sdk';
@@ -157,54 +159,57 @@ addHook('feedback:comment', pluginId, async (commentData: { _rejected?: string }
 
 ---
 
-## 完整 Hook 参考
+## 当前已接入的 Hook 参考
+
+`HookPoints` 还保留部分 Typecho 兼容性常量，但只有下表 Hook 已在当前运行时接入明确触发位置。插件不要依赖未列出的预留常量；新增触发点时需同时更新 `HookPoints`、调用位置和本文档。
 
 ### call 类型（副作用，无需返回值）
 
 | Hook | 触发位置 | 参数 |
 |------|---------|------|
 | `system:begin` | 每次请求初始化 | `(context)` |
-| `admin:header` | 管理后台 `<head>` | — |
-| `admin:footer` | 管理后台底部 | — |
-| `admin:navBar` | 管理后台导航 | — |
-| `admin:writePost:option` | 文章编辑器侧边栏选项 | `(post)` |
-| `admin:writePost:advanceOption` | 文章编辑器高级选项 | `(post)` |
-| `admin:writePost:bottom` | 文章编辑器底部区域 | `(post)` |
-| `admin:writePage:option` | 页面编辑器侧边栏选项 | `(page)` |
-| `admin:writePage:advanceOption` | 页面编辑器高级选项 | `(page)` |
-| `admin:writePage:bottom` | 页面编辑器底部区域 | `(page)` |
 | `post:finishPublish` | 文章发布后 | `(post)` |
 | `post:finishSave` | 文章保存后 | `(post)` |
 | `post:delete` | 文章删除前 | `(post)` |
-| `post:finishDelete` | 文章删除后 | `(cid)` |
+| `post:finishDelete` | 文章删除后 | `(post)` |
 | `page:finishPublish` | 页面发布后 | `(page)` |
 | `page:finishSave` | 页面保存后 | `(page)` |
 | `page:delete` | 页面删除前 | `(page)` |
-| `page:finishDelete` | 页面删除后 | `(cid)` |
+| `page:finishDelete` | 页面删除后 | `(page)` |
 | `feedback:finishComment` | 评论保存后 | `(comment)` |
-| `upload:beforeUpload` | 文件上传前 | `(file)` |
-| `upload:upload` | 文件上传后 | `(file)` |
-| `upload:delete` | 文件删除 | `(path)` |
+| `comment:action` | 评论审核动作完成 | `(comment, extra)` |
+| `upload:upload` | 文件上传后 | `(upload, extra)` |
+| `upload:delete` | 附件删除后 | `(attachment, extra)` |
 
 ### filter 类型（必须返回值）
 
 | Hook | 触发位置 | 参数 | 说明 |
 |------|---------|------|------|
+| `route:request` | 中间件路由分发 | `(result, extra)` | 处理插件自定义路由；管理/API 路径还需 `registerPluginAdminPath` |
+| `admin:header` / `admin:footer` | 管理后台头部/底部 | `(html, extra)` | 安全展示型 HTML 注入 |
+| `admin:loginHead` / `admin:loginForm` | 登录页头部/表单 | `(html, extra)` | 登录页 HTML 注入 |
+| `admin:writePost:bottom` / `admin:writePage:bottom` | 编辑器底部 | `(html, extra)` | 编辑器 UI 注入 |
+| `admin:managePosts:titleActions` | 文章列表标题操作区 | `(html, extra)` | 在每篇文章标题旁追加管理操作 |
+| `admin:page` | `/admin/plugin/[slug]` | `(html, extra)` | 渲染插件专属管理页面 |
+| `archive:header` / `archive:footer` | 前台页面头部/底部 | `(html, extra)` | 主题无关的前台 HTML/JS 注入 |
 | `content:markdown` | Markdown 渲染前 | `(markdown, post)` | 过滤原始 Markdown 文本 |
 | `content:content` | Markdown 渲染后 | `(html, post)` | 过滤输出 HTML |
-| `content:title` | 标题输出 | `(title, post)` | 过滤文章标题 |
-| `content:excerpt` | 摘要输出 | `(excerpt, post)` | 过滤文章摘要 |
-| `comment:content` | 评论内容输出 | `(html, comment)` | 过滤评论 HTML |
-| `comment:markdown` | 评论 Markdown | `(markdown, comment)` | 过滤评论原始文本 |
-| `post:write` | 文章保存前 | `(data, extra)` | 过滤文章写入数据 |
-| `page:write` | 页面保存前 | `(data, extra)` | 过滤页面写入数据 |
-| `admin:managePosts:titleActions` | 文章列表标题操作区 | `(html, extra)` | 在每篇文章标题旁追加管理操作 |
-| `feedback:comment` | 评论保存前 | `(commentData, extra)` | 验证/修改评论，设置 `_rejected` 可拒绝 |
+| `post:write` | 文章保存前 | `(data, extra)` | 仅可修改 title、slug、created、text、order、template、status、password、allowComment、allowPing、allowFeed；返回值会重新校验 |
+| `page:write` | 页面保存前 | `(data, extra)` | 可修改字段同 `post:write`；authorId、type、cid 与关系数据受保护 |
+| `feedback:comment` | 评论保存前 | `(commentData, extra)` | 仅可修改 author、mail、url、text、status，设置 `_rejected` 可拒绝；身份/归属/关系字段受保护 |
+| `user:login` | 密码校验前 | `(context, extra)` | 设置 `_rejected` 可拒绝登录 |
+| `upload:beforeUpload` | 上传写入前 | `(result, extra)` | 设置拒绝原因可中止上传 |
 | `feed:item` | RSS/Atom 生成 | `(item, post)` | 过滤 feed 条目 |
 | `widget:sidebar` | 侧边栏渲染 | `(sidebarData, context)` | 过滤侧边栏数据 |
+| `csp:directives` | 安全响应头生成 | `(directives, extra)` | 追加插件所需 CSP 来源，不应清空默认项 |
+| `mail:send` | 邮件发送适配 | `(result, extra)` | 首个返回 `sent: true` 的插件完成投递 |
 | `plugin:config:beforeSave` | 插件配置保存前 | `(result, extra)` | 校验或规范化插件配置，返回 `{ success, settings?, error? }` |
+| `plugin:<id>:action:auth` | 插件动作鉴权 | `(role, extra)` | 为指定 action 声明最低角色，默认 administrator |
+| `plugin:<id>:action` | `/api/admin/plugin-action` | `(result, extra)` | 执行插件管理动作并返回 handled 结果 |
 
 `applyFilter` 默认会传播插件异常。业务链路（保存内容、评论、登录、插件配置等）会因此中止并暴露错误。纯展示注入点可由系统使用 `applyFilterSafely` 包裹，单个插件失败时跳过该插件输出并继续渲染。
+
+写入 Filter 的返回值不是任意数据库行。系统会丢弃未声明字段、恢复受保护字段，并重新校验字符串长度、数字、枚举、开关值和 slug。评论的 `cid`、`created`、`authorId`、`ownerId`、`ip`、`agent`、`type`、`parent` 不可修改；内容的 `authorId`、`type`、`cid` 和分类/标签关系不可修改。计数和关系更新始终依据重新校验后的最终记录。
 
 ---
 
@@ -289,7 +294,7 @@ import { schema } from 'typecho/db';
 | 类别 | 导出 |
 |------|------|
 | 类型 | `PluginInitContext`, `PluginRouteResult`, `PluginManifest`, `PluginConfigField`, `AttachmentMeta`, `Database` |
-| 插件系统 | `HookPoints`, `parsePluginOption`, `parsePluginConfigFormData`, `loadPluginConfig`, `escapeAttr`, `getClientIp` |
+| 插件系统 | `HookPoints`, `parsePluginOption`, `parsePluginConfigFormData`, `loadPluginConfig`, `escapeAttr`, `registerPluginAdminPath`, `getClientIp` |
 | 认证 | `hasPermission`, `verifyPassword` |
 | 内容 | `buildPermalink`, `formatDate`, `buildAuthorLink`, `buildCategoryLink` |
 | Markdown/HTML | `escapeHtml`, `renderMarkdown`, `renderMarkdownFiltered`, `renderContentExcerpt`, `generateExcerpt`, `autop`, `stripTypechoMarkers`, `stripHtmlTags` |

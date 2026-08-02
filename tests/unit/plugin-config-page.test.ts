@@ -36,6 +36,16 @@ describe('admin plugin config page', () => {
     expect(source.match(/renumberRepeatableItems\(root\)/g)).toHaveLength(3);
   });
 
+  it('submits stable row metadata with existing repeatable rows', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      'utf-8',
+    );
+
+    expect(source).toContain('PLUGIN_CONFIG_ROW_ID');
+    expect(source).toContain('row[PLUGIN_CONFIG_ROW_ID]');
+  });
+
   it('renders normalized root repeatable paths as slash values', () => {
     const source = readFileSync(
       join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
@@ -83,7 +93,7 @@ describe('admin plugin config page', () => {
     expect(pluginSource).toContain('ctx.activatedPlugins.has(reg.pluginId)');
   });
 
-  it('bumps cache version when legacy Astro admin pages save config-like choices', () => {
+  it('routes plugin configuration writes through the canonical save module', () => {
     const pluginConfigSource = readFileSync(
       join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
       'utf-8',
@@ -96,9 +106,16 @@ describe('admin plugin config page', () => {
       join(process.cwd(), 'src/pages/admin/themes.astro'),
       'utf-8',
     );
+    const pluginConfigModule = readFileSync(
+      join(process.cwd(), 'src/lib/plugin-config.ts'),
+      'utf-8',
+    );
 
-    expect(pluginConfigSource).toContain('bumpCacheVersion(ctx.db)');
-    expect(pluginConfigSource).toContain('purgeSiteCache(options.siteUrl || \'\')');
+    expect(pluginConfigSource).toContain('action="/api/admin/plugin-config"');
+    expect(pluginConfigSource).toContain('getPluginConfigurationView(options, pluginId)');
+    expect(pluginConfigSource).not.toContain('setOption(ctx.db');
+    expect(pluginConfigModule).toContain('await setOption(auth.db, `plugin:${pluginId}`');
+    expect(pluginConfigModule).toContain("await purgeSiteCache(auth.options.siteUrl || '')");
     expect(pluginsSource).toContain('bumpCacheVersion(db)');
     expect(themesSource).toContain('bumpCacheVersion(ctx.db)');
   });

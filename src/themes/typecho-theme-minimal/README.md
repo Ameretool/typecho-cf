@@ -30,11 +30,11 @@ Typecho 经典默认主题，简洁优雅的两栏博客布局。
 ## 功能特性
 
 - **响应式布局** — 基于 `grid.css` 的流式网格，适配桌面/平板/手机
-- **嵌套评论** — 支持无限层级回复，递归渲染 `CommentList`
+- **嵌套评论** — 按站点评论设置支持递归回复，并支持根评论分页且保持子树完整
 - **密码保护** — 支持文章/页面密码访问，未验证时展示密码输入表单
 - **前后导航** — 文章详情页底部展示上一篇/下一篇链接
 - **侧边栏** — 展示最近文章、最近评论、分类列表、归档链接
-- **插件兼容** — 自动渲染 `extra.headSnippets` 和 `extra.bodySnippets`（来自激活插件的 `archive:header`/`archive:footer` hook）
+- **插件兼容** — 将 `pluginCtx` 传给系统 `Base.astro`，由布局执行激活插件的 `archive:header` / `archive:footer` Hook
 - **Gravatar 头像** — 评论列表展示 Gravatar 头像
 - **RSS/Feed 自动发现** — `<head>` 包含 feed 自动发现链接
 
@@ -47,9 +47,9 @@ Typecho 经典默认主题，简洁优雅的两栏博客布局。
 各组件接收的 props 定义在 `src/lib/theme-props.ts`：
 
 - `Index.astro` → `ThemeIndexProps`（posts, pagination, sidebarData...）
-- `Post.astro` → `ThemePostProps`（post, author, categories, tags, comments, prevPost, nextPost...）
-- `Page.astro` → `ThemePageProps`（page, comments...）
+- `Post.astro` → `ThemePostProps`（post, author, categories, tags, comments, commentPagination, prevPost, nextPost...）
+- `Page.astro` → `ThemePageProps`（page, comments, commentPagination...）
 - `Archive.astro` → `ThemeArchiveProps`（archiveTitle, archiveType, posts, pagination...）
 - `NotFound.astro` → `ThemeNotFoundProps`（statusCode, errorTitle...）
 
-所有组件共享 `ThemeBaseProps`（options, urls, user, isLoggedIn, pages, sidebarData, currentPath）。
+所有组件共享 `ThemeBaseProps`（options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx）。

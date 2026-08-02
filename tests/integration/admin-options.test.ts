@@ -116,6 +116,19 @@ describe('POST /api/admin/options', () => {
     expect(await getOption(testDb, 'title')).toBe('My Awesome Blog');
   });
 
+  it('persists one form as one cache-version change', async () => {
+    const req = await makeAdminRequest(testDb, {
+      title: 'Batch title',
+      description: 'Batch description',
+      allowRegister: '1',
+    });
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+    expect(await getOption(testDb, 'title')).toBe('Batch title');
+    expect(await getOption(testDb, 'description')).toBe('Batch description');
+    expect(await getOption(testDb, 'cacheVersion')).toBe('1');
+  });
+
   it('saves siteUrl', async () => {
     const req = await makeAdminRequest(testDb, { siteUrl: 'https://myblog.com' });
     const res = await POST({ request: req, locals: {} } as any);
@@ -147,15 +160,16 @@ describe('POST /api/admin/options', () => {
     expect(val).toBe(String(5 * 60)); // 300
   });
 
-  it('defaults commentsPostTimeout to 14 days when value is invalid', async () => {
+  it('rejects invalid commentsPostTimeout without partially saving the form', async () => {
     const req = await makeAdminRequest(
       testDb,
-      { commentsPostTimeout: 'abc' },
+      { title: 'must-not-save', commentsPostTimeout: 'abc' },
       'https://example.com/admin/options-discussion',
     );
-    await POST({ request: req, locals: {} } as any);
-    const val = await getOption(testDb, 'commentsPostTimeout');
-    expect(val).toBe(String(14 * 24 * 3600));
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(400);
+    expect(await getOption(testDb, 'title')).toBeNull();
+    expect(await getOption(testDb, 'commentsPostTimeout')).toBeNull();
   });
 
   // -- Permalink patterns --
@@ -208,6 +222,27 @@ describe('POST /api/admin/options', () => {
     );
     await POST({ request: req, locals: {} } as any);
     expect(await getOption(testDb, 'categoryPattern')).toBe('/cat/{slug}/');
+  });
+
+  it('rejects invalid permalink patterns without changing existing settings', async () => {
+    await testDb.insert(schema.options).values({ name: 'pagePattern', user: 0, value: '/{slug}.html' });
+    const req = await makeAdminRequest(
+      testDb,
+      { title: 'must-not-save', pagePattern: '/pages/{year}/' },
+      'https://example.com/admin/options-permalink',
+    );
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(400);
+    expect(await getOption(testDb, 'title')).toBeNull();
+    expect(await getOption(testDb, 'pagePattern')).toBe('/{slug}.html');
+  });
+
+  it('rejects an oversized declared body before parsing', async () => {
+    const req = await makeAdminRequest(testDb, { title: 'must-not-save' });
+    req.headers.set('content-length', String(256 * 1024 + 1));
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(413);
+    expect(await getOption(testDb, 'title')).toBeNull();
   });
 
   // -- Checkbox handling (unchecked = absent from form data) --

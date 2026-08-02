@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { generateSlug } from '@/lib/content';
+import { resolveUniqueMetaSlug } from '@/lib/slug';
 import { bumpCacheVersion, purgeSiteCache } from '@/lib/cache';
 import { eq, and, sql } from 'drizzle-orm';
 
@@ -48,7 +48,7 @@ async function handler({ request, locals, url }: { request: Request; locals: App
 
   if (action === 'create') {
     if (!name) return new Response('名称不能为空', { status: 400 });
-    const finalSlug = slug || generateSlug(name) || name.toLowerCase().replace(/\s+/g, '-');
+    const finalSlug = await resolveUniqueMetaSlug(db, slug, type, 0, name);
 
     await db.insert(schema.metas).values({
       name,
@@ -66,7 +66,7 @@ async function handler({ request, locals, url }: { request: Request; locals: App
 
   if (action === 'update' && mid) {
     if (!name) return new Response('名称不能为空', { status: 400 });
-    const finalSlug = slug || generateSlug(name) || name.toLowerCase().replace(/\s+/g, '-');
+    const finalSlug = await resolveUniqueMetaSlug(db, slug, type, mid, name);
 
     await db.update(schema.metas).set({
       name,

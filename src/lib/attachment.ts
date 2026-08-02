@@ -1,4 +1,5 @@
 export interface AttachmentMeta {
+  path?: string;
   url?: string;
   name?: string;
   type?: string;
@@ -16,6 +17,7 @@ export function parseAttachmentMeta(text: string | null | undefined): Attachment
     const parsed = JSON.parse(text);
     if (!parsed || typeof parsed !== 'object') return {};
     const result: AttachmentMeta = {};
+    if (typeof parsed.path === 'string') result.path = parsed.path;
     if (typeof parsed.url === 'string') result.url = parsed.url;
     if (typeof parsed.name === 'string') result.name = parsed.name;
     if (typeof parsed.type === 'string') result.type = parsed.type;

@@ -4,8 +4,6 @@
 
 基于 [Typecho](https://typecho.org) 完整重写的现代博客系统，运行在 **Astro + Cloudflare Workers + D1** 之上。保留 Typecho 数据库表结构，支持从 PHP 版 Typecho 直接迁移数据。
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/eslizn/typecho-cf)
-
 ---
 
 ## 功能特性
@@ -14,7 +12,7 @@
 
 **管理后台**：文章 & 页面编辑管理、评论审核、媒体管理（R2 拖放上传）、用户管理（5 种角色）、主题切换、插件管理（启用/禁用/配置）、全站设置、安装向导
 
-**系统**：主题系统（npm 包分发）、插件系统（Hook 机制，50+ 挂载点）、PHP 版 Typecho 数据迁移工具、PBKDF2-SHA256 认证、CSRF 防护、安全响应头、R2 上传类型校验
+**系统**：主题系统（npm 包分发）、插件系统（30+ 已接入 Hook，支持懒加载）、PHP 版 Typecho 数据迁移工具、PBKDF2-SHA256 认证、CSRF 防护、安全响应头、请求体限额、R2 上传类型校验
 
 ---
 
@@ -22,9 +20,8 @@
 
 ### 前置要求
 
-- Node.js 18+
+- Node.js 22.12+
 - pnpm（`npm install -g pnpm`）
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)（`npm install -g wrangler`）
 - Cloudflare 帐号
 
 ### 本地开发
@@ -35,7 +32,10 @@ git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# 启动开发服务器（D1 + R2 由 wrangler 自动模拟）
+# 生成本地 Wrangler 配置（按需填写 D1 与 SESSION KV 的资源 ID）
+cp wrangler.toml.example wrangler.toml
+
+# 启动开发服务器（D1 + KV + R2 由 wrangler 自动模拟）
 pnpm run dev
 ```
 
@@ -47,24 +47,43 @@ pnpm run dev
 
 ```bash
 # 创建 D1 数据库
-wrangler d1 create typecho-cf-db
+pnpm exec wrangler d1 create typecho-cf-db
 
 # 创建 R2 存储桶
-wrangler r2 bucket create typecho-cf-uploads
+pnpm exec wrangler r2 bucket create typecho-cf-uploads
+
+# 创建 Astro Session 使用的 KV namespace，并将 Worker binding 命名为 SESSION
+pnpm exec wrangler kv namespace create typecho-cf-session --binding SESSION
 ```
 
-**2. 更新 `wrangler.toml`**
+**2. 创建并更新 `wrangler.toml`**
 
-将 `database_id` 替换为上一步输出的 D1 数据库 ID：
+先复制示例配置，再将 `database_id` 与 `SESSION` 的 `id` 分别替换为上一步输出的 D1 数据库 ID 和 KV namespace ID：
+
+```bash
+cp wrangler.toml.example wrangler.toml
+```
 
 ```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "typecho-cf-db"
 database_id = "替换为实际的 ID"
+
+[[kv_namespaces]]
+binding = "SESSION"
+id = "替换为实际的 KV namespace ID"
 ```
 
-**3. 构建并部署**
+**3. 设置首次安装令牌（强烈推荐）**
+
+```bash
+pnpm exec wrangler secret put INSTALL_TOKEN
+```
+
+没有 `INSTALL_TOKEN` 时仍可安装，但首次访问者可能抢先完成管理员注册。
+
+**4. 构建并部署**
 
 ```bash
 pnpm run deploy
@@ -81,10 +100,12 @@ pnpm run deploy
 | `pnpm run dev` | 本地开发服务器 |
 | `pnpm run build` | 生产构建 |
 | `pnpm run deploy` | 构建 + 部署到 Cloudflare Workers |
+| `pnpm run lint` | 类型感知静态检查（含浮空 Promise） |
+| `pnpm run types:workers` | 按 Wrangler 配置重新生成 Worker 绑定与运行时类型 |
 | `pnpm run test` | 运行所有测试 |
 | `pnpm run test:watch` | 监听模式运行测试 |
 | `pnpm run test:coverage` | 生成覆盖率报告 |
-| `pnpm exec tsc --noEmit` | TypeScript 类型检查 |
+| `pnpm run typecheck` | 生成 Workers 类型并运行 TypeScript 类型检查 |
 | `pnpm run db:generate` | 生成 Drizzle 数据库迁移 |
 | `pnpm run db:studio` | 启动 Drizzle Studio |
 | `pnpm run db:migrate:local` | 迁移 PHP Typecho 数据到本地 |
@@ -92,6 +113,8 @@ pnpm run deploy
 | `pnpm run db:migrate:dry-run` | 预览迁移（不写入） |
 | `pnpm run reset-password` | 重置用户密码（本地） |
 | `pnpm run reset-password:cloudflare` | 重置用户密码（Cloudflare） |
+
+`SESSION` 是 Astro Cloudflare adapter 的 Session KV 绑定，生产部署必须指向真实 namespace。修改 `wrangler.toml` / `wrangler.toml.example` 中的 D1、KV、R2 或其他绑定后，请运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制；干净检出时会自动回退到 `wrangler.toml.example` 生成类型。示例配置默认持久化可搜索 Workers Logs，并以 1% 采样率记录调用链；生产环境可按流量和成本调整采样率。密钥仍应使用 `wrangler secret put`，不要写入配置文件。
 
 ---
 
@@ -121,7 +144,7 @@ pnpm run db:migrate:dry-run \
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
 | `--source`, `-s` | 源 SQLite 数据库路径 | （必填） |
-| `--uploads`, `-u` | 源 `usr/uploads/` 目录 | （必填） |
+| `--uploads`, `-u` | 源 `usr/uploads/` 目录；省略时只迁移数据库 | （可选） |
 | `--prefix` | 源表前缀 | `typecho_` |
 | `--dry-run`, `-n` | 预览模式 | `false` |
 | `--site-url` | 新站点 URL（用于重写附件 URL） | — |
@@ -145,6 +168,8 @@ pnpm run reset-password:cloudflare
 ## 插件开发
 
 参考 [插件开发规范](src/plugins/README.md)。
+
+邮件发送没有内置 SMTP/API 适配器。忘记密码邮件和评论通知只有在启用邮件设置并安装实现 `mail:send` Hook 的插件后才会实际投递；未安装适配器时系统会安全降级为未发送。
 
 ---
 
@@ -173,7 +198,7 @@ pnpm run reset-password:cloudflare
 - 管理 API 必须通过 `requireAdminAction()` 做登录、权限与 CSRF 校验；重定向回后台页面必须使用同源且仅限 `/admin` 路径的安全回跳。
 - 评论来源与评论提交后的回跳只按 URL `origin` 判定可信来源，禁止用字符串前缀或仅 host 比较。
 - 前台、后台、插件路由和缓存命中的响应都由中间件补齐基础安全响应头。
-- 新增功能和 bug 修复必须补对应回归测试，并同时通过 `pnpm run test` 与 `pnpm exec tsc --noEmit`。
+- 新增功能和 bug 修复必须补对应回归测试，并同时通过 `pnpm run test` 与 `pnpm run typecheck`。
 
 ---
 

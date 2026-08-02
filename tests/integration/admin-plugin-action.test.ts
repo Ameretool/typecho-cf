@@ -102,7 +102,7 @@ describe('POST /api/admin/plugin-action', () => {
     const res = await POST({ request: req } as any);
     expect(res.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res.json<{ success: boolean; message: string }>();
     expect(body.success).toBe(true);
     expect(body.message).toBe('Sync completed');
   });
@@ -174,7 +174,7 @@ describe('POST /api/admin/plugin-action', () => {
     });
     const res = await POST({ request: req } as any);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await res.json<{ success: boolean }>();
     expect(body.success).toBe(true);
   });
 });

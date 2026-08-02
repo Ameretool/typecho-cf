@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import init, { getClientSnippet } from './index';
 
 function collectHooks() {
@@ -22,6 +24,11 @@ function options(settings: Record<string, unknown>) {
 describe('typecho-plugin-turnstile', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('declares the server verification secret as a masked config field', () => {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), 'src/plugins/typecho-plugin-turnstile/package.json'), 'utf8'));
+    expect(pkg.typecho.plugin.config.secret.type).toBe('password');
   });
 
   it('does not inject client snippets before site key is configured', () => {

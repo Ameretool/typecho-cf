@@ -5,6 +5,7 @@ import { hasPermission } from '@/lib/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { schema } from '@/db';
 import { formatDate } from '@/lib/content';
+import { parsePageNumber, withQueryParams } from '@/lib/input';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const authCheck = requireAuth(ctx);
@@ -17,8 +18,8 @@ if (!hasPermission(ctx.user!.group || 'visitor', 'editor')) {
 const { db, options, urls, user, csrfToken } = ctx;
 const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
 
-const page = parseInt(Astro.url.searchParams.get('page') || '1', 10) || 1;
-const keywords = Astro.url.searchParams.get('keywords') || '';
+const page = parsePageNumber(Astro.url.searchParams.get('page'));
+const keywords = (Astro.url.searchParams.get('keywords') || '').trim().slice(0, 50);
 const pageSize = 20;
 
 // Build conditions
@@ -95,8 +96,8 @@ function formatBytes(bytes: number): string {
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="media-actions-top"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="media-actions-top" role="menu">
               <li><a href="/api/admin/media-batch?do=delete">删除</a></li>
             </ul>
           </div>
@@ -177,8 +178,8 @@ function formatBytes(bytes: number): string {
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="media-actions-bottom"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="media-actions-bottom" role="menu">
               <li><a href="/api/admin/media-batch?do=delete">删除</a></li>
             </ul>
           </div>
@@ -186,9 +187,9 @@ function formatBytes(bytes: number): string {
 
         {totalPages > 1 && (
           <ul class="typecho-pager">
-            {page > 1 && <li><a href={`/admin/manage-medias?page=${page - 1}${keywords ? '&keywords=' + encodeURIComponent(keywords) : ''}`}>&laquo;</a></li>}
+            {page > 1 && <li><a href={withQueryParams('/admin/manage-medias', { page: page - 1, keywords })}>&laquo;</a></li>}
             <li class="current"><a href="#">{page} / {totalPages}</a></li>
-            {page < totalPages && <li><a href={`/admin/manage-medias?page=${page + 1}${keywords ? '&keywords=' + encodeURIComponent(keywords) : ''}`}>&raquo;</a></li>}
+            {page < totalPages && <li><a href={withQueryParams('/admin/manage-medias', { page: page + 1, keywords })}>&raquo;</a></li>}
           </ul>
         )}
       </div>

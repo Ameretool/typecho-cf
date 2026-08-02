@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parsePluginConfigFormData, type PluginConfigField } from './plugin';
+import { HookPoints, parsePluginConfigFormData, type PluginConfigField } from './plugin';
+
+describe('HookPoints', () => {
+  it('includes the plugin admin page hook used by the generic admin route', () => {
+    expect(HookPoints['admin:page']).toBe('admin:page');
+  });
+});
 
 describe('parsePluginConfigFormData()', () => {
   it('parses scalar, checkbox, and repeatable plugin config fields', () => {

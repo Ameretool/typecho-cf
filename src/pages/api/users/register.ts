@@ -2,7 +2,8 @@ import type { APIRoute } from 'astro';
 import { getDb, schema } from '@/db';
 import { loadOptions } from '@/lib/options';
 import { hashPassword, generateRandomString } from '@/lib/auth';
-import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
+import { PASSWORD_MIN_LENGTH, REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
 import { REGISTER_NOTICE_FLASH_COOKIE, createFlashRedirectHeaders } from '@/lib/flash';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
@@ -42,7 +43,13 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('Forbidden', { status: 403 });
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.publicForm);
+  } catch (error) {
+    if (error instanceof InputError) return new Response(error.message, { status: error.status });
+    throw error;
+  }
   const name = formData.get('name')?.toString()?.trim() || '';
   const mail = formData.get('mail')?.toString()?.trim() || '';
   const password = formData.get('password')?.toString() || '';

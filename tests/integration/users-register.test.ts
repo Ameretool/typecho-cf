@@ -50,7 +50,7 @@ describe('users/register endpoint (G1-5)', () => {
     await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: SITE_URL });
     await testDb.insert(schema.options).values({ name: 'allowRegister', user: 0, value: '0' });
     const response = await POST({
-      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b@b.com', password: 'secret123' } }),
+      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b@b.com', password: 'strong-secret-123' } }),
       locals: {},
     } as any);
     expect(response.status).toBe(403);
@@ -59,7 +59,7 @@ describe('users/register endpoint (G1-5)', () => {
   it('rejects cross-origin POSTs', async () => {
     await seedRegistrationOpen();
     const response = await POST({
-      request: buildRequest({ origin: 'https://evil.com', body: { name: 'bob', mail: 'b@b.com', password: 'secret123' } }),
+      request: buildRequest({ origin: 'https://evil.com', body: { name: 'bob', mail: 'b@b.com', password: 'strong-secret-123' } }),
       locals: {},
     } as any);
     expect(response.status).toBe(403);
@@ -68,7 +68,7 @@ describe('users/register endpoint (G1-5)', () => {
   it('redirects to /admin/login without auto-login on success', async () => {
     await seedRegistrationOpen();
     const response = await POST({
-      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b@b.com', password: 'secret123' } }),
+      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b@b.com', password: 'strong-secret-123' } }),
       locals: {},
     } as any);
     expect(response.status).toBe(302);
@@ -85,11 +85,11 @@ describe('users/register endpoint (G1-5)', () => {
   it('rejects duplicate username', async () => {
     await seedRegistrationOpen();
     await POST({
-      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b1@b.com', password: 'secret123' } }),
+      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b1@b.com', password: 'strong-secret-123' } }),
       locals: {},
     } as any);
     const dup = await POST({
-      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b2@b.com', password: 'secret123' } }),
+      request: buildRequest({ origin: SITE_URL, body: { name: 'bob', mail: 'b2@b.com', password: 'strong-secret-123' } }),
       locals: {},
     } as any);
     expect(dup.status).toBe(409);
@@ -98,7 +98,7 @@ describe('users/register endpoint (G1-5)', () => {
   it('rejects malformed email', async () => {
     await seedRegistrationOpen();
     const response = await POST({
-      request: buildRequest({ origin: SITE_URL, body: { name: 'cara', mail: 'not-an-email', password: 'secret123' } }),
+      request: buildRequest({ origin: SITE_URL, body: { name: 'cara', mail: 'not-an-email', password: 'strong-secret-123' } }),
       locals: {},
     } as any);
     expect(response.status).toBe(400);

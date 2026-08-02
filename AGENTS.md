@@ -144,6 +144,8 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 |---------|------|------|
 | `DB` | D1 | 数据库 `typecho-cf-db` |
 | `BUCKET` | R2 | 文件存储 `typecho-cf-uploads` |
+| `SESSION` | KV | Astro Cloudflare adapter 的 Session 存储 |
+| `ASSETS` | Fetcher | Astro 构建产物中的静态资源，由 Cloudflare adapter 管理 |
 
 ### 5.1 环境变量访问
 
@@ -152,6 +154,7 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 import { env } from 'cloudflare:workers';
 const db = env.DB;
 const bucket = env.BUCKET;
+const session = env.SESSION;
 
 // ❌ 已废弃（Astro 6 + @astrojs/cloudflare v13+ 不支持）
 // Astro.locals.runtime.env.DB
@@ -246,20 +249,26 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 - 本地插件放在 `src/plugins/<name>/`，需在根 `package.json` 添加 file 依赖
 - 入口优先发现 `index.ts`，其次 `index.js` / `index.mjs` / `plugin.ts` / `plugin.js`
 
-### 6.6 完整 Hook 点（50+）
+### 6.6 Hook 触发点
 
-**call 类型**：
-`system:begin`, `system:end`, `admin:header`, `admin:footer`, `admin:navBar`, `admin:begin`, `admin:end`, `admin:writePost:option`, `admin:writePost:advanceOption`, `admin:writePost:bottom`, `admin:writePage:option`, `admin:writePage:advanceOption`, `admin:writePage:bottom`, `admin:profile:bottom`, `post:finishPublish`, `post:finishSave`, `post:delete`, `post:finishDelete`, `page:finishPublish`, `page:finishSave`, `page:delete`, `page:finishDelete`, `feedback:finishComment`, `feedback:reply`, `comment:action`, `user:login`, `user:loginSucceed`, `user:loginFail`, `user:logout`, `user:finishRegister`, `upload:beforeUpload`, `upload:upload`, `upload:delete`
+`HookPoints` 包含 Typecho 兼容性预留常量，但插件只应依赖已经在运行时接入调用位置的 Hook。
 
-**filter 类型**：
-`route:request`, `admin:page`, `admin:loginHead`, `admin:loginForm`, `archive:select`, `archive:header`, `archive:footer`, `archive:indexHandle`, `archive:singleHandle`, `archive:categoryHandle`, `archive:tagHandle`, `archive:searchHandle`, `archive:handleInit`, `archive:beforeRender`, `archive:afterRender`, `content:filter`, `content:title`, `content:excerpt`, `content:markdown`, `content:content`, `comment:filter`, `comment:content`, `comment:markdown`, `post:write`, `page:write`, `feedback:comment`, `feed:item`, `feed:generate`, `widget:sidebar`, `user:register`, `plugin:config:beforeSave`, `csp:directives`
+**当前 call 类型**：
+`system:begin`, `post:finishPublish`, `post:finishSave`, `post:delete`, `post:finishDelete`, `page:finishPublish`, `page:finishSave`, `page:delete`, `page:finishDelete`, `feedback:finishComment`, `comment:action`, `upload:upload`, `upload:delete`
+
+**当前 filter 类型**：
+`route:request`, `admin:header`, `admin:footer`, `admin:page`, `admin:loginHead`, `admin:loginForm`, `admin:writePost:bottom`, `admin:writePage:bottom`, `admin:managePosts:titleActions`, `archive:header`, `archive:footer`, `content:markdown`, `content:content`, `post:write`, `page:write`, `feedback:comment`, `user:login`, `upload:beforeUpload`, `feed:item`, `widget:sidebar`, `plugin:config:beforeSave`, `csp:directives`, `mail:send`
+
+**动态插件动作 filter**：
+`plugin:<id>:action:auth`, `plugin:<id>:action`
+
+完整参数和安全约束以 `src/plugins/README.md` 为准。未列出的 `HookPoints` 常量是兼容性预留项，当前没有调用保证。
 
 ### 6.7 新增 Hook 点步骤
 
 1. 在 `src/lib/plugin.ts` 的 `HookPoints` 中添加常量，命名格式 `component:hookName`
 2. 在触发位置调用 `doHook()` 或 `applyFilter()`
-3. 更新 `src/pages/admin/plugins.astro` 的 Hook 参考
-4. 更新 `src/plugins/README.md` 的 Hook 表格
+3. 更新 `src/plugins/README.md` 与 `src/plugins/README.en.md` 的 Hook 表格
 
 ---
 
@@ -287,7 +296,7 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 
 ### 7.3 样式注入
 
-系统自动在 `<head>` 注入 `<link>` 标签（基于 `theme.json` 的 `stylesheets` + `stylesheet`），主题组件不需要自行引入样式。
+推荐主题组件使用系统 `Base.astro`；该布局会在 `<head>` 注入 `<link>` 标签（基于主题 manifest 的 `stylesheets` + `stylesheet`），并执行前台插件注入。自行输出完整 HTML 的主题必须自行处理样式和 `archive:header` / `archive:footer`。
 
 ---
 
@@ -386,7 +395,7 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 ### 9.3 模块级状态
 
 Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的：
-- `src/lib/plugin.ts`：`pluginRegistry`、`hookRegistry`（构建时写入，运行时只读；`pendingPluginInits` 用于懒初始化）
+- `src/lib/plugin.ts`：`pluginRegistry` 与 loader 在启动时登记；`hookRegistry` 在插件首次激活时幂等写入，初始化完成后只读；`initialisingPlugins` 合并并发初始化
 - `src/lib/cache.ts`：options 查询缓存
 - `src/lib/login-rate-limit.ts`：登录限流（D1 持久化） + 上传限流（`trackSlidingWindow`，内存级滑动窗口）
 - `src/middleware.ts`：`regexCache`、`tableCheckPassed`、`indexCheckPassed`
@@ -438,7 +447,7 @@ vi.mock('cloudflare:workers', () => ({ env: { DB: null, BUCKET: { delete: mockFn
 ### 10.4 测试要求
 
 - 新增功能和 bug 修复必须同步添加对应测试用例
-- 修改后必须运行 `pnpm run test` 与 `pnpm exec tsc --noEmit`
+- 修改后必须运行 `pnpm run test` 与 `pnpm run typecheck`
 - 若集成测试为了隔离端点 mock 了 `requireAdminCSRF`，必须另有单元/集成测试覆盖真实 `requireAdminAction()` / CSRF 失败路径
 - 安全修复必须包含负向回归用例（例如跨 origin、协议不一致、前缀匹配伪造、非法 enum/type、路径穿越）
 - 每个插件必须包含 `index.test.ts`，覆盖：Hook 注册、守卫分支、正常路径、拒绝路径、边界情况、配置验证
@@ -450,7 +459,7 @@ vi.mock('cloudflare:workers', () => ({ env: { DB: null, BUCKET: { delete: mockFn
 | 示例 | 路径 | 说明 |
 |------|------|------|
 | 参考插件（基础） | `src/plugins/typecho-plugin-antispam/` | 含完整 package.json、index.ts、index.test.ts，基础 filter hook 示例 |
-| 参考插件（高级） | `src/plugins/typecho-plugin-webdav/` | 含 `plugin:config:beforeSave` 校验、`route:request` 自定义路由、`admin:page` 管理页面、`admin:footer` 菜单注入、`csp:directives` CSP 扩展、`WebDavStorageAdapter` 适配器模式、内联 JS 文件管理器 |
+| 参考插件（高级） | `src/plugins/typecho-plugin-webdav/` | 含 `plugin:config:beforeSave` 校验、`route:request` 自定义路由、`admin:page` 管理页面、`admin:footer` 菜单注入、`WebDavStorageAdapter` 适配器模式、内联 JS 文件管理器 |
 | 参考插件（CSP 注入） | `src/plugins/typecho-plugin-turnstile/` | 含 `csp:directives` filter hook 动态追加 CSP 来源、`admin:loginHead`/`admin:loginForm` 注入 Turnstile Widget |
 | 参考主题 | `src/themes/typecho-theme-minimal/` | 含完整 theme.json、5 个模板组件 |
 

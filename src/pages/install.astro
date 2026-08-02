@@ -3,6 +3,7 @@ import Base from '@/layouts/Base.astro';
 import { getDb, schema } from '@/db';
 import { loadOptions } from '@/lib/options';
 import { env } from 'cloudflare:workers';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
 const db = getDb(env.DB);
 let installed = false;
@@ -81,8 +82,8 @@ const urls = { siteUrl: defaultOptions.siteUrl };
       </p>
       <p>
         <label for="userPassword">密码</label>
-        <input type="password" id="userPassword" name="userPassword" class="text" required />
-        <span class="note">密码长度至少6位</span>
+        <input type="password" id="userPassword" name="userPassword" class="text" minlength={PASSWORD_MIN_LENGTH} required />
+        <span class="note">密码长度至少 {PASSWORD_MIN_LENGTH} 位</span>
       </p>
       <p>
         <label for="userMail">邮箱</label>

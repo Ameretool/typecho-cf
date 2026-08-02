@@ -6,6 +6,7 @@ import { buildGravatarUrl } from '@/lib/gravatar';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { schema } from '@/db';
 import { formatDate } from '@/lib/content';
+import { parsePageNumber, parsePositiveInteger, withQueryParams } from '@/lib/input';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 // Comment moderation page exposes commenter mail + IP — gate behind
@@ -16,31 +17,33 @@ if (authCheck) return authCheck;
 
 const { db, options, urls, user, csrfToken } = ctx;
 const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
-const isEditor = hasPermission(user!.group || 'visitor', 'editor');
 
 const avatarRating = options.commentsAvatarRating || 'G';
 
-const page = parseInt(Astro.url.searchParams.get('page') || '1', 10) || 1;
+const page = parsePageNumber(Astro.url.searchParams.get('page'));
 const status = Astro.url.searchParams.get('status') || 'approved';
-const keywords = Astro.url.searchParams.get('keywords') || '';
+const keywords = (Astro.url.searchParams.get('keywords') || '').trim().slice(0, 50);
 const cid = Astro.url.searchParams.get('cid') || '';
+const cidFilter = parsePositiveInteger(cid);
 const pageSize = 20;
 
 const conditions: any[] = [eq(schema.comments.status, status)];
 if (!isAdmin) {
-  conditions.push(eq(schema.comments.ownerId, user!.uid));
+  conditions.push(eq(schema.contents.authorId, user!.uid));
 }
 if (keywords) {
   conditions.push(sql`${schema.comments.text} LIKE ${'%' + keywords + '%'}`);
 }
-if (cid) {
-  conditions.push(eq(schema.comments.cid, parseInt(cid, 10)));
+if (cidFilter) {
+  conditions.push(eq(schema.comments.cid, cidFilter));
 }
 
 const where = and(...conditions);
 
 const [countResult, commentsList, approvedCount, waitingCount, spamCount] = await db.batch([
-  db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(where),
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(where),
   // G4-4: only fetch a 500-char preview of comment.text — the table only
   // renders the first 200 chars and full bodies make every page render
   // pull megabytes of payload from D1 on busy sites.
@@ -67,11 +70,23 @@ const [countResult, commentsList, approvedCount, waitingCount, spamCount] = awai
     .limit(pageSize)
     .offset((page - 1) * pageSize),
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .where(eq(schema.comments.status, 'approved')),
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(and(
+      eq(schema.comments.status, 'approved'),
+      ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []),
+    )),
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .where(eq(schema.comments.status, 'waiting')),
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(and(
+      eq(schema.comments.status, 'waiting'),
+      ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []),
+    )),
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .where(eq(schema.comments.status, 'spam')),
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(and(
+      eq(schema.comments.status, 'spam'),
+      ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []),
+    )),
 ]);
 const totalComments = countResult[0]?.count || 0;
 const totalPages = Math.max(1, Math.ceil(totalComments / pageSize));
@@ -115,8 +130,8 @@ for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="comment-actions-top"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="comment-actions-top" role="menu">
               <li><a href="/api/admin/comment-batch?do=approved">通过</a></li>
               <li><a href="/api/admin/comment-batch?do=waiting">待审核</a></li>
               <li><a href="/api/admin/comment-batch?do=spam">标记垃圾</a></li>
@@ -230,8 +245,8 @@ for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="comment-actions-bottom"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="comment-actions-bottom" role="menu">
               <li><a href="/api/admin/comment-batch?do=approved">通过</a></li>
               <li><a href="/api/admin/comment-batch?do=waiting">待审核</a></li>
               <li><a href="/api/admin/comment-batch?do=spam">标记垃圾</a></li>
@@ -242,9 +257,9 @@ for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
 
         {totalPages > 1 && (
           <ul class="typecho-pager">
-            {page > 1 && <li><a href={`/admin/manage-comments?page=${page - 1}&status=${status}${cid ? '&cid=' + cid : ''}`}>&laquo;</a></li>}
+            {page > 1 && <li><a href={withQueryParams('/admin/manage-comments', { page: page - 1, status, keywords, cid: cidFilter })}>&laquo;</a></li>}
             <li class="current"><a href="#">{page} / {totalPages}</a></li>
-            {page < totalPages && <li><a href={`/admin/manage-comments?page=${page + 1}&status=${status}${cid ? '&cid=' + cid : ''}`}>&raquo;</a></li>}
+            {page < totalPages && <li><a href={withQueryParams('/admin/manage-comments', { page: page + 1, status, keywords, cid: cidFilter })}>&raquo;</a></li>}
           </ul>
         )}
       </div>

@@ -158,7 +158,7 @@ describe('GET /api/admin/meta', () => {
     const res = await GET({ request: req, locals: {}, url: new URL(req.url) } as any);
     expect(res.status).toBe(200);
 
-    const body = await res.json();
+    const body = await res.json<Array<{ name: string }>>();
     expect(body).toHaveLength(2);
     expect(body[0].name).toBe('Cat1');
     expect(body[1].name).toBe('Cat2');

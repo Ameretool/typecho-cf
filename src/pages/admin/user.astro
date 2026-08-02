@@ -4,6 +4,7 @@ import { createContext, requireAuth } from '@/lib/context';
 import { hasPermission } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { schema } from '@/db';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const authCheck = requireAuth(ctx);
@@ -80,12 +81,12 @@ const groups = [
           <li>
             <label for="password" class="typecho-label">{isEdit ? '新密码' : '用户密码 *'}</label>
             <p><input type="password" id="password" name="password" class="text w-100" autocomplete="new-password"
-              {!isEdit ? 'required' : ''} /></p>
-            <p class="description">{isEdit ? '如果不修改密码, 请留空' : '为此用户设置一个密码, 建议密码长度大于6位'}</p>
+              minlength={PASSWORD_MIN_LENGTH} required={!isEdit} /></p>
+            <p class="description">{isEdit ? '如果不修改密码, 请留空' : `为此用户设置一个至少 ${PASSWORD_MIN_LENGTH} 位的密码`}</p>
           </li>
           <li>
             <label for="confirm" class="typecho-label">密码确认</label>
-            <p><input type="password" id="confirm" name="confirm" class="text w-100" autocomplete="new-password" /></p>
+            <p><input type="password" id="confirm" name="confirm" class="text w-100" autocomplete="new-password" minlength={PASSWORD_MIN_LENGTH} /></p>
             <p class="description">请再次输入密码进行确认</p>
           </li>
         </ul>

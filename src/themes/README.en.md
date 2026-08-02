@@ -11,7 +11,7 @@
 ```
 typecho-theme-example/
 ├── package.json        # npm package manifest (keywords must include typecho + theme)
-├── theme.json          # Theme metadata (stylesheet declaration)
+├── theme.json          # Optional metadata (or use package.json typecho.theme)
 ├── style.css           # Main stylesheet
 └── components/         # Optional: custom template components
     ├── Index.astro     # Home page (post list)
@@ -68,12 +68,12 @@ Themes without a `components/` directory are CSS-only themes — the system auto
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `id` | Yes | Unique theme identifier, matches npm package name |
-| `name` | Yes | Display name |
-| `stylesheet` | Yes | Main CSS filename (copied to `public/themes/{id}/` at build time) |
+| `id` | No | Unique identifier; defaults to the npm package name |
+| `name` | No | Display name; defaults to the npm package name |
+| `stylesheet` | No | Main CSS source filename, default `style.css`; emitted as `public/themes/{id}/style.css` |
 | `stylesheets` | No | Additional CSS files (loaded in order, before `stylesheet`) |
 
-> **Config priority**: `theme.json` > `package.json` `typecho.theme` field > auto-inferred.
+> **Config priority**: `theme.json` > `package.json` `typecho.theme` field > values inferred from `package.json`. The main CSS file must exist in every case.
 
 ---
 
@@ -104,6 +104,7 @@ interface ThemeBaseProps {
   }>;
   sidebarData: SidebarData;      // Sidebar widget data (categories, tags, recent posts, etc.)
   currentPath: string;           // Current request path
+  pluginCtx: HookContext;        // Active plugins for display hooks executed by the Base layout
 }
 ```
 
@@ -136,6 +137,7 @@ interface ThemePostProps extends ThemeBaseProps {
   categories: Array<{ name: string; slug: string; permalink: string }>;
   tags: Array<{ name: string; slug: string; permalink: string }>;
   comments: CommentNode[];
+  commentPagination: CommentPagination;
   commentOptions: CommentOptions;
   prevPost: { title: string; permalink: string } | null;
   nextPost: { title: string; permalink: string } | null;
@@ -159,6 +161,7 @@ interface ThemePageProps extends ThemeBaseProps {
     passwordVerified: boolean;
   };
   comments: CommentNode[];
+  commentPagination: CommentPagination;
   commentOptions: CommentOptions;
   gravatarMap: Record<number, string>;
 }
@@ -169,7 +172,7 @@ interface ThemePageProps extends ThemeBaseProps {
 ```typescript
 interface ThemeArchiveProps extends ThemeBaseProps {
   archiveTitle: string;          // e.g. "Posts in category: Technology"
-  archiveType: 'category' | 'tag' | 'author' | 'search';
+  archiveType: 'category' | 'tag' | 'author' | 'search' | 'index';
   posts: PostListItem[];
   pagination: PaginationInfo;
 }
@@ -207,6 +210,18 @@ interface CommentNode {
   created: number;
   children: CommentNode[];       // Nested replies
 }
+
+interface CommentPagination {
+  enabled: boolean;
+  currentPage: number;
+  totalPages: number;
+  totalComments: number;
+  pageSize: number;
+  pages: number[];
+  pageUrls: Record<number, string>;
+  prevUrl: string | null;
+  nextUrl: string | null;
+}
 ```
 
 ---
@@ -216,20 +231,14 @@ interface CommentNode {
 ```astro
 ---
 // components/Index.astro
+import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 
 type Props = ThemeIndexProps;
 
-const { options, posts, pagination, urls, isLoggedIn, user, pages, sidebarData } = Astro.props;
+const { options, posts, pagination, urls, isLoggedIn, user, pluginCtx } = Astro.props;
 ---
-
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>{options.title}</title>
-  <!-- Stylesheets are automatically injected by the system — no need to link them here -->
-</head>
-<body>
+<Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
   <header>
     <a href={urls.siteUrl}>{options.title}</a>
   </header>
@@ -246,17 +255,16 @@ const { options, posts, pagination, urls, isLoggedIn, user, pages, sidebarData }
   {pagination.hasNext && (
     <a href={`/?page=${pagination.currentPage + 1}`}>Next Page</a>
   )}
-</body>
-</html>
+</Base>
 ```
 
-> Note: `Base.astro` is a system-internal layout — theme components do **not** need to import it. Themes output full HTML directly. The system selects the active theme's component via a build-time virtual module.
+> Follow the default theme and use the system `Base.astro` with `pluginCtx` unless you intentionally provide your own document shell. `Base` supplies the HTML document, theme stylesheets, feed discovery, and `archive:header` / `archive:footer` plugin injection. The runtime selects components through a build-time virtual module but does not automatically wrap them in a layout.
 
 ---
 
 ## Stylesheet Loading
 
-The system automatically injects the following `<link>` tags into `<head>` (based on `theme.json`):
+The system `Base.astro` injects the following `<link>` tags into `<head>` (based on the theme manifest):
 
 ```html
 <!-- stylesheets list (in order) -->
@@ -266,7 +274,7 @@ The system automatically injects the following `<link>` tags into `<head>` (base
 <link rel="stylesheet" href="/themes/typecho-theme-example/style.css">
 ```
 
-> Theme components do not need to `<link>` stylesheets themselves.
+> Themes using `Base.astro` do not need to link stylesheets themselves. Themes that emit a standalone HTML document must handle them explicitly.
 
 ---
 
@@ -275,7 +283,7 @@ The system automatically injects the following `<link>` tags into `<head>` (base
 ### Local development (workspace package)
 
 1. Place the theme directory under `src/themes/`
-2. Ensure `src/themes/*` is listed in the root `package.json` `workspaces`
+2. Add `"<packageName>": "file:src/themes/<packageName>"` to the root `package.json` `dependencies`
 3. Run `pnpm install`
 4. Rebuild with `pnpm run build`
 5. Switch to the new theme in the admin panel under "Appearance"

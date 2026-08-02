@@ -11,6 +11,9 @@ import { normalizeHttpUrl } from '@/lib/url';
 import { isSameOriginRequest } from '@/lib/admin-auth';
 import { eq, and, sql } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
+import { validateFilteredComment, WriteFilterError } from '@/lib/write-filter';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const core = getRequestCoreContextFromLocals(locals);
@@ -32,7 +35,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     await setActivatedPlugins(pluginCtx, activatedIds);
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.publicForm);
+  } catch (error) {
+    if (error instanceof InputError) return new Response(error.message, { status: error.status });
+    throw error;
+  }
   const cid = parseInt(formData.get('cid')?.toString() || '0', 10);
   const parent = parseInt(formData.get('parent')?.toString() || '0', 10);
   const text = formData.get('text')?.toString()?.trim() || '';
@@ -212,6 +221,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     status,
     parent,
   };
+  const protectedCommentData = { ...commentData };
 
   // CSRF: token must be present, cid-bound, and valid for the target
   // post — for both anonymous and logged-in commenters. The token is
@@ -231,11 +241,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // G6-5: catch plugin failures and convert to a 403 reject reason
   // rather than letting them surface as a 500 to the commenter.
   try {
-    commentData = await applyFilter(pluginCtx, 'feedback:comment', commentData, {
+    const filtered = await applyFilter(pluginCtx, 'feedback:comment', commentData, {
       request, formData, db, options, isLoggedIn: !!userId,
     });
+    commentData = validateFilteredComment(protectedCommentData, filtered);
   } catch (err) {
-    console.error('[comment] feedback:comment filter threw:', err);
+    if (err instanceof WriteFilterError) {
+      return new Response(err.message, { status: 400 });
+    }
+    console.error({
+      event: 'comment_filter_failed',
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
     return new Response('插件处理评论时出错，请稍后重试', { status: 503 });
   }
 
@@ -247,9 +264,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   const finalStatus = commentData.status;
-  if (finalStatus !== 'approved' && finalStatus !== 'waiting' && finalStatus !== 'spam') {
-    return new Response('插件返回了无效的评论状态', { status: 400 });
-  }
 
   const writeStatements: any[] = [
     db.insert(schema.comments).values(commentData as any).returning({ coid: schema.comments.coid }),

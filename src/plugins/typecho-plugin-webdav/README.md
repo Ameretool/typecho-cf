@@ -25,6 +25,7 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 | `failBanMaxFailures` | text | `5` | 失败次数阈值 |
 | `failBanWindowSeconds` | text | `300` | 统计窗口（秒） |
 | `failBanSeconds` | text | `900` | 封禁时长（秒） |
+| `fileListPageSize` | text | `50` | 管理面板每页条数，范围 1–200 |
 
 ### 挂载配置（repeatable，可添加多个）
 
@@ -50,7 +51,7 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 天翼云盘支持两种认证方式，使用 [天翼云盘 API](https://cloud.189.cn) 接入：
 
 - **Cookie 模式（推荐）**：在 `sessionCookie` 字段粘贴浏览器登录天翼云盘后的 Cookie。当 Workers 出口无法访问 `cloud.189.cn`（账号密码登录会请求超时）或登录需要验证码时，只能使用该模式。Cookie 失效时插件会提示更新配置，不会自动回退到密码登录。
-- **账号密码模式**：在 `username` 字段填写登录手机号，`password` 字段填写登录密码。保存后插件通过 RSA 加密登录获取 session，后续 API 调用均携带该 session cookie。
+- **账号密码模式**：在 `username` 字段填写登录手机号，`password` 字段填写登录密码。插件通过 RSA 加密登录获取 session，并在同一 Worker isolate 内按凭据哈希缓存 30 分钟（最多 64 个账号）；并发请求共享同一次登录。天翼返回 `InvalidSessionKey` 时会清除缓存并自动重新登录，插件配置变更时也会立即清除缓存。Worker 冷启动或请求落到新的 isolate 时仍需登录一次。
 
 天翼云盘使用 folderId 而非路径来定位文件，因此首次访问目录时可能有额外延迟（路径解析需要逐层遍历）。
 
@@ -69,8 +70,9 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 
 ```
 请求到达
-  → route:request hook 检查 protocolEnabled 开关（关闭则跳过，继续正常路由）
-  → 匹配 routePath 前缀的 WebDAV 请求进入协议处理
+  → route:request hook 先处理已注册的 `/api/admin/webdav` 管理 API
+  → 对协议入口检查 protocolEnabled（关闭则跳过，继续正常路由）
+  → 匹配 routePath 前缀的请求进入 WebDAV 协议处理
   → 非 WebDAV 请求跳过，继续正常路由
 
 认证
@@ -100,7 +102,7 @@ Typecho-CF WebDAV 协议插件，通过 WebDAV 协议挂载和访问多种存储
 | Hook | 类型 | 用途 |
 |------|------|------|
 | `plugin:config:beforeSave` | filter | 保存前校验挂载配置有效性，标准化所有配置字段 |
-| `route:request` | filter | 统一路由分发：WebDAV 协议 / 管理面板 / 管理 API。协议关闭时（`protocolEnabled=false`）跳过 WebDAV 处理 |
+| `route:request` | filter | 分发 WebDAV 协议和 `/api/admin/webdav`；协议关闭时仅跳过 WebDAV 入口 |
 | `admin:page` | filter | 注入 WebDAV 文件管理器 HTML 及内联 JS（面包屑导航、CRUD、拖拽上传） |
 | `admin:footer` | filter | 向管理后台导航栏「管理」菜单注入 WebDav 入口 |
 

@@ -2,7 +2,8 @@ import type { APIRoute } from 'astro';
 import { schema } from '@/db';
 import { hasPermission } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { deleteFromR2 } from '@/lib/upload';
+import { deleteAttachments } from '@/lib/attachment-lifecycle';
+import { resolveUniqueContentSlug } from '@/lib/slug';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -15,6 +16,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const cid = parseInt(formData.get('cid')?.toString() || '0', 10);
 
   if (!cid) return new Response('Bad Request', { status: 400 });
+
+  if (action === 'delete') {
+    const result = await deleteAttachments({
+      db: auth.db,
+      bucket: env.BUCKET,
+      pluginCtx: auth.pluginCtx,
+      actor: { uid: auth.uid, group: auth.user.group, user: auth.user },
+      request,
+      options: auth.options,
+    }, [cid]);
+    if (result.missing.includes(cid)) return new Response('Not Found', { status: 404 });
+    if (result.forbidden.includes(cid)) return new Response('Forbidden', { status: 403 });
+    return new Response(null, { status: 302, headers: { Location: '/admin/manage-medias' } });
+  }
 
   const attachment = await auth.db.query.contents.findFirst({
     where: eq(schema.contents.cid, cid),
@@ -29,30 +44,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response('Forbidden', { status: 403 });
   }
 
-  if (action === 'delete') {
-    // Delete from R2
-    try {
-      const meta = JSON.parse(attachment.text || '{}');
-      if (meta.path) {
-        const bucket = env.BUCKET;
-        await deleteFromR2(bucket, meta.path);
-      }
-    } catch {
-      // Ignore R2 errors
-    }
-
-    // Delete DB record
-    await auth.db.delete(schema.contents).where(eq(schema.contents.cid, cid));
-
-    return new Response(null, {
-      status: 302,
-      headers: { Location: '/admin/manage-medias' },
-    });
-  }
-
   // Update attachment
   const name = formData.get('name')?.toString()?.trim() || attachment.title;
-  const slug = formData.get('slug')?.toString()?.trim() || attachment.slug;
+  const slug = await resolveUniqueContentSlug(
+    auth.db,
+    formData.get('slug')?.toString() || attachment.slug,
+    cid,
+    attachment.title || String(cid),
+  );
 
   if (action !== 'update') return new Response('Invalid action', { status: 400 });
 

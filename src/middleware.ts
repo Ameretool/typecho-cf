@@ -1,16 +1,13 @@
 import { defineMiddleware } from 'astro:middleware';
-import { getDb } from '@/db';
 import { schema } from '@/db';
-import { loadOptions, ensureSecret } from '@/lib/options';
-import { applyFilter, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
+import { applyFilter, isPluginAdminPath } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
-import { applySecurityHeaders } from '@/lib/security-headers';
-import { setRequestCoreContext } from '@/lib/context';
 import { compilePermalinkPattern } from '@/lib/permalink-pattern';
 import {
-  ensureDatabaseReady,
-  TablesMissingError,
-} from '@/lib/isolate-boot';
+  bootstrapRequestCore,
+  finalizeRequestResponse,
+  resolveRequestTarget,
+} from '@/lib/request-bootstrap';
 import { eq, and } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 import { publishedPostCondition } from '@/lib/content-visibility';
@@ -22,9 +19,6 @@ import { publishedPostCondition } from '@/lib/content-visibility';
 // route like /webdav is requested. Vitest resolves this to a stub that
 // mirrors the generated registry.
 import 'virtual:typecho-plugin-registry';
-
-const redirectToInstall = (request: Request) =>
-  applySecurityHeaders(new Response(null, { status: 302, headers: { Location: '/install' } }), { request });
 
 const BUILT_IN_ROUTES = [
   /^\/archives\/\d+\/?$/,       // post: /archives/{cid}/
@@ -41,8 +35,9 @@ const BUILT_IN_ROUTES = [
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const url = new URL(context.request.url);
-  const path = url.pathname;
+  const target = resolveRequestTarget(context.request, context.locals);
+  const { originalPath, effectivePath: path } = target;
+  const url = target.effectiveUrl;
 
   // Skip middleware for static assets, install page, and install API
   if (
@@ -56,71 +51,21 @@ export const onRequest = defineMiddleware(async (context, next) => {
     path === '/install' ||
     path === '/api/install'
   ) {
-    return await applySecurityHeaders(await next(), { request: context.request });
+    return await finalizeRequestResponse(await next(), { request: context.request });
   }
 
-  // ── Pagination URL Rewriting ──────────────────────────────────────────────
-  // Typecho uses /page/N/ suffix for pagination (e.g. /page/2/, /category/default/page/2/).
-  // We rewrite the request in place via next(payload) rather than
-  // context.rewrite(payload): the latter triggers a fresh rendering phase
-  // that re-executes this whole middleware (options load, plugin chain,
-  // permalink resolution, route:request filter — all doubled on every
-  // paginated URL). next(payload) preserves the existing pipeline.
-  const paginationMatch = path.match(/^(.*)\/page\/(\d+)\/?$/);
-  if (paginationMatch) {
-    const basePath = paginationMatch[1] || '';
-    const pageNum = parseInt(paginationMatch[2], 10);
-    context.locals._page = pageNum;
-    // Preserve `?foo=bar` (search/filter/sort params etc.) — dropping the
-    // query string would break `/search/keyword/page/2/?sort=date` links.
-    const target = (basePath === '' ? '/' : basePath + '/') + url.search;
-    return applySecurityHeaders(await next(target), { request: context.request });
+  const bootstrap = await bootstrapRequestCore(context.request, context.locals);
+  if (!bootstrap.ok) {
+    return finalizeRequestResponse(bootstrap.response, { request: context.request });
   }
-
-  const d1 = env.DB;
-
-  try {
-    await ensureDatabaseReady(d1);
-  } catch (err) {
-    if (err instanceof TablesMissingError) {
-      return redirectToInstall(context.request);
-    }
-    // D1 unreachable or other unexpected error — fail open with 500
-    // rather than redirecting to /install (which would try D1 again).
-    console.error('[middleware] ensureTablesReady failed:', err);
-    return applySecurityHeaders(new Response('Service unavailable', { status: 500 }), { request: context.request });
-  }
-
-  const db = getDb(d1);
-
-  let options;
-  try {
-    options = await loadOptions(db);
-    if (!options.installed) {
-      return redirectToInstall(context.request);
-    }
-    // PHP-Typecho migrations import the options table without carrying the
-    // `secret` value (it used to live in config.inc.php). Bootstrap one
-    // synchronously the first time we see it missing, then reload options
-    // so the current request has the freshly-generated value.
-    if (!options.secret) {
-      await ensureSecret(db);
-      options = await loadOptions(db);
-    }
-  } catch (err) {
-    console.error('[middleware] loadOptions failed:', err);
-    return applySecurityHeaders(new Response('Service unavailable', { status: 500 }), { request: context.request });
-  }
-
-  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
-  const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-  await setActivatedPlugins(pluginCtx, activatedIds);
-  setRequestCoreContext(context.locals, { db, options, pluginCtx }, context.request);
+  const { db, options, pluginCtx } = bootstrap.core;
 
   const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
     request: context.request,
     url,
     path,
+    originalPath,
+    effectivePath: path,
     db,
     options,
     env,
@@ -130,9 +75,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // Even a buggy/malicious plugin that returns handled=true on /admin
     // must not be able to intercept admin auth, install, or core API.
     if (isReservedCorePath(path)) {
-      console.warn(`[middleware] plugin tried to claim reserved path ${path}; ignoring`);
+      console.warn({ event: 'plugin_reserved_path_rejected', path });
     } else {
-      return await applySecurityHeaders(pluginRoute.response, { request: context.request }, pluginCtx);
+      return await finalizeRequestResponse(pluginRoute.response, { request: context.request, pluginCtx });
     }
   }
 
@@ -155,7 +100,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (cacheKey) {
     const cached = await caches.default.match(cacheKey);
     if (cached) {
-      return await applySecurityHeaders(cached, { request: context.request }, pluginCtx);
+      return await finalizeRequestResponse(cached, { request: context.request, pluginCtx });
     }
   }
 
@@ -168,6 +113,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const categoryPattern = options.categoryPattern as string | undefined;
 
   const isBuiltInRoute = BUILT_IN_ROUTES.some((re) => re.test(path));
+  let permalinkTarget: string | undefined;
 
   if (
     !isBuiltInRoute &&
@@ -200,7 +146,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
           }
 
           if (cid) {
-            return context.rewrite(`/archives/${cid}/`);
+            permalinkTarget = `/archives/${cid}/${url.search}`;
           }
         }
       }
@@ -233,7 +179,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
           }
 
           if (slug) {
-            return context.rewrite(`/${slug}.html`);
+            permalinkTarget = `/${slug}.html${url.search}`;
           }
         }
       }
@@ -266,7 +212,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
           }
 
           if (slug) {
-            return context.rewrite(`/category/${slug}/`);
+            permalinkTarget = `/category/${slug}/${url.search}`;
           }
         }
       }
@@ -276,67 +222,30 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Execute the route handler
   let response: Response;
   try {
-    response = await next();
+    const internalTarget = permalinkTarget || target.routeTarget;
+    response = internalTarget ? await next(internalTarget) : await next();
   } catch (err) {
-    console.error('[middleware] next() threw:', path, err);
-    return applySecurityHeaders(new Response('Server error', { status: 500 }), { request: context.request }, pluginCtx);
+    console.error({ event: 'route_handler_failed', path, error: err instanceof Error ? err.message : String(err) });
+    return finalizeRequestResponse(new Response('Server error', { status: 500 }), {
+      request: context.request,
+      pluginCtx,
+    });
   }
   if (response.status === 404) {
     // Only warn for admin paths (should never 404); info for everything else
     // (bots hitting non-existent routes is normal traffic noise).
     if (path.startsWith('/admin')) {
-      console.warn('[middleware] admin route 404:', { path, method: context.request.method });
+      console.warn({ event: 'admin_route_not_found', path, method: context.request.method });
     }
   }
 
-  response = await applySecurityHeaders(response, { request: context.request }, pluginCtx);
-
-  // ── Write response to edge cache ──────────────────────────────────────────
-  if (cacheKey && response.status === 200) {
-    const cacheHeaders = new Headers(response.headers);
-    if (!cacheHeaders.has('Cache-Control')) {
-      cacheHeaders.set('Cache-Control', 'public, s-maxage=300');
-    }
-    // G5-1: signal that cookies / encoding affect the cached response
-    // even though logged-in requests already bypass the cache. Belt-
-    // and-braces protects future readers who add cookie-bound state.
-    cacheHeaders.set('Vary', mergeVary(cacheHeaders.get('Vary'), ['Cookie', 'Accept-Encoding']));
-    // G5-2: never persist Set-Cookie (the Cache API ignores entries
-    // with cookies anyway, but stripping makes the intent explicit and
-    // avoids leaking auth tokens through future cache backends).
-    cacheHeaders.delete('Set-Cookie');
-
-    const cacheable = new Response(response.clone().body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: cacheHeaders,
-    });
-
-    const cacheWrite = caches.default.put(cacheKey, cacheable);
-    const executionContext = context.locals.cfContext;
-    if (executionContext) {
-      // Keep cache persistence off the response path. Call through the
-      // ExecutionContext object so Workers receives the correct `this`.
-      executionContext.waitUntil(cacheWrite);
-    } else {
-      // Astro's Node test/dev adapter does not always provide an execution
-      // context, so preserve deterministic writes there.
-      await cacheWrite;
-    }
-  }
-
-  return response;
+  return finalizeRequestResponse(response, {
+    request: context.request,
+    pluginCtx,
+    cacheKey,
+    executionContext: context.locals.cfContext,
+  });
 });
-
-/** Merge a comma-separated Vary header with additional fields, deduped. */
-function mergeVary(existing: string | null, additions: string[]): string {
-  const tokens = new Set<string>();
-  if (existing) {
-    for (const tok of existing.split(',')) tokens.add(tok.trim());
-  }
-  for (const tok of additions) tokens.add(tok);
-  return Array.from(tokens).filter(Boolean).join(', ');
-}
 
 /**
  * Paths that plugins MUST NOT be able to claim via route:request.

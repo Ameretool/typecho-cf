@@ -11,7 +11,7 @@
 ```
 typecho-theme-example/
 ├── package.json        # npm 包声明（keywords 必须包含 typecho + theme）
-├── theme.json          # 主题元数据（样式表声明）
+├── theme.json          # 可选：主题元数据（也可用 package.json 的 typecho.theme）
 ├── style.css           # 主样式表
 └── components/         # 可选：自定义模板组件
     ├── Index.astro     # 首页（文章列表）
@@ -68,12 +68,12 @@ typecho-theme-example/
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
-| `id` | 是 | 主题唯一标识，与 npm 包名一致 |
-| `name` | 是 | 显示名称 |
-| `stylesheet` | 是 | 主 CSS 文件名（构建时复制到 `public/themes/{id}/`） |
+| `id` | 否 | 主题唯一标识；省略时使用 npm 包名 |
+| `name` | 否 | 显示名称；省略时使用 npm 包名 |
+| `stylesheet` | 否 | 主 CSS 源文件名，默认 `style.css`；构建产物统一为 `public/themes/{id}/style.css` |
 | `stylesheets` | 否 | 额外 CSS 文件列表（按顺序加载，在 `stylesheet` 之前） |
 
-> **配置优先级**：`theme.json` > `package.json` 中 `typecho.theme` 字段 > 自动推导。
+> **配置优先级**：`theme.json` > `package.json` 中 `typecho.theme` 字段 > 从 `package.json` 自动推导。无论哪种方式，主 CSS 文件必须存在。
 
 ---
 
@@ -104,6 +104,7 @@ interface ThemeBaseProps {
   }>;
   sidebarData: SidebarData;      // 侧边栏数据（分类、标签、最近文章等）
   currentPath: string;           // 当前请求路径
+  pluginCtx: HookContext;        // 当前请求已激活插件集合，传给 Base 布局执行展示 Hook
 }
 ```
 
@@ -136,6 +137,7 @@ interface ThemePostProps extends ThemeBaseProps {
   categories: Array<{ name: string; slug: string; permalink: string }>;
   tags: Array<{ name: string; slug: string; permalink: string }>;
   comments: CommentNode[];
+  commentPagination: CommentPagination;
   commentOptions: CommentOptions;
   prevPost: { title: string; permalink: string } | null;
   nextPost: { title: string; permalink: string } | null;
@@ -159,6 +161,7 @@ interface ThemePageProps extends ThemeBaseProps {
     passwordVerified: boolean;
   };
   comments: CommentNode[];
+  commentPagination: CommentPagination;
   commentOptions: CommentOptions;
   gravatarMap: Record<number, string>;
 }
@@ -169,7 +172,7 @@ interface ThemePageProps extends ThemeBaseProps {
 ```typescript
 interface ThemeArchiveProps extends ThemeBaseProps {
   archiveTitle: string;          // 如 "分类 技术 下的文章"
-  archiveType: 'category' | 'tag' | 'author' | 'search';
+  archiveType: 'category' | 'tag' | 'author' | 'search' | 'index';
   posts: PostListItem[];
   pagination: PaginationInfo;
 }
@@ -207,6 +210,18 @@ interface CommentNode {
   created: number;
   children: CommentNode[];       // 嵌套回复
 }
+
+interface CommentPagination {
+  enabled: boolean;
+  currentPage: number;
+  totalPages: number;
+  totalComments: number;
+  pageSize: number;
+  pages: number[];
+  pageUrls: Record<number, string>;
+  prevUrl: string | null;
+  nextUrl: string | null;
+}
 ```
 
 ---
@@ -216,20 +231,14 @@ interface CommentNode {
 ```astro
 ---
 // components/Index.astro
+import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 
 type Props = ThemeIndexProps;
 
-const { options, posts, pagination, urls, isLoggedIn, user, pages, sidebarData } = Astro.props;
+const { options, posts, pagination, urls, isLoggedIn, user, pluginCtx } = Astro.props;
 ---
-
-<html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <title>{options.title}</title>
-  <!-- 主样式由系统自动注入，无需在此 link -->
-</head>
-<body>
+<Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
   <header>
     <a href={urls.siteUrl}>{options.title}</a>
   </header>
@@ -246,17 +255,16 @@ const { options, posts, pagination, urls, isLoggedIn, user, pages, sidebarData }
   {pagination.hasNext && (
     <a href={`/?page=${pagination.currentPage + 1}`}>下一页</a>
   )}
-</body>
-</html>
+</Base>
 ```
 
-> 注意：`Base.astro` 布局是系统内置布局，主题组件**不需要**引用它（主题直接输出完整 HTML）。系统通过构建时虚拟模块动态选择当前激活主题的组件。
+> 推荐像默认主题一样使用系统 `Base.astro` 并传入 `pluginCtx`。`Base` 负责完整 HTML 外壳、主题样式、Feed 自动发现以及 `archive:header` / `archive:footer` 插件注入。主题也可以自行输出完整 HTML，但届时必须自行链接样式并处理这些集成功能。系统只负责通过构建时虚拟模块选择组件，不会自动在外层包裹布局。
 
 ---
 
 ## 样式加载机制
 
-系统自动在 `<head>` 中注入以下 `<link>` 标签（基于 `theme.json`）：
+系统 `Base.astro` 会在 `<head>` 中注入以下 `<link>` 标签（基于主题 manifest）：
 
 ```html
 <!-- stylesheets 列表（按顺序） -->
@@ -266,7 +274,7 @@ const { options, posts, pagination, urls, isLoggedIn, user, pages, sidebarData }
 <link rel="stylesheet" href="/themes/typecho-theme-example/style.css">
 ```
 
-> 主题组件不需要自行 `<link>` 样式文件。
+> 使用 `Base.astro` 的主题不需要自行 `<link>`；输出独立 HTML 外壳的主题需要自行处理。
 
 ---
 
@@ -275,7 +283,7 @@ const { options, posts, pagination, urls, isLoggedIn, user, pages, sidebarData }
 ### 本地开发（工作区包）
 
 1. 将主题目录放在 `src/themes/` 下
-2. 在根 `package.json` 的 `workspaces` 中添加路径（如已有 `src/themes/*` 则自动包含）
+2. 在根 `package.json` 的 `dependencies` 中添加 `"<packageName>": "file:src/themes/<packageName>"`
 3. 运行 `pnpm install`
 4. 重新执行 `pnpm run build`
 5. 在管理后台「外观」页面切换到新主题

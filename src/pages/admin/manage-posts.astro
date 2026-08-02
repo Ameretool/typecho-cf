@@ -6,6 +6,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { schema } from '@/db';
 import { formatDate, buildPermalink } from '@/lib/content';
 import { applyFilterSafely } from '@/lib/plugin';
+import { parsePageNumber, parsePositiveInteger, withQueryParams } from '@/lib/input';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 // Posts management exposes other authors' content — contributor and
@@ -18,10 +19,11 @@ const { db, options, urls, user, csrfToken } = ctx;
 const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
 const isEditor = hasPermission(user!.group || 'visitor', 'editor');
 
-const page = parseInt(Astro.url.searchParams.get('page') || '1', 10) || 1;
+const page = parsePageNumber(Astro.url.searchParams.get('page'));
 const status = Astro.url.searchParams.get('status') || '';
-const keywords = Astro.url.searchParams.get('keywords') || '';
+const keywords = (Astro.url.searchParams.get('keywords') || '').trim().slice(0, 50);
 const category = Astro.url.searchParams.get('category') || '';
+const requestedUid = parsePositiveInteger(Astro.url.searchParams.get('uid'));
 const pageSize = 20;
 
 // Build where conditions
@@ -31,6 +33,8 @@ const conditions: any[] = [
 
 if (!isAdmin) {
   conditions.push(eq(schema.contents.authorId, user!.uid));
+} else if (requestedUid) {
+  conditions.push(eq(schema.contents.authorId, requestedUid));
 }
 
 if (status === 'draft') {
@@ -141,8 +145,8 @@ const titleActionHtml = new Map<number, string>(
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="post-actions-top"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="post-actions-top" role="menu">
               <li><a href="/api/admin/content-batch?do=delete">删除</a></li>
               {isEditor && (
                 <>
@@ -166,6 +170,7 @@ const titleActionHtml = new Map<number, string>(
           </select>
           <button type="submit" class="btn btn-s">筛选</button>
           {status && <input type="hidden" value={status} name="status" />}
+          {requestedUid && <input type="hidden" value={String(requestedUid)} name="uid" />}
         </div>
       </form>
     </div>
@@ -246,8 +251,8 @@ const titleActionHtml = new Map<number, string>(
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="post-actions-bottom"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="post-actions-bottom" role="menu">
               <li><a href="/api/admin/content-batch?do=delete">删除</a></li>
               {isEditor && (
                 <>
@@ -263,9 +268,9 @@ const titleActionHtml = new Map<number, string>(
 
         {totalPages > 1 && (
           <ul class="typecho-pager">
-            {page > 1 && <li><a href={`/admin/manage-posts?page=${page - 1}${status ? '&status=' + status : ''}`}>&laquo;</a></li>}
+            {page > 1 && <li><a href={withQueryParams('/admin/manage-posts', { page: page - 1, status, keywords, category, uid: requestedUid })}>&laquo;</a></li>}
             <li class="current"><a href="#">{page} / {totalPages}</a></li>
-            {page < totalPages && <li><a href={`/admin/manage-posts?page=${page + 1}${status ? '&status=' + status : ''}`}>&raquo;</a></li>}
+            {page < totalPages && <li><a href={withQueryParams('/admin/manage-posts', { page: page + 1, status, keywords, category, uid: requestedUid })}>&raquo;</a></li>}
           </ul>
         )}
       </div>

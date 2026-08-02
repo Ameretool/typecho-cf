@@ -40,7 +40,7 @@ function buildInstallRequest(extra: Record<string, string> = {}) {
     body: new URLSearchParams({
       siteTitle: 'Reinstall Site',
       userName: 'admin',
-      userPassword: 'secret123',
+      userPassword: 'strong-secret-123',
       userMail: 'admin@example.com',
       ...extra,
     }).toString(),

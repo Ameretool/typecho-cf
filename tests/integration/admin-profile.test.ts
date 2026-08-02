@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as schema from '@/db/schema';
 import { createTestDb, seedAdmin, disposeTestDb, makeAuthCookie, type TestDatabase } from '../helpers';
-import { hashPassword, generateRandomString } from '@/lib/auth';
+import { validateAuthToken, verifyPassword } from '@/lib/auth';
 
 let testDb: TestDatabase;
 
@@ -90,6 +90,7 @@ describe('POST /api/admin/profile', () => {
     const cookie = await makeAuthCookie(testDb, 1, AUTH_CODE, SECRET);
     const formData = new URLSearchParams({
       mail: 'admin@example.com',
+      currentPassword: 'admin123',
       password: 'newpassword123',
       passwordConfirm: 'newpassword123',
     });
@@ -100,16 +101,24 @@ describe('POST /api/admin/profile', () => {
     });
     const res = await POST({ request: req, locals: {} } as any);
     expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/admin/login?password=changed');
+    expect(res.headers.getSetCookie()).toHaveLength(2);
 
     const user = await testDb.query.users.findFirst();
-    expect(user!.password).not.toBeNull();
-    expect(user!.password).toContain('$PBKDF2$');
+    expect(await verifyPassword('newpassword123', user!.password!)).toBe(true);
+    expect(user!.authCode).not.toBe(AUTH_CODE);
+    const oldToken = cookie
+      .split('; ')
+      .map(part => part.split('=').slice(1).join('='))
+      .join(':');
+    expect(await validateAuthToken(oldToken, SECRET, testDb as any)).toBeNull();
   });
 
   it('rejects password change when confirmation does not match', async () => {
     const cookie = await makeAuthCookie(testDb, 1, AUTH_CODE, SECRET);
     const formData = new URLSearchParams({
       mail: 'admin@example.com',
+      currentPassword: 'admin123',
       password: 'newpassword123',
       passwordConfirm: 'different',
     });
@@ -126,6 +135,7 @@ describe('POST /api/admin/profile', () => {
     const cookie = await makeAuthCookie(testDb, 1, AUTH_CODE, SECRET);
     const formData = new URLSearchParams({
       mail: 'admin@example.com',
+      currentPassword: 'admin123',
       password: '12345',
       passwordConfirm: '12345',
     });
@@ -136,6 +146,28 @@ describe('POST /api/admin/profile', () => {
     });
     const res = await POST({ request: req, locals: {} } as any);
     expect(res.status).toBe(400);
+  });
+
+  it('requires the current password before changing credentials', async () => {
+    const cookie = await makeAuthCookie(testDb, 1, AUTH_CODE, SECRET);
+    for (const currentPassword of ['', 'wrong-password']) {
+      const formData = new URLSearchParams({
+        mail: 'admin@example.com',
+        currentPassword,
+        password: 'newpassword123',
+        passwordConfirm: 'newpassword123',
+      });
+      const req = new Request('https://example.com/api/admin/profile', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', cookie, origin: 'https://example.com' },
+        body: formData,
+      });
+      const res = await POST({ request: req, locals: {} } as any);
+      expect([400, 403]).toContain(res.status);
+    }
+    const user = await testDb.query.users.findFirst();
+    expect(user!.authCode).toBe(AUTH_CODE);
+    expect(await verifyPassword('admin123', user!.password!)).toBe(true);
   });
 
   it('updates url field', async () => {

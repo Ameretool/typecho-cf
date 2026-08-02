@@ -4,6 +4,8 @@ import { getAuthCookies, hasPermission, requireAdminCSRF, validateAuthToken } fr
 import { parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { env } from 'cloudflare:workers';
 import { getRequestCoreContext } from '@/lib/context';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { assertBoundedContentLength, InputError } from '@/lib/input';
 
 export interface AdminActionContext {
   db: Database;
@@ -16,6 +18,8 @@ export interface AdminActionContext {
 
 interface RequireAdminActionOptions {
   csrf?: boolean;
+  /** Maximum declared request-body size, checked before CSRF body parsing. */
+  maxBodyBytes?: number;
   /**
    * Load and activate the plugin set for this request. Defaults to
    * `csrf` (i.e. state-changing POST routes get plugins for free, read
@@ -63,8 +67,16 @@ export function isSameOriginRequest(request: Request, siteUrl: string): boolean 
 export async function requireAdminAction(
   request: Request,
   requiredGroup: string,
-  { csrf = true, plugins }: RequireAdminActionOptions = {},
+  { csrf = true, plugins, maxBodyBytes = REQUEST_BODY_LIMITS.adminForm }: RequireAdminActionOptions = {},
 ): Promise<AdminActionContext | Response> {
+  if (csrf) {
+    try {
+      assertBoundedContentLength(request, maxBodyBytes);
+    } catch (error) {
+      if (error instanceof InputError) return new Response(error.message, { status: error.status });
+      throw error;
+    }
+  }
   const requestCore = getRequestCoreContext(request);
   const db = requestCore?.db ?? getDb(env.DB);
   const options = requestCore?.options ?? await loadOptions(db);

@@ -28,8 +28,8 @@ Typecho-CF 微信公众号同步插件，将文章同步到微信公众号草稿
 ```
 配置保存
   → plugin:config:beforeSave hook 触发
-  → 调用微信 /cgi-bin/token 获取 access_token 验证 appId/appSecret
-  → 失败则阻止保存
+  → 校验 appId/appSecret 必填、默认封面 URL 格式和枚举配置
+  → 凭据是否有效在首次同步获取 access_token 时由微信 API 验证
 
 文章列表页面
   → admin:managePosts:titleActions hook 注入「同步到微信」链接
@@ -42,9 +42,9 @@ Typecho-CF 微信公众号同步插件，将文章同步到微信公众号草稿
   → ③ 上传封面图（thumb）→ 获取 media_id
   → ④ 提取正文图片 → 逐张上传微信永久素材 → 替换 URL
   → ⑤ Markdown → 微信兼容 HTML（sanitize 白名单过滤）
-  → ⑥ 检查是否已有草稿（通过文章 slug 匹配）
+  → ⑥ 读取当前文章保存的微信 media_id 同步状态
     → 已有：调用 /cgi-bin/draft/update 更新
-    → 没有：调用 /cgi-bin/draft/add 创建
+    → 没有或远端草稿已失效：调用 /cgi-bin/draft/add 创建并保存新 media_id
   → 返回结果（含 media_id、上传图片数）
 ```
 
@@ -54,7 +54,8 @@ Typecho-CF 微信公众号同步插件，将文章同步到微信公众号草稿
 |------|------|------|
 | `admin:managePosts:titleActions` | filter | 文章列表标题旁注入同步按钮 |
 | `admin:footer` | filter | 注入同步按钮的点击处理 JS |
-| `plugin:config:beforeSave` | filter | 保存前验证微信 AppID/AppSecret |
+| `plugin:config:beforeSave` | filter | 保存前规范化配置并校验必填项/URL |
+| `plugin:<id>:action:auth` | filter | 将 sync 动作的最低权限声明为 editor |
 | `plugin:<id>:action` | action | 处理同步操作 |
 
 ## 依赖

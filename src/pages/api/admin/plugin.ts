@@ -8,6 +8,8 @@ import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { pluginExists, parseActivatedPlugins, setActivatedPlugins, getAvailablePlugins, pluginHasConfig, getPluginConfigDefaults } from '@/lib/plugin';
 import { bumpCacheVersion, purgeSiteCache } from '@/lib/cache';
 import { jsonError, jsonOk } from '@/lib/http';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { readBoundedJson } from '@/lib/input';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await requireAdminAction(request, 'administrator');
@@ -16,7 +18,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    const body = await request.json() as { plugin?: string; action?: string };
+    const body = await readBoundedJson(request, REQUEST_BODY_LIMITS.adminForm) as { plugin?: string; action?: string };
     const pluginId = body.plugin;
     const action = body.action; // 'activate' or 'deactivate'
 

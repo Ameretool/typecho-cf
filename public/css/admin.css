@@ -109,6 +109,8 @@ select { border: 1px solid #CCC; height: 28px; }
 
 .dropdown-menu a:hover { background: #F6F6F3; text-decoration: none !important; }
 
+:where(a, button, input, select, textarea, summary):focus-visible { outline: 3px solid #E47E00; outline-offset: 2px; }
+
 /** 提示信息框 */
 .message { padding: 8px 10px; border-radius: 2px; }
 

@@ -91,7 +91,7 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
 </head>
 <body>
   <div class="typecho-head-nav clearfix" role="navigation">
-    <button class="menu-bar">菜单</button>
+    <button class="menu-bar" type="button" aria-controls="typecho-nav-list" aria-expanded="false">菜单</button>
     <nav id="typecho-nav-list">
       {visibleGroups.map((group, idx) => {
         const isFocus = idx === focusGroupIdx;
@@ -99,8 +99,8 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
         return (
           <ul class:list={['root', { focus: isFocus }]}>
             <li class="parent">
-              <a href={visibleChildren[0]?.href || '#'}>{group.label}</a>
-              <ul class="child">
+              <a href={visibleChildren[0]?.href || '#'} aria-haspopup="menu" aria-expanded="false" aria-controls={`typecho-nav-group-${idx}`}>{group.label}</a>
+              <ul class="child" id={`typecho-nav-group-${idx}`} role="menu">
                 {visibleChildren.map(item => (
                   <li class:list={[{ focus: item.active }]}>
                     <a href={item.href}>{item.label}</a>
@@ -148,8 +148,17 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
         // 导航菜单
         const menuBar = $('.menu-bar').click(function () {
           const nav = $(this).next('#typecho-nav-list');
-          if (!$(this).toggleClass('focus').hasClass('focus')) {
+          const open = $(this).toggleClass('focus').hasClass('focus');
+          $(this).attr('aria-expanded', open ? 'true' : 'false');
+          if (!open) {
             nav.removeClass('expanded noexpanded');
+          }
+        });
+
+        menuBar.on('keydown', function (e) {
+          if (e.key === 'Escape' && $(this).hasClass('focus')) {
+            e.preventDefault();
+            $(this).trigger('click').trigger('focus');
           }
         });
 
@@ -159,16 +168,30 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
           }
         });
 
+        $(document).on('keydown', function (e) {
+          if (e.key === 'Escape' && menuBar.hasClass('focus')) {
+            e.preventDefault();
+            menuBar.trigger('click').trigger('focus');
+          }
+        });
+
         $('.main').on('click', '.typecho-notice-close', function () {
           $(this).closest('.typecho-dismissible').remove();
         });
 
         $('#typecho-nav-list ul.root').each(function () {
           const ul = $(this), nav = ul.parent();
+          const trigger = ul.find('.parent > a').first();
           let focused = false;
+
+          function setGroupExpanded(open) {
+            ul.toggleClass('expanded', open);
+            trigger.attr('aria-expanded', open ? 'true' : 'false');
+          }
 
           ul.on('click touchend', '.parent a', function (e) {
             nav.removeClass('noexpanded').addClass('expanded');
+            setGroupExpanded(true);
             if ($(window).width() < 576 && e.type == 'click') {
               return false;
             }
@@ -178,14 +201,34 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
             return false;
           }));
 
+          trigger.on('keydown', function (e) {
+            if (e.key === ' ' || e.key === 'Spacebar') {
+              e.preventDefault();
+              setGroupExpanded(true);
+              ul.find('.child a').first().trigger('focus');
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setGroupExpanded(false);
+              trigger.trigger('focus');
+            }
+          });
+
+          ul.find('.child').on('keydown', 'a', function (e) {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setGroupExpanded(false);
+              trigger.trigger('focus');
+            }
+          });
+
           $('a', ul).focus(function () {
-            ul.addClass('expanded');
+            setGroupExpanded(true);
             focused = true;
           }).blur(function () {
             focused = false;
             setTimeout(function () {
               if (!focused) {
-                ul.removeClass('expanded');
+                setGroupExpanded(false);
               }
             });
           });
@@ -198,19 +241,39 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
         });
 
         // 下拉菜单显示/隐藏
-        $('.dropdown-toggle').click(function (e) {
+        $('.dropdown-toggle').each(function (index) {
+          var toggle = $(this);
+          var menu = toggle.next('.dropdown-menu');
+          var menuId = menu.attr('id') || ('typecho-dropdown-' + index);
+          menu.attr({ id: menuId, role: 'menu' });
+          toggle.attr({ 'aria-haspopup': 'menu', 'aria-controls': menuId, 'aria-expanded': 'false' });
+        }).click(function (e) {
           e.preventDefault();
           e.stopPropagation();
           var menu = $(this).next('.dropdown-menu');
           // 关闭其他打开的菜单
-          $('.dropdown-menu').not(menu).hide();
-          menu.toggle();
+          $('.dropdown-menu').not(menu).hide().prev('.dropdown-toggle').attr('aria-expanded', 'false');
+          var open = !menu.is(':visible');
+          menu.toggle(open);
+          $(this).attr('aria-expanded', open ? 'true' : 'false');
           return false;
+        }).on('keydown', function (e) {
+          if (e.key === 'Escape' && $(this).attr('aria-expanded') === 'true') {
+            e.preventDefault();
+            $(this).next('.dropdown-menu').hide();
+            $(this).attr('aria-expanded', 'false').trigger('focus');
+          }
         });
 
         // 点击其他区域关闭下拉菜单
         $(document).click(function () {
-          $('.dropdown-menu').hide();
+          $('.dropdown-menu').hide().prev('.dropdown-toggle').attr('aria-expanded', 'false');
+        }).on('keydown', '.dropdown-menu a', function (e) {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            var menu = $(this).closest('.dropdown-menu').hide();
+            menu.prev('.dropdown-toggle').attr('aria-expanded', 'false').trigger('focus');
+          }
         });
 
         // 批量操作 - dropdown-menu 链接

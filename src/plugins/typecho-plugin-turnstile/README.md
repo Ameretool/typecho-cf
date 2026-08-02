@@ -15,7 +15,7 @@ Typecho-CF Cloudflare Turnstile 验证码插件，集成 Cloudflare Turnstile �
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `sitekey` | text | — | Cloudflare Turnstile Site Key，[申请地址](https://dash.cloudflare.com/?to=/:account/turnstile) |
-| `secret` | text | — | Cloudflare Turnstile Secret Key |
+| `secret` | password | — | Cloudflare Turnstile Secret Key；保存后由通用配置页掩码，不回显原文 |
 | `input` | text | `cf-turnstile-response` | 验证 token 的字段名 |
 | `appearance` | select | `always` | 外观模式：始终显示 / 编程式调用 / 仅交互时显示 |
 | `theme` | select | `auto` | 主题：自动 / 浅色 / 深色 |
@@ -46,6 +46,7 @@ Typecho-CF Cloudflare Turnstile 验证码插件，集成 Cloudflare Turnstile �
 
 | Hook | 类型 | 用途 |
 |------|------|------|
+| `csp:directives` | filter | 为 Turnstile SDK、验证请求和 iframe 追加 CSP 来源 |
 | `feedback:comment` | filter | 评论提交时验证 Turnstile token |
 | `archive:header` | filter | 评论页面 `<head>` 注入 SDK 和状态管理 JS |
 | `archive:footer` | filter | 评论页面注入 Widget HTML |

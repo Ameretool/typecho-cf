@@ -21,6 +21,8 @@ import { safeAdminRedirectUrl } from '@/lib/admin-auth';
 import { getClientIp, getRequestCoreContextFromLocals } from '@/lib/context';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
 
 const LOGIN_URL = '/admin/login';
 
@@ -82,7 +84,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response('Forbidden', { status: 403 });
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.auth);
+  } catch (error) {
+    if (error instanceof InputError) return new Response(error.message, { status: error.status });
+    throw error;
+  }
   const name = formData.get('name')?.toString() || '';
   const password = formData.get('password')?.toString() || '';
   const remember = formData.get('remember')?.toString() === '1';

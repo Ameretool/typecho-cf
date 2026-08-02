@@ -13,9 +13,9 @@
  */
 
 import { schema, type Database } from '@/db';
-import { and, eq, lt } from 'drizzle-orm';
+import { and, eq, lt, sql } from 'drizzle-orm';
 
-type LoginRateLimitDatabase = Pick<Database, 'query' | 'insert' | 'update' | 'delete'>;
+type LoginRateLimitDatabase = Pick<Database, 'query' | 'insert' | 'delete'>;
 
 export interface LoginRateLimitConfig {
   enabled: boolean;
@@ -86,21 +86,33 @@ export async function recordLoginFailure(
   if (!config.enabled || !ip) return;
   const windowMs = config.windowSeconds * 1000;
   const banMs = config.banSeconds * 1000;
-  const current = await db.query.loginFailures.findFirst({ where: eq(schema.loginFailures.ip, ip) });
+  const windowCutoff = now - windowMs;
+  const firstBan = config.maxFailures <= 1 ? now + banMs : 0;
+  const inWindow = sql`${schema.loginFailures.windowStartedAt} >= ${windowCutoff}`;
+  const nextFailures = sql<number>`case
+    when ${inWindow} then ${schema.loginFailures.failures} + 1
+    else 1
+  end`;
 
-  const inWindow = current && now - current.windowStartedAt <= windowMs;
-  const failures = (inWindow ? current!.failures : 0) + 1;
-  const windowStartedAt = inWindow ? current!.windowStartedAt : now;
-  const bannedUntil = failures >= config.maxFailures ? now + banMs : 0;
-
-  if (current) {
-    await db
-      .update(schema.loginFailures)
-      .set({ failures, windowStartedAt, bannedUntil })
-      .where(eq(schema.loginFailures.ip, ip));
-  } else {
-    await db.insert(schema.loginFailures).values({ ip, failures, windowStartedAt, bannedUntil });
-  }
+  // One UPSERT owns the read, increment, window reset, and threshold decision.
+  // Concurrent requests can no longer read the same old count and overwrite
+  // one another with identical values.
+  await db.insert(schema.loginFailures)
+    .values({ ip, failures: 1, windowStartedAt: now, bannedUntil: firstBan })
+    .onConflictDoUpdate({
+      target: schema.loginFailures.ip,
+      set: {
+        failures: nextFailures,
+        windowStartedAt: sql`case
+          when ${inWindow} then ${schema.loginFailures.windowStartedAt}
+          else ${now}
+        end`,
+        bannedUntil: sql`case
+          when ${nextFailures} >= ${config.maxFailures} then ${now + banMs}
+          else 0
+        end`,
+      },
+    });
 }
 
 export async function clearLoginFailures(db: LoginRateLimitDatabase, ip: string): Promise<void> {

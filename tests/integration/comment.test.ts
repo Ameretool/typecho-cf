@@ -348,6 +348,22 @@ describe('POST /api/comment', () => {
     expect(updated?.commentsNum).toBe(0);
   });
 
+  it('restores protected ownership and relationship fields after filtering', async () => {
+    await seedOptions(testDb);
+    const content = await seedContent(testDb, { authorId: 7 });
+    mockApplyFilter.mockImplementation(async (_ctx: any, hook: string, data: any) => hook === 'feedback:comment'
+      ? { ...data, text: 'Valid transformation', cid: 999, authorId: 88, ownerId: 99, parent: 123, type: 'trackback' }
+      : data);
+
+    const req = makeCommentRequest({ cid: String(content.cid), text: 'Original', author: 'Alice' });
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+    const saved = await testDb.query.comments.findFirst();
+    expect(saved).toMatchObject({
+      cid: content.cid, authorId: 0, ownerId: 7, parent: 0, type: 'comment', text: 'Valid transformation',
+    });
+  });
+
   it('rejects a cross-origin comment even when referer checking is disabled', async () => {
     await seedOptions(testDb, {
       siteUrl: 'https://example.com',

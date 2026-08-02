@@ -5,6 +5,7 @@ import { hasPermission } from '@/lib/auth';
 import { eq, sql, desc } from 'drizzle-orm';
 import { schema } from '@/db';
 import { formatDate } from '@/lib/content';
+import { parsePageNumber, withQueryParams } from '@/lib/input';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const authCheck = requireAuth(ctx);
@@ -15,8 +16,8 @@ if (!hasPermission(ctx.user!.group || 'visitor', 'administrator')) {
 }
 
 const { db, options, urls, user, csrfToken } = ctx;
-const keywords = Astro.url.searchParams.get('keywords') || '';
-const page = parseInt(Astro.url.searchParams.get('page') || '1', 10) || 1;
+const keywords = (Astro.url.searchParams.get('keywords') || '').trim().slice(0, 50);
+const page = parsePageNumber(Astro.url.searchParams.get('page'));
 const pageSize = 20;
 
 const conditions: any[] = [];
@@ -61,8 +62,8 @@ const groupNames: Record<string, string> = {
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="user-actions"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="user-actions" role="menu">
               <li><a href="/api/admin/user-batch?do=delete">删除</a></li>
             </ul>
           </div>
@@ -132,9 +133,9 @@ const groupNames: Record<string, string> = {
     {totalPages > 1 && (
       <div class="typecho-list-operate clearfix">
         <ul class="typecho-pager">
-          {page > 1 && <li><a href={`/admin/manage-users?page=${page - 1}${keywords ? '&keywords=' + encodeURIComponent(keywords) : ''}`}>&laquo;</a></li>}
+          {page > 1 && <li><a href={withQueryParams('/admin/manage-users', { page: page - 1, keywords })}>&laquo;</a></li>}
           <li class="current"><a href="#">{page} / {totalPages}</a></li>
-          {page < totalPages && <li><a href={`/admin/manage-users?page=${page + 1}${keywords ? '&keywords=' + encodeURIComponent(keywords) : ''}`}>&raquo;</a></li>}
+          {page < totalPages && <li><a href={withQueryParams('/admin/manage-users', { page: page + 1, keywords })}>&raquo;</a></li>}
         </ul>
       </div>
     )}

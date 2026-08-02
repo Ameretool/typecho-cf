@@ -4,8 +4,6 @@
 
 A modern rewrite of [Typecho](https://typecho.org) in TypeScript, running on **Astro + Cloudflare Workers + D1**. Preserves Typecho's database schema for seamless data migration from PHP Typecho.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/eslizn/typecho-cf)
-
 ---
 
 ## Features
@@ -14,7 +12,7 @@ A modern rewrite of [Typecho](https://typecho.org) in TypeScript, running on **A
 
 **Admin Dashboard**: Post & page editor, comment moderation, media manager (R2 drag-and-drop upload), user management (5 roles), theme switcher, plugin manager (enable/disable/configure), site settings, installation wizard
 
-**System**: Theme system (npm package distribution), plugin system (Hook mechanism, 50+ hook points), PHP Typecho data migration tool, PBKDF2-SHA256 authentication, CSRF protection, security headers, R2 upload type validation
+**System**: Theme system (npm package distribution), lazily loaded plugin system with 30+ wired hooks, PHP Typecho migration tools, PBKDF2-SHA256 authentication, CSRF protection, security headers, request-body limits, and R2 upload validation
 
 ---
 
@@ -22,9 +20,8 @@ A modern rewrite of [Typecho](https://typecho.org) in TypeScript, running on **A
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22.12+
 - pnpm (`npm install -g pnpm`)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm install -g wrangler`)
 - Cloudflare account
 
 ### Local Development
@@ -35,7 +32,10 @@ git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# Start dev server (D1 + R2 are automatically simulated by wrangler)
+# Create local Wrangler config (fill in the D1 and SESSION KV resource IDs when needed)
+cp wrangler.toml.example wrangler.toml
+
+# Start dev server (D1 + KV + R2 are automatically simulated by wrangler)
 pnpm run dev
 ```
 
@@ -47,24 +47,43 @@ Visit http://localhost:4321 — first visit auto-redirects to the installation w
 
 ```bash
 # Create D1 database
-wrangler d1 create typecho-cf-db
+pnpm exec wrangler d1 create typecho-cf-db
 
 # Create R2 bucket
-wrangler r2 bucket create typecho-cf-uploads
+pnpm exec wrangler r2 bucket create typecho-cf-uploads
+
+# Create the KV namespace used by Astro sessions and expose it as SESSION
+pnpm exec wrangler kv namespace create typecho-cf-session --binding SESSION
 ```
 
-**2. Update `wrangler.toml`**
+**2. Create and update `wrangler.toml`**
 
-Replace `database_id` with the actual D1 database ID from the previous step:
+Copy the example, then replace `database_id` and the `SESSION` `id` with the D1 database ID and KV namespace ID returned above:
+
+```bash
+cp wrangler.toml.example wrangler.toml
+```
 
 ```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "typecho-cf-db"
 database_id = "your-actual-database-id"
+
+[[kv_namespaces]]
+binding = "SESSION"
+id = "your-actual-kv-namespace-id"
 ```
 
-**3. Build and deploy**
+**3. Set a first-install token (strongly recommended)**
+
+```bash
+pnpm exec wrangler secret put INSTALL_TOKEN
+```
+
+Installation still works without `INSTALL_TOKEN`, but the first visitor could claim the initial administrator account.
+
+**4. Build and deploy**
 
 ```bash
 pnpm run deploy
@@ -81,10 +100,12 @@ After deployment, visit your Worker URL — first visit auto-redirects to the in
 | `pnpm run dev` | Start local dev server |
 | `pnpm run build` | Production build |
 | `pnpm run deploy` | Build + deploy to Cloudflare Workers |
+| `pnpm run lint` | Type-aware static checks, including floating Promises |
+| `pnpm run types:workers` | Generate Worker binding and runtime types from Wrangler config |
+| `pnpm run typecheck` | Generate Workers types and run the TypeScript type check |
 | `pnpm run test` | Run all tests |
 | `pnpm run test:watch` | Watch mode |
 | `pnpm run test:coverage` | Generate coverage report |
-| `pnpm exec tsc --noEmit` | TypeScript type check |
 | `pnpm run db:generate` | Generate Drizzle migrations |
 | `pnpm run db:studio` | Launch Drizzle Studio |
 | `pnpm run db:migrate:local` | Migrate PHP Typecho data to local |
@@ -92,6 +113,8 @@ After deployment, visit your Worker URL — first visit auto-redirects to the in
 | `pnpm run db:migrate:dry-run` | Preview migration (no writes) |
 | `pnpm run reset-password` | Reset user password (local) |
 | `pnpm run reset-password:cloudflare` | Reset user password (Cloudflare) |
+
+`SESSION` is the Astro Cloudflare adapter's session KV binding and must point to a real namespace in production. After changing D1, KV, R2, or other bindings in `wrangler.toml` or `wrangler.toml.example`, run `pnpm run types:workers`. The generated `worker-configuration.d.ts` is used locally and in CI but is not committed. On a clean checkout, generation automatically falls back to `wrangler.toml.example`.
 
 ---
 
@@ -121,7 +144,7 @@ pnpm run db:migrate:dry-run \
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--source`, `-s` | Source SQLite database path | (required) |
-| `--uploads`, `-u` | Source `usr/uploads/` directory | (required) |
+| `--uploads`, `-u` | Source `usr/uploads/` directory; omit to migrate database data only | (optional) |
 | `--prefix` | Source table prefix | `typecho_` |
 | `--dry-run`, `-n` | Preview mode | `false` |
 | `--site-url` | New site URL (for rewriting attachment URLs) | — |
@@ -130,7 +153,7 @@ pnpm run db:migrate:dry-run \
 
 ### Reset Password After Migration
 
-Password hashing is incompatible (PHP phpass → SHA-256 + salt), so passwords must be reset after migration:
+Password hashing is incompatible (PHP phpass → PBKDF2-SHA256 with 600,000 iterations and a 16-byte salt), so passwords must be reset after migration:
 
 ```bash
 # Local
@@ -144,13 +167,15 @@ pnpm run reset-password:cloudflare
 
 ## Plugin Development
 
-See [Plugin Development Guide](src/plugins/README.md).
+See [Plugin Development Guide](src/plugins/README.en.md).
+
+There is no built-in SMTP or mail API adapter. Password-reset messages and comment notifications are delivered only when mail is enabled and an active plugin implements the `mail:send` hook; without one, delivery safely degrades to an unsent result.
 
 ---
 
 ## Theme Development
 
-See [Theme Development Guide](src/themes/README.md).
+See [Theme Development Guide](src/themes/README.en.md).
 
 ---
 
@@ -173,7 +198,7 @@ See [Theme Development Guide](src/themes/README.md).
 - Admin APIs must use `requireAdminAction()` for authentication, authorization, and CSRF checks; admin redirects must be same-origin and limited to `/admin` paths.
 - Comment referer checks and post-comment redirects must trust sources by URL `origin`, not by string prefix or host-only comparison.
 - Frontend, admin, plugin route, and cache-hit responses are normalized by middleware with baseline security headers.
-- Every feature or bug fix needs matching regression coverage and must pass both `pnpm run test` and `pnpm exec tsc --noEmit`.
+- Every feature or bug fix needs matching regression coverage and must pass both `pnpm run test` and `pnpm run typecheck`.
 
 ---
 
@@ -181,7 +206,7 @@ See [Theme Development Guide](src/themes/README.md).
 
 | Aspect | Status |
 |--------|--------|
-| Database schema | ✅ Fully compatible, can import SQLite DB directly |
+| Database schema | ✅ Seven core tables remain compatible; migration scripts import SQLite data and runtime setup adds login-rate-limit and password-reset helper tables |
 | Default theme style | ✅ CSS & HTML structure matches Typecho default theme |
 | URL structure | ✅ Routes match Typecho default permalink settings |
 | Password hashing | ⚠️ Reset required after migration (different algorithm) |

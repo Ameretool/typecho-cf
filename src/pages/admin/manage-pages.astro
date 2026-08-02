@@ -48,8 +48,8 @@ const authorMap = new Map(pageRows
         <div class="operate">
           <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
           <div class="btn-group btn-drop">
-            <button class="btn dropdown-toggle btn-s" type="button"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
-            <ul class="dropdown-menu">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="page-actions"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="page-actions" role="menu">
               <li><a href="/api/admin/content-batch?do=delete&type=page">删除</a></li>
               <li><a href="/api/admin/content-batch?do=mark&status=publish&type=page">标记为<strong>公开</strong></a></li>
               <li><a href="/api/admin/content-batch?do=mark&status=hidden&type=page">标记为<strong>隐藏</strong></a></li>

@@ -16,6 +16,9 @@
 
 // ==================== Types ====================
 
+/** Internal form metadata used to preserve repeatable rows across reordering. */
+export const PLUGIN_CONFIG_ROW_ID = '__typechoConfigRowId';
+
 /**
  * Plugin configuration field definition.
  * Mirrors PHP Typecho's Form Element types (Text, Textarea, Select, Radio, Checkbox, Password, Hidden).
@@ -135,6 +138,7 @@ export const HookPoints = {
   'admin:end': 'admin:end',                          // Admin page end
   'admin:loginHead': 'admin:loginHead',              // Filter: HTML injected into login page <head>
   'admin:loginForm': 'admin:loginForm',              // Filter: HTML injected into login page form
+  'admin:page': 'admin:page',                        // Filter: plugin-owned admin page HTML
 
   // --- Content Editing (Admin) ---
   'admin:writePost:option': 'admin:writePost:option',          // Post editor sidebar options
@@ -695,9 +699,14 @@ function parseRepeatableField(
 
     const index = Number(match[1]);
     const itemKey = match[2];
-    if (!Number.isInteger(index) || !itemFields[itemKey]) continue;
+    if (!Number.isInteger(index) || (itemKey !== PLUGIN_CONFIG_ROW_ID && !itemFields[itemKey])) continue;
 
     const row = rows.get(index) || {};
+    if (itemKey === PLUGIN_CONFIG_ROW_ID) {
+      row[itemKey] = value.toString();
+      rows.set(index, row);
+      continue;
+    }
     const itemField = itemFields[itemKey];
     if (itemField.type === 'checkbox') {
       row[itemKey] = formData.getAll(name).map(v => v.toString());
@@ -710,7 +719,8 @@ function parseRepeatableField(
   return [...rows.entries()]
     .sort(([a], [b]) => a - b)
     .map(([, row]) => applyRepeatableDefaults(row, itemFields))
-    .filter(row => Object.values(row).some(value => {
+    .filter(row => Object.entries(row).some(([itemKey, value]) => {
+      if (itemKey === PLUGIN_CONFIG_ROW_ID) return false;
       if (Array.isArray(value)) return value.length > 0;
       return String(value ?? '').trim() !== '';
     }));
@@ -721,6 +731,9 @@ function applyRepeatableDefaults(
   itemFields: Record<string, PluginConfigField>,
 ): Record<string, any> {
   const result: Record<string, any> = {};
+  if (typeof row[PLUGIN_CONFIG_ROW_ID] === 'string' && /^\d+$/.test(row[PLUGIN_CONFIG_ROW_ID])) {
+    result[PLUGIN_CONFIG_ROW_ID] = row[PLUGIN_CONFIG_ROW_ID];
+  }
   for (const [key, field] of Object.entries(itemFields)) {
     if (row[key] !== undefined) {
       result[key] = row[key];

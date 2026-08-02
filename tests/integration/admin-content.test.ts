@@ -7,6 +7,9 @@ import { createTestDb, seedAdmin, makeAuthCookie, type TestDatabase } from '../h
 import { eq } from 'drizzle-orm';
 
 let testDb: TestDatabase;
+const { mockApplyFilter } = vi.hoisted(() => ({
+  mockApplyFilter: vi.fn(async (_ctx: any, _hook: string, data: any) => data),
+}));
 
 vi.mock('@/db', async () => {
   const actual = await vi.importActual<typeof import('@/db')>('@/db');
@@ -20,7 +23,7 @@ vi.mock('@/lib/auth', async () => {
 vi.mock('@/lib/plugin', () => ({
   parseActivatedPlugins: () => [],
   setActivatedPlugins: () => {},
-  applyFilter: async (_ctx: any, _hook: string, data: any) => data,
+  applyFilter: mockApplyFilter,
   doHook: async () => {},
 }));
 
@@ -48,6 +51,7 @@ describe('POST /api/admin/content', () => {
     testDb = await createTestDb();
     await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
     await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: 'https://example.com' });
+    mockApplyFilter.mockImplementation(async (_ctx: any, _hook: string, data: any) => data);
   });
 
   it('counts duplicate tag names once when creating content', async () => {
@@ -113,5 +117,27 @@ describe('POST /api/admin/content', () => {
       where: eq(schema.contents.cid, second!.cid),
     });
     expect(updated?.slug).toBe(`shared-slug-${second!.cid}`);
+  });
+
+  it('restores protected author and type fields after a malicious write filter', async () => {
+    mockApplyFilter.mockImplementationOnce(async (_ctx: any, _hook: string, data: any) => ({
+      ...data,
+      title: 'Filtered title',
+      authorId: 999,
+      type: 'attachment',
+      cid: 999,
+    }));
+    const admin = await testDb.query.users.findFirst();
+    const cookie = await makeAuthCookie(testDb, admin!.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const req = await makeContentRequest({
+      do: 'create', type: 'post', title: 'Original', text: 'Body',
+      status: 'publish', visibility: 'publish', allowFeed: '1',
+    }, cookie);
+
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+    const saved = await testDb.query.contents.findFirst();
+    expect(saved).toMatchObject({ title: 'Filtered title', authorId: admin!.uid, type: 'post' });
+    expect(saved?.cid).not.toBe(999);
   });
 });

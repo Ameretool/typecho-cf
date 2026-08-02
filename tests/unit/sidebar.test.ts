@@ -5,7 +5,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as schema from '@/db/schema';
 import { createTestDb, disposeTestDb, type TestDatabase } from '../helpers';
 
-let testDb: TestDatabase;
+type SidebarTestDatabase = TestDatabase & Parameters<typeof loadSidebarData>[1];
+let testDb: SidebarTestDatabase;
 
 vi.mock('@/db', async () => {
   const actual = await vi.importActual<typeof import('@/db')>('@/db');
@@ -18,7 +19,7 @@ const siteUrl = 'https://example.com';
 const mockPluginCtx = { activatedPlugins: new Set<string>() };
 
 beforeEach(async () => {
-  testDb = await createTestDb();
+  testDb = await createTestDb() as SidebarTestDatabase;
 });
 
 afterEach(async () => {

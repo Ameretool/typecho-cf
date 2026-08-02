@@ -3,6 +3,8 @@ import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { applyFilter, parseActivatedPlugins } from '@/lib/plugin';
 import { hasPermission } from '@/lib/auth';
 import { withTimeout } from '@/lib/timeout';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { readBoundedJson } from '@/lib/input';
 
 const PLUGIN_ACTION_TIMEOUT_MS = 60_000;
 
@@ -33,7 +35,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   let body: { plugin?: string; action?: string; payload?: unknown };
   try {
-    body = await request.json();
+    body = await readBoundedJson(request, REQUEST_BODY_LIMITS.adminForm) as typeof body;
   } catch {
     return json({ error: '请求格式错误' }, 400);
   }

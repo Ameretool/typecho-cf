@@ -8,6 +8,8 @@ import { getClientIp } from '@/lib/context';
 import { setActivatedPlugins, parseActivatedPlugins, type HookContext } from '@/lib/plugin';
 import { and, eq, lte } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
 
 export const POST: APIRoute = async ({ request }) => {
   // Origin check — prevent CSRF. Missing origin is rejected outright
@@ -23,12 +25,19 @@ export const POST: APIRoute = async ({ request }) => {
     }
   } catch { return new Response('Forbidden', { status: 403 }); }
 
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.publicForm);
+  } catch (error) {
+    if (error instanceof InputError) return new Response(error.message, { status: error.status });
+    throw error;
+  }
+
   const ip = getClientIp(request);
   if (!trackSlidingWindow(`forgot-pw:${ip}`, { windowSeconds: 3600, maxRequests: 3 })) {
     return new Response('请求过于频繁，请稍后再试', { status: 429, headers: { 'Retry-After': '3600' } });
   }
 
-  const formData = await request.formData();
   const email = formData.get('email')?.toString()?.trim() || '';
 
   const db = getDb(env.DB);

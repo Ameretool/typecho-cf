@@ -1,3 +1,5 @@
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+
 /**
  * File upload utilities - R2 storage integration
  * Corresponds to Typecho's Widget/Upload.php
@@ -139,20 +141,18 @@ export async function uploadToR2(
     throw new Error(`不允许上传此类型的文件: ${mimeType}`);
   }
 
-  const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
+  if (file.size > REQUEST_BODY_LIMITS.uploadFile) {
     throw new Error('文件大小超出限制 (最大 10MB)');
   }
 
   const path = generateUploadPath(file.name);
-  const arrayBuffer = await file.arrayBuffer();
 
   // SVG XSS protection: force download instead of inline rendering.
   // SVGs can contain <script>, onload handlers, and other XSS vectors;
   // serving them as attachments prevents the browser from executing embedded scripts.
   const isSvg = mimeType === 'image/svg+xml';
 
-  await bucket.put(path, arrayBuffer, {
+  await bucket.put(path, file.stream(), {
     httpMetadata: {
       contentType: mimeType,
       ...(isSvg && { contentDisposition: 'attachment' }),

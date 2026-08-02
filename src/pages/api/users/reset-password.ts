@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getDb, schema } from '@/db';
 import { parseResetToken, hashPassword, generateRandomString, hashResetToken } from '@/lib/auth';
-import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
+import { PASSWORD_MIN_LENGTH, REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData } from '@/lib/input';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -17,9 +18,16 @@ export const POST: APIRoute = async ({ request }) => {
     }
   } catch { return new Response('Forbidden', { status: 403 }); }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.auth);
+  } catch (error) {
+    if (error instanceof InputError) return new Response(error.message, { status: error.status });
+    throw error;
+  }
   const token = formData.get('token')?.toString()?.trim() || '';
   const password = formData.get('password')?.toString() || '';
+  const confirm = formData.get('confirm')?.toString() || '';
 
   if (!token || !password) {
     return new Response('参数不完整', { status: 400 });
@@ -27,6 +35,11 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (password.length < PASSWORD_MIN_LENGTH) {
     return new Response(`密码至少需要 ${PASSWORD_MIN_LENGTH} 位`, { status: 400 });
+  }
+
+  // Validate confirmation before looking up or mutating the one-time token.
+  if (password !== confirm) {
+    return new Response('两次输入的密码不一致', { status: 400 });
   }
 
   const db = getDb(env.DB);
