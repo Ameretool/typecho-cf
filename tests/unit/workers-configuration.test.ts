@@ -12,8 +12,6 @@ describe('Workers configuration and static checks', () => {
     const ci = read('.github/workflows/ci.yml');
     expect(example).toContain('binding = "BUCKET"');
     expect(example).toContain('binding = "DB"');
-    expect(example).toContain('binding = "SESSION"');
-    expect(example).toContain('id = "<YOUR_SESSION_KV_NAMESPACE_ID>"');
     expect(pkg.scripts['types:workers']).toContain('scripts/generate-worker-types.mjs');
     expect(pkg.scripts.typecheck).toContain('pnpm run types:workers');
     expect(pkg.scripts.typecheck).toContain('tsc --noEmit');

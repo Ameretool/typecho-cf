@@ -24,6 +24,42 @@ export interface CommentPage {
 const COMMENT_PAGE_SIZE_MAX = 100;
 const COMMENT_UNPAGED_MAX = 200;
 
+// Root counts scan every comment on a content (NOT EXISTS per row), so they
+// are cached per (cacheVersion, cid). Every write path bumps cacheVersion,
+// which naturally invalidates the entry; the TTL is a safety net for direct
+// DB writes outside the version bump and is enforced on read.
+const COMMENT_ROOT_CACHE_TTL_MS = 60_000;
+const COMMENT_ROOT_CACHE_MAX_ENTRIES = 200;
+const commentRootCounts = new Map<string, { count: number; expiresAt: number }>();
+
+function readCachedRootCount(key: string): number | undefined {
+  const entry = commentRootCounts.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    commentRootCounts.delete(key);
+    return undefined;
+  }
+  return entry.count;
+}
+
+function writeCachedRootCount(key: string, count: number): void {
+  commentRootCounts.set(key, { count, expiresAt: Date.now() + COMMENT_ROOT_CACHE_TTL_MS });
+  // The key embeds cacheVersion, which grows on every content write; sweep
+  // expired entries once the map gets large so a long-lived isolate never
+  // accumulates stale keys unboundedly.
+  if (commentRootCounts.size > COMMENT_ROOT_CACHE_MAX_ENTRIES) {
+    const now = Date.now();
+    for (const [cacheKey, entry] of commentRootCounts) {
+      if (entry.expiresAt <= now) commentRootCounts.delete(cacheKey);
+    }
+  }
+}
+
+/** Test-only: reset the in-isolate root-count cache. */
+export function resetCommentRootCountCache(): void {
+  commentRootCounts.clear();
+}
+
 function pageUrl(requestUrl: string, page: number): string {
   const url = new URL(requestUrl);
   url.hash = 'comments';
@@ -76,6 +112,8 @@ export async function loadCommentPage(
   cid: number,
   options: SiteOptions,
   requestUrl: string,
+  commentsNum?: number | null,
+  cacheVersion: string | number = 0,
 ): Promise<CommentPage> {
   let enabled = !!options.commentsPageBreak;
   const threaded = !!options.commentsThreaded;
@@ -109,24 +147,36 @@ export async function loadCommentPage(
     )`,
   );
 
+  // contents.commentsNum (maintained by the comment write/moderation paths)
+  // is a single PK read the caller already did — prefer it over a count(*)
+  // scan of every comment on the content.
+  const hasStoredCount = typeof commentsNum === 'number' && Number.isFinite(commentsNum) && commentsNum >= 0;
+
   if (!enabled) {
     // Probe the total with the same round trip as the bounded row fetch. Small
     // unpaged comment sets retain the legacy response shape; larger sets are
     // transparently promoted to paged mode instead of materialising everything.
-    const [countResult, rows] = await db.batch([
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(schema.comments)
-        .where(approvedForContent),
+    const statements: any[] = [];
+    if (!hasStoredCount) {
+      statements.push(
+        db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(approvedForContent),
+      );
+    }
+    statements.push(
       db
         .select()
         .from(schema.comments)
         .where(approvedForContent)
         .orderBy(orderExpression)
         .limit(COMMENT_UNPAGED_MAX),
-    ]);
-    const totalComments = Number(countResult[0]?.count || 0);
-    if (totalComments <= COMMENT_UNPAGED_MAX) {
+    );
+    const results = await db.batch(statements as [any, ...any[]]);
+    const counted = hasStoredCount
+      ? commentsNum!
+      : Number(results[0][0]?.count ?? 0);
+    const rows = results[results.length - 1] as CommentRow[];
+    if (counted <= COMMENT_UNPAGED_MAX) {
+      const total = Math.max(counted, rows.length);
       return {
         rows,
         pagination: buildPagination(
@@ -135,33 +185,50 @@ export async function loadCommentPage(
           null,
           display,
           pageSize,
-          totalComments,
-          totalComments,
+          total,
+          total,
         ),
       };
     }
     enabled = true;
   }
 
-  const countStatements = [
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.comments)
-      .where(approvedForContent),
-  ];
-  if (threaded) {
+  const rootCacheKey = `${cacheVersion}\0${cid}\0${threaded}\0${order}`;
+  const cachedRootCount = threaded ? readCachedRootCount(rootCacheKey) : undefined;
+
+  const countStatements: any[] = [];
+  if (!hasStoredCount) {
     countStatements.push(
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(schema.comments)
-        .where(approvedRootForContent),
+      db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(approvedForContent),
     );
   }
-  const countResults = await db.batch(countStatements as [any, ...any[]]);
-  const totalComments = Number(countResults[0][0]?.count || 0);
-  const totalPageItems = threaded
-    ? Number(countResults[1][0]?.count || 0)
-    : totalComments;
+  if (threaded && !cachedRootCount) {
+    countStatements.push(
+      db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(approvedRootForContent),
+    );
+  }
+
+  let totalComments = hasStoredCount ? commentsNum! : 0;
+  let totalPageItems = 0;
+  if (countStatements.length > 0) {
+    const countResults = await db.batch(countStatements as [any, ...any[]]);
+    let index = 0;
+    if (!hasStoredCount) {
+      totalComments = Number(countResults[index][0]?.count ?? 0);
+      index += 1;
+    }
+    if (threaded && !cachedRootCount) {
+      totalPageItems = Number(countResults[index][0]?.count ?? 0);
+      writeCachedRootCount(rootCacheKey, totalPageItems);
+    }
+  }
+  if (threaded && cachedRootCount) {
+    totalPageItems = cachedRootCount;
+  }
+  if (!threaded) {
+    totalPageItems = totalComments;
+  }
+
   const pagination = buildPagination(
     requestUrl,
     true,

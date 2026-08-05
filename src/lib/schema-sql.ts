@@ -8,6 +8,7 @@
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import type { SQLiteTable, SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import * as schema from '@/db/schema';
+import { contentsFtsSql } from '@/lib/fulltext';
 
 /* ---------- helpers ---------- */
 
@@ -110,6 +111,10 @@ export function generateCreateSQL(): string[] {
     statements.push(buildCreateTable(table));
     statements.push(...buildCreateIndexes(table));
   }
+  // FTS5 search index over typecho_contents (virtual table + sync triggers).
+  // Not part of the Drizzle schema — it is a derived index managed by the
+  // runtime bootstrap for existing deployments (see isolate-boot.ts).
+  statements.push(...contentsFtsSql());
   return statements;
 }
 

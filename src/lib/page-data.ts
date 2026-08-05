@@ -5,10 +5,11 @@
  * Each function returns a standardized Props object for theme components.
  * This separation allows theme components to be purely presentational.
  */
-import { eq, and, desc, asc, lt, gt, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, lt, gt, or, sql } from 'drizzle-orm';
 import { schema, type Database } from '@/db';
 import type { SiteOptions } from '@/lib/options';
-import { loadSidebarData, loadNavPages } from '@/lib/sidebar';
+import { loadSidebarData, loadNavPages, type SidebarData } from '@/lib/sidebar';
+import { buildFtsMatchExpression, contentsFtsTableRef, FTS_MIN_CHARS, isFtsAvailable } from '@/lib/fulltext';
 import {
   buildPermalink, buildAuthorLink,
   buildCategoryLink, buildTagLink, buildSearchLink,
@@ -36,19 +37,28 @@ type CategoryMap = Map<number, CategoryEntry[]>;
 type AuthorEntry = { uid: number; name: string | null; screenName: string | null };
 type AuthorMap = Map<number, AuthorEntry>;
 
+const EMPTY_SIDEBAR: SidebarData = {
+  recentPosts: [],
+  recentComments: [],
+  categories: [],
+  archives: [],
+};
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
-async function loadCommon(ctx: RequestContext, requestUrl: string) {
+async function loadCommon(ctx: RequestContext, requestUrl: string, withSidebar = true) {
   const { db, options, urls, user, isLoggedIn } = ctx;
   const [sidebarData, pages] = await Promise.all([
-    loadSidebarData(
-      ctx,
-      db,
-      urls.siteUrl,
-      options.permalinkPattern as string | undefined,
-      options.categoryPattern as string | undefined,
-      options.cacheVersion,
-    ),
+    withSidebar
+      ? loadSidebarData(
+          ctx,
+          db,
+          urls.siteUrl,
+          options.permalinkPattern as string | undefined,
+          options.categoryPattern as string | undefined,
+          options.cacheVersion,
+        )
+      : Promise.resolve(EMPTY_SIDEBAR),
     loadNavPages(db, urls.siteUrl, options.pagePattern as string | undefined, options.cacheVersion),
   ]);
   const currentPath = new URL(requestUrl).pathname;
@@ -207,6 +217,8 @@ interface ArchiveParams {
   /** If set, INNER JOIN relationships and filter on this meta ID */
   joinMid?: number;
   authorOverride?: AuthorMap;
+  /** FTS5 MATCH expression; set only for search (see prepareSearchData). */
+  ftsMatch?: string | null;
 }
 
 async function prepareArchiveData(
@@ -229,46 +241,106 @@ async function prepareArchiveData(
     publishedPostCondition(),
   ];
   if (params.extraWhere) baseConditions.push(params.extraWhere);
+  if (params.ftsMatch) {
+    baseConditions.push(sql`${contentsFtsTableRef} MATCH ${params.ftsMatch}`);
+  }
 
   const hasJoin = params.joinMid !== undefined;
-
-  const countBase = hasJoin
-    ? db.select({ count: sql<number>`count(*)` }).from(schema.contents)
-        .innerJoin(schema.relationships, eq(schema.contents.cid, schema.relationships.cid))
-    : db.select({ count: sql<number>`count(*)` }).from(schema.contents);
+  const hasFts = !!params.ftsMatch;
 
   const countWhere = hasJoin
     ? and(eq(schema.relationships.mid, params.joinMid!), ...baseConditions)
     : and(...baseConditions);
 
-  const makeListStatement = (offset: number) => hasJoin
-    ? db.select({ content: schema.contents }).from(schema.contents)
-        .innerJoin(schema.relationships, eq(schema.contents.cid, schema.relationships.cid))
-        .where(countWhere)
-        .orderBy(desc(schema.contents.created))
-        .limit(pageSize)
-        .offset(offset)
-    : db.select().from(schema.contents)
-        .where(countWhere)
-        .orderBy(desc(schema.contents.created))
-        .limit(pageSize)
-        .offset(offset);
+  const applyJoins = (q: any): any => {
+    let joined = q;
+    if (hasJoin) {
+      joined = joined.innerJoin(schema.relationships, eq(schema.contents.cid, schema.relationships.cid));
+    }
+    if (hasFts) {
+      joined = joined.innerJoin(
+        contentsFtsTableRef,
+        sql`${contentsFtsTableRef}.rowid = ${schema.contents.cid}`,
+      );
+    }
+    return joined;
+  };
+
+  // Keyset pagination: ORDER BY created DESC, cid DESC with a (created, cid)
+  // cursor from the previous page. Page 1 needs no offset at all; deeper
+  // pages pay only an index-only boundary lookup instead of re-scanning the
+  // skipped rows' full payload.
+  const makeListStatement = (cursor: { created: number; cid: number } | null) => {
+    const q = applyJoins(
+      (hasJoin || hasFts)
+        ? db.select({ content: schema.contents }).from(schema.contents)
+        : db.select().from(schema.contents),
+    );
+    const where = cursor
+      ? and(
+          countWhere,
+          or(
+            lt(schema.contents.created, cursor.created),
+            and(eq(schema.contents.created, cursor.created), lt(schema.contents.cid, cursor.cid)),
+          ),
+        )
+      : countWhere;
+    return q
+      .where(where)
+      .orderBy(desc(schema.contents.created), desc(schema.contents.cid))
+      .limit(pageSize);
+  };
+
+  const makeBoundaryStatement = (offset: number) =>
+    applyJoins(db.select({ created: schema.contents.created, cid: schema.contents.cid }).from(schema.contents))
+      .where(countWhere)
+      .orderBy(desc(schema.contents.created), desc(schema.contents.cid))
+      .limit(1)
+      .offset(offset);
 
   const requestedPage = Math.max(1, page);
+  // Exact count so pagination shows accurate page numbers. The
+  // (type, status, created) index keeps plain archive counts index-only.
+  const countStatement = applyJoins(
+    db.select({ count: sql<number>`count(*)` }).from(schema.contents),
+  ).where(countWhere);
+
+  // Batch the count with either the page-1 list (no cursor needed) or the
+  // index-only boundary lookup for the requested page.
   const [common, [countResult, initialPosts]] = await Promise.all([
     commonPromise,
     db.batch([
-      countBase.where(countWhere),
-      makeListStatement((requestedPage - 1) * pageSize),
+      countStatement,
+      requestedPage === 1
+        ? makeListStatement(null)
+        : makeBoundaryStatement((requestedPage - 1) * pageSize - 1),
     ]),
   ]);
-  const totalPosts = countResult[0]?.count || 0;
+  const totalPosts = Number(countResult?.[0]?.count ?? 0);
   const pg = paginate(totalPosts, page, pageSize, params.baseUrl);
-  const posts = pg.currentPage === requestedPage
-    ? initialPosts
-    : await makeListStatement((pg.currentPage - 1) * pageSize);
+  const currentPage = pg.currentPage;
 
-  const rawPosts: ContentRow[] = hasJoin
+  let posts: ContentRow[] | Array<{ content: ContentRow }>;
+  if (requestedPage === 1) {
+    posts = initialPosts as ContentRow[] | Array<{ content: ContentRow }>;
+  } else if (currentPage === requestedPage) {
+    const boundary = (initialPosts as Array<{ created: number | null; cid: number | null }>)[0];
+    posts = boundary
+      ? await makeListStatement({ created: boundary.created ?? 0, cid: boundary.cid ?? 0 })
+      : [];
+  } else {
+    // Requested page was clamped (beyond the last page) — fetch the boundary
+    // for the actual last page instead.
+    const [boundaryRows] = await db.batch([
+      makeBoundaryStatement((currentPage - 1) * pageSize - 1),
+    ]);
+    const boundary = boundaryRows[0];
+    posts = boundary
+      ? await makeListStatement({ created: boundary.created ?? 0, cid: boundary.cid ?? 0 })
+      : [];
+  }
+
+  const rawPosts: ContentRow[] = (hasJoin || hasFts)
     ? (posts as { content: ContentRow }[]).map(p => p.content)
     : (posts as ContentRow[]);
   const authorIds = [...new Set(rawPosts.map(p => p.authorId).filter((id): id is number => Boolean(id)))];
@@ -418,7 +490,7 @@ export async function preparePostData(
         .orderBy(asc(schema.contents.created))
         .limit(1),
     ]),
-    loadCommentPage(db, cidNum, options, requestUrl),
+    loadCommentPage(db, cidNum, options, requestUrl, contentRow.commentsNum ?? null, options.cacheVersion),
   ]);
   const author = authorRows[0] ?? null;
   const allComments = commentPage.rows;
@@ -521,7 +593,7 @@ export async function preparePageData(
   const passwordVerified = hasPassword && suppliedPassword === pageRow.password;
 
   const [commentPage, common] = await Promise.all([
-    loadCommentPage(db, pageRow.cid, options, requestUrl),
+    loadCommentPage(db, pageRow.cid, options, requestUrl, pageRow.commentsNum ?? null, options.cacheVersion),
     loadCommon(ctx, requestUrl),
   ]);
   const allComments = commentPage.rows;
@@ -645,14 +717,29 @@ export async function prepareSearchData(
   // huge swaths of LIKE) and as a cheap rate-limit on D1 LIKE scans.
   const trimmed = keywords.trim().slice(0, 50);
   const isUsefulKeyword = trimmed.length >= 2;
+  // FTS5's trigram tokenizer only indexes/matches terms of >= FTS_MIN_CHARS;
+  // shorter quoted terms are silently dropped by MATCH (a keyword like
+  // "to be" or "性能 优化" would match nothing). Enable FTS only when EVERY
+  // whitespace-separated term is long enough — otherwise the LIKE branch
+  // below matches the literal substring, preserving multi-term semantics.
+  const terms = trimmed.split(/\s+/).filter(Boolean);
+  const useFts = isUsefulKeyword
+    && terms.length > 0
+    && terms.every((term) => term.length >= FTS_MIN_CHARS)
+    && isFtsAvailable();
 
   return prepareArchiveData(ctx, requestUrl, locals, url, {
     archiveTitle: `包含关键字 ${trimmed} 的文章`,
     archiveType: 'search',
     baseUrl: buildSearchLink(trimmed, ctx.urls.siteUrl),
-    extraWhere: isUsefulKeyword
-      ? sql`(${schema.contents.title} LIKE ${`%${trimmed}%`} OR ${schema.contents.text} LIKE ${`%${trimmed}%`})`
-      : sql`1 = 0`, // empty/too-short keyword → no results, never N+1 LIKE
+    // empty/too-short keyword → no results, never scans; keywords with any
+    // short term (or an unavailable FTS index) keep the LIKE scan.
+    extraWhere: !isUsefulKeyword
+      ? sql`1 = 0`
+      : useFts
+        ? undefined
+        : sql`(${schema.contents.title} LIKE ${`%${trimmed}%`} OR ${schema.contents.text} LIKE ${`%${trimmed}%`})`,
+    ftsMatch: useFts ? buildFtsMatchExpression(trimmed) : null,
   });
 }
 
@@ -662,7 +749,10 @@ export async function prepareNotFoundData(
   ctx: RequestContext,
   requestUrl: string,
 ): Promise<ThemeNotFoundProps> {
-  const common = await loadCommon(ctx, requestUrl);
+  // 404 responses skip the sidebar widget queries (recent posts/comments,
+  // categories, monthly archives) — error pages render chrome from the nav
+  // pages only, so bot storms on dead URLs don't rebuild sidebar snapshots.
+  const common = await loadCommon(ctx, requestUrl, false);
   return {
     ...common,
     statusCode: 404,

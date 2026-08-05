@@ -11,6 +11,7 @@
  */
 
 import { generateIndexSQL } from '@/lib/schema-sql';
+import { CONTENTS_FTS_TABLE, contentsFtsSql, ftsRebuildStatement, setFtsAvailable } from '@/lib/fulltext';
 
 /** Thrown when D1 has no typecho_options table — legitimate install-redirect case. */
 export class TablesMissingError extends Error {
@@ -57,7 +58,7 @@ export function resetIsolateBoot(): void {
 // runtime password-reset upgrade or generated index set changes. A stable
 // database needs one query per cold isolate instead of probing every table,
 // column and index.
-const RUNTIME_SCHEMA_VERSION = '20260730';
+const RUNTIME_SCHEMA_VERSION = '20260805';
 const RUNTIME_SCHEMA_VERSION_KEY = 'runtimeSchemaVersion';
 
 export async function ensureDatabaseReady(d1: D1Database): Promise<void> {
@@ -105,10 +106,17 @@ export async function ensureDatabaseReady(d1: D1Database): Promise<void> {
 
     await ensurePasswordResetSchema(d1);
     await ensureIndexesReady(d1);
-    await d1.prepare(
-      'INSERT INTO typecho_options (name, user, value) VALUES (?, ?, ?) ' +
-      'ON CONFLICT(name, user) DO UPDATE SET value=excluded.value',
-    ).bind(RUNTIME_SCHEMA_VERSION_KEY, 0, RUNTIME_SCHEMA_VERSION).run();
+    // Persist the marker only after FTS is confirmed ready. Otherwise the
+    // fast path would skip FTS setup on every future cold start and search
+    // would keep hitting a missing table. A failed setup is retried on the
+    // next cold start while this isolate falls back to LIKE search.
+    const ftsReady = await ensureFtsReady(d1);
+    if (ftsReady) {
+      await d1.prepare(
+        'INSERT INTO typecho_options (name, user, value) VALUES (?, ?, ?) ' +
+        'ON CONFLICT(name, user) DO UPDATE SET value=excluded.value',
+      ).bind(RUNTIME_SCHEMA_VERSION_KEY, 0, RUNTIME_SCHEMA_VERSION).run();
+    }
     state.databaseReadyPassed = true;
   })();
   state.databaseReadyPending = pending;
@@ -116,6 +124,39 @@ export async function ensureDatabaseReady(d1: D1Database): Promise<void> {
     await pending;
   } finally {
     if (state.databaseReadyPending === pending) state.databaseReadyPending = undefined;
+  }
+}
+
+/**
+ * Creates the FTS5 search index (external-content table + sync triggers)
+ * and rebuilds it when the table did not exist. Runs once per schema
+ * version bump. Returns false (and marks FTS unavailable) on failure so
+ * the search path falls back to a LIKE scan; boot itself never fails.
+ */
+async function ensureFtsReady(d1: D1Database): Promise<boolean> {
+  try {
+    const existing = await d1
+      // Constant table name — no user input, so string interpolation is safe
+      // here and keeps the query compatible with the test D1 mock (no bind()).
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = '${CONTENTS_FTS_TABLE}'`)
+      .first<{ name: string }>();
+    const statements = contentsFtsSql();
+    if (!existing) statements.push(ftsRebuildStatement());
+
+    const stmts: D1PreparedStatement[] = [];
+    for (const statement of statements) {
+      stmts.push(d1.prepare(statement));
+    }
+    await d1.batch(stmts);
+    setFtsAvailable(true);
+    return true;
+  } catch (error) {
+    console.warn(
+      '[isolate-boot] FTS5 setup failed, search falls back to LIKE:',
+      error instanceof Error ? error.message : String(error),
+    );
+    setFtsAvailable(false);
+    return false;
   }
 }
 

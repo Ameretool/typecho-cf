@@ -32,10 +32,10 @@ git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# Create local Wrangler config (fill in the D1 and SESSION KV resource IDs when needed)
+# Create local Wrangler config (fill in the D1 database ID when needed)
 cp wrangler.toml.example wrangler.toml
 
-# Start dev server (D1 + KV + R2 are automatically simulated by wrangler)
+# Start dev server (D1 + R2 are automatically simulated by wrangler)
 pnpm run dev
 ```
 
@@ -51,14 +51,11 @@ pnpm exec wrangler d1 create typecho-cf-db
 
 # Create R2 bucket
 pnpm exec wrangler r2 bucket create typecho-cf-uploads
-
-# Create the KV namespace used by Astro sessions and expose it as SESSION
-pnpm exec wrangler kv namespace create typecho-cf-session --binding SESSION
 ```
 
 **2. Create and update `wrangler.toml`**
 
-Copy the example, then replace `database_id` and the `SESSION` `id` with the D1 database ID and KV namespace ID returned above:
+Copy the example, then replace `database_id` with the D1 database ID returned above:
 
 ```bash
 cp wrangler.toml.example wrangler.toml
@@ -69,10 +66,6 @@ cp wrangler.toml.example wrangler.toml
 binding = "DB"
 database_name = "typecho-cf-db"
 database_id = "your-actual-database-id"
-
-[[kv_namespaces]]
-binding = "SESSION"
-id = "your-actual-kv-namespace-id"
 ```
 
 **3. Set a first-install token (strongly recommended)**
@@ -114,7 +107,7 @@ After deployment, visit your Worker URL — first visit auto-redirects to the in
 | `pnpm run reset-password` | Reset user password (local) |
 | `pnpm run reset-password:cloudflare` | Reset user password (Cloudflare) |
 
-`SESSION` is the Astro Cloudflare adapter's session KV binding and must point to a real namespace in production. After changing D1, KV, R2, or other bindings in `wrangler.toml` or `wrangler.toml.example`, run `pnpm run types:workers`. The generated `worker-configuration.d.ts` is used locally and in CI but is not committed. On a clean checkout, generation automatically falls back to `wrangler.toml.example`.
+After changing D1, R2, or other bindings in `wrangler.toml` or `wrangler.toml.example`, run `pnpm run types:workers`. The generated `worker-configuration.d.ts` is used locally and in CI but is not committed. On a clean checkout, generation automatically falls back to `wrangler.toml.example`.
 
 ---
 

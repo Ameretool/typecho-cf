@@ -40,7 +40,7 @@ if (cidFilter) {
 
 const where = and(...conditions);
 
-const [countResult, commentsList, approvedCount, waitingCount, spamCount] = await db.batch([
+const [countResult, commentsList, statusCounts] = await db.batch([
   db.select({ count: sql<number>`count(*)` }).from(schema.comments)
     .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
     .where(where),
@@ -69,27 +69,21 @@ const [countResult, commentsList, approvedCount, waitingCount, spamCount] = awai
     .orderBy(desc(schema.comments.created))
     .limit(pageSize)
     .offset((page - 1) * pageSize),
-  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+  // One grouped scan instead of three per-status count(*) queries. The tab
+  // counts intentionally ignore the keyword/cid filters (matching the old
+  // behaviour) so the moderation queues always show real sizes.
+  db.select({ status: schema.comments.status, count: sql<number>`count(*)` })
+    .from(schema.comments)
     .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
-    .where(and(
-      eq(schema.comments.status, 'approved'),
-      ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []),
-    )),
-  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
-    .where(and(
-      eq(schema.comments.status, 'waiting'),
-      ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []),
-    )),
-  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
-    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
-    .where(and(
-      eq(schema.comments.status, 'spam'),
-      ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []),
-    )),
+    .where(and(...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : [])))
+    .groupBy(schema.comments.status),
 ]);
-const totalComments = countResult[0]?.count || 0;
+const totalComments = Number(countResult?.[0]?.count ?? 0);
 const totalPages = Math.max(1, Math.ceil(totalComments / pageSize));
+// Keep the legacy row-array shape so the tab balloons render unchanged.
+const approvedCount = statusCounts.filter(row => row.status === 'approved');
+const waitingCount = statusCounts.filter(row => row.status === 'waiting');
+const spamCount = statusCounts.filter(row => row.status === 'spam');
 
 const titleMap = new Map(commentsList.map(c => [c.cid, c.contentTitle]));
 

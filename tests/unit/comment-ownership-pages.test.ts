@@ -20,7 +20,9 @@ describe('Comment Ownership admin queries', () => {
 
   it('scopes every non-admin comment status total to current content ownership', () => {
     const contents = source('src/pages/admin/manage-comments.astro');
+    // The three per-status count(*) queries were consolidated into one
+    // GROUP BY status scan; the non-admin authorId scoping must survive.
     expect(contents.match(/!isAdmin \? \[eq\(schema\.contents\.authorId, user!\.uid\)\]/g))
-      .toHaveLength(3);
+      .toHaveLength(1);
   });
 });

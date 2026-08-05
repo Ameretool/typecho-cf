@@ -107,7 +107,7 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 **不可变约束**：
 - 表名必须保持 `typecho_*` 前缀，**不可重命名**
 - 列名必须与 PHP Typecho 保持一致
-- Schema 定义在 `src/db/schema.ts`，修改后必须运行 `pnpm run db:generate`
+- Schema 定义在 `src/db/schema.ts`，修改后必须运行 `pnpm run db:generate`；`drizzle/` 目录（迁移 SQL + meta 快照）已纳入版本控制，生成的迁移必须随 schema 变更一起提交
 - **禁止手动修改 `drizzle/` 目录下的迁移文件**
 - 建表 SQL 由 `src/lib/schema-sql.ts` 在运行时从 Drizzle schema 反射生成（`generateCreateSQL()` 同时输出 CREATE TABLE 与 CREATE INDEX；中间件首次命中时会在后台幂等地补齐生产库索引）
 - D1 不支持真实事务；批量改写应使用 `db.batch([...])` 单次往返
@@ -144,7 +144,6 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 |---------|------|------|
 | `DB` | D1 | 数据库 `typecho-cf-db` |
 | `BUCKET` | R2 | 文件存储 `typecho-cf-uploads` |
-| `SESSION` | KV | Astro Cloudflare adapter 的 Session 存储 |
 | `ASSETS` | Fetcher | Astro 构建产物中的静态资源，由 Cloudflare adapter 管理 |
 
 ### 5.1 环境变量访问
@@ -154,7 +153,6 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 import { env } from 'cloudflare:workers';
 const db = env.DB;
 const bucket = env.BUCKET;
-const session = env.SESSION;
 
 // ❌ 已废弃（Astro 6 + @astrojs/cloudflare v13+ 不支持）
 // Astro.locals.runtime.env.DB

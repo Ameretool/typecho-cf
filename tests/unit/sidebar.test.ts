@@ -110,6 +110,20 @@ describe('loadSidebarData', () => {
     expect(data.categories[0].permalink).toContain('/category/life/');
   });
 
+  it('limits the monthly archives widget to the recent window', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const olderThanWindow = now - 14 * 30 * 24 * 3600;
+    await testDb.insert(schema.contents).values({
+      title: 'Old Post', slug: 'old-post', created: olderThanWindow, type: 'post', status: 'publish',
+    });
+    await testDb.insert(schema.contents).values({
+      title: 'New Post', slug: 'new-post', created: now, type: 'post', status: 'publish',
+    });
+
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 77);
+    expect(data.archives).toHaveLength(1);
+  });
+
   it('reuses the versioned sidebar snapshot and refreshes after a version change', async () => {
     const first = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 1);
     expect(first.recentPosts).toEqual([]);

@@ -3,18 +3,23 @@
  * Aggregates recent posts, comments, categories, and archives
  * Uses db.batch() to execute all queries in a single D1 round-trip.
  */
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, gt, sql } from 'drizzle-orm';
 import type { Database } from '@/db';
 import { schema } from '@/db';
 import { buildPermalink, buildCategoryLink, buildDateLink } from '@/lib/content';
 import { applyFilterSafely, type HookContext } from '@/lib/plugin';
-import { publishedPostCondition } from '@/lib/content-visibility';
+import { publishedPostCondition, nowSeconds } from '@/lib/content-visibility';
 
 type SidebarDatabase = Pick<Database, 'batch' | 'select'>;
 // Snapshots are version-keyed, so content/options writes invalidate them by
 // changing the key. A longer TTL mainly protects logged-in/cache-bypassed page
 // views from repeatedly rebuilding identical global chrome data.
-const SIDEBAR_SNAPSHOT_TTL_MS = 60_000;
+const SIDEBAR_SNAPSHOT_TTL_MS = 300_000;
+
+// The monthly archives widget only scans this many seconds of history. Old
+// months drop out of the sidebar widget (the posts themselves stay online),
+// which bounds the GROUP BY scan on large sites.
+const SIDEBAR_ARCHIVE_WINDOW_SECONDS = 13 * 30 * 24 * 3600;
 
 export interface SidebarData {
   recentPosts: Array<{ title: string; permalink: string }>;
@@ -100,13 +105,19 @@ export async function loadSidebarData(
       .orderBy(schema.metas.order),
 
     // Archives (by month)
+    // Bound the scan to the recent window — strftime() cannot use the
+    // (type, status, created) index for grouping, so this would otherwise
+    // read every published row on each snapshot rebuild.
     db
       .select({
         year: sql<number>`cast(strftime('%Y', ${schema.contents.created}, 'unixepoch') as integer)`,
         month: sql<number>`cast(strftime('%m', ${schema.contents.created}, 'unixepoch') as integer)`,
       })
       .from(schema.contents)
-      .where(publishedPostCondition())
+      .where(and(
+        publishedPostCondition(nowSeconds()),
+        gt(schema.contents.created, nowSeconds() - SIDEBAR_ARCHIVE_WINDOW_SECONDS),
+      ))
       .groupBy(
         sql`strftime('%Y', ${schema.contents.created}, 'unixepoch')`,
         sql`strftime('%m', ${schema.contents.created}, 'unixepoch')`,

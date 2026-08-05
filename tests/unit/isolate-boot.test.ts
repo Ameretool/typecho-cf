@@ -7,6 +7,7 @@ import {
   ensureIndexes,
   TablesMissingError,
 } from '@/lib/isolate-boot';
+import { isFtsAvailable, resetFtsAvailability } from '@/lib/fulltext';
 
 // Mock generateIndexSQL so the test doesn't depend on actual schema
 vi.mock('@/lib/schema-sql', () => ({
@@ -24,6 +25,7 @@ function mockD1(hasTable: boolean) {
 
 beforeEach(() => {
   resetIsolateBoot();
+  resetFtsAvailability();
 });
 
 describe('ensureTablesReady', () => {
@@ -74,7 +76,7 @@ describe('ensureTablesReady', () => {
 
 describe('ensureDatabaseReady', () => {
   it('uses the persistent schema version fast path on a cold isolate', async () => {
-    const first = vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260730' });
+    const first = vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260805' });
     const d1 = {
       prepare: vi.fn().mockReturnValue({ first }),
       batch: vi.fn(),
@@ -90,7 +92,7 @@ describe('ensureDatabaseReady', () => {
     const createRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
       if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260730', loginFailuresExists: 0 }) };
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260805', loginFailuresExists: 0 }) };
       }
       return { run: createRun };
     });
@@ -112,7 +114,7 @@ describe('ensureDatabaseReady', () => {
 
     const a = ensureDatabaseReady(d1);
     const b = ensureDatabaseReady(d1);
-    release({ runtimeSchemaVersion: '20260730' } as any);
+    release({ runtimeSchemaVersion: '20260805' } as any);
     await Promise.all([a, b]);
 
     expect(d1.prepare).toHaveBeenCalledOnce();
@@ -135,15 +137,50 @@ describe('ensureDatabaseReady', () => {
       if (sql.startsWith('INSERT INTO typecho_options')) {
         return { bind: vi.fn(() => ({ run: markerRun })) };
       }
-      return { sql };
+      return { sql, first: vi.fn().mockResolvedValue(null) };
     });
     const batch = vi.fn().mockResolvedValue([]);
     const d1 = { prepare, batch } as unknown as D1Database;
 
     await ensureDatabaseReady(d1);
 
-    expect(batch).toHaveBeenCalledOnce();
+    // Index backfill + FTS5 setup each use one batch in the upgrade path.
+    expect(batch).toHaveBeenCalledTimes(2);
     expect(markerRun).toHaveBeenCalledOnce();
+  });
+
+  it('does not persist the schema marker when FTS setup fails', async () => {
+    const markerRun = vi.fn().mockResolvedValue({});
+    const prepare = vi.fn((sql: string) => {
+      if (sql.startsWith('SELECT (SELECT value')) {
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      }
+      if (sql.includes("name IN ('typecho_password_reset_requests'")) {
+        return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
+      }
+      if (sql.startsWith('PRAGMA table_info')) {
+        return { all: vi.fn().mockResolvedValue({
+          results: ['email', 'lastSentAt', 'uid', 'tokenHash', 'expiresAt'].map(name => ({ name })),
+        }) };
+      }
+      if (sql.startsWith('INSERT INTO typecho_options')) {
+        return { bind: vi.fn(() => ({ run: markerRun })) };
+      }
+      return { sql, first: vi.fn().mockResolvedValue(null) };
+    });
+    const batch = vi.fn((stmts: Array<{ sql: string }>) => {
+      if (stmts.some(stmt => stmt.sql.includes('typecho_contents_fts'))) {
+        return Promise.reject(new Error('FTS down'));
+      }
+      return Promise.resolve([]);
+    });
+    const d1 = { prepare, batch } as unknown as D1Database;
+
+    // Boot must not throw — the isolate degrades to LIKE search.
+    await expect(ensureDatabaseReady(d1)).resolves.toBeUndefined();
+
+    expect(markerRun).not.toHaveBeenCalled();
+    expect(isFtsAvailable()).toBe(false);
   });
 });
 

@@ -45,6 +45,8 @@ export const contents = sqliteTable('typecho_contents', {
   // G4-1: archive lookups (type='post' AND status='publish') and
   // author archives are the dominant front-end queries.
   index('typecho_contents_type_status_created').on(table.type, table.status, table.created),
+  // sitemap.xml: ORDER BY modified DESC across published posts/pages.
+  index('typecho_contents_type_status_modified').on(table.type, table.status, table.modified),
   index('typecho_contents_author_type_status_created').on(
     table.authorId,
     table.type,

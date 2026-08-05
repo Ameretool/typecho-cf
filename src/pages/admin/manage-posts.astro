@@ -70,9 +70,7 @@ const categoryCondition = categoryFilter
   : undefined;
 const listWhere = categoryCondition ? and(where, categoryCondition) : where;
 const [countResult, posts, allCategories, draftCount, waitingCount] = await db.batch([
-  db.select({ count: sql<number>`count(*)` })
-    .from(schema.contents)
-    .where(listWhere),
+  db.select({ count: sql<number>`count(*)` }).from(schema.contents).where(listWhere),
   db.select().from(schema.contents)
     .where(listWhere)
     .orderBy(desc(schema.contents.created))
@@ -86,7 +84,7 @@ const [countResult, posts, allCategories, draftCount, waitingCount] = await db.b
   db.select({ count: sql<number>`count(*)` }).from(schema.contents)
     .where(and(eq(schema.contents.type, 'post'), eq(schema.contents.status, 'waiting'), ...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : []))),
 ]);
-const totalPosts = countResult[0]?.count || 0;
+const totalPosts = Number(countResult?.[0]?.count ?? 0);
 const totalPages = Math.max(1, Math.ceil(totalPosts / pageSize));
 
 const authorIds = [...new Set(posts.map(p => p.authorId).filter(Boolean))];

@@ -32,10 +32,10 @@ git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# 生成本地 Wrangler 配置（按需填写 D1 与 SESSION KV 的资源 ID）
+# 生成本地 Wrangler 配置（按需填写 D1 数据库 ID）
 cp wrangler.toml.example wrangler.toml
 
-# 启动开发服务器（D1 + KV + R2 由 wrangler 自动模拟）
+# 启动开发服务器（D1 + R2 由 wrangler 自动模拟）
 pnpm run dev
 ```
 
@@ -51,14 +51,11 @@ pnpm exec wrangler d1 create typecho-cf-db
 
 # 创建 R2 存储桶
 pnpm exec wrangler r2 bucket create typecho-cf-uploads
-
-# 创建 Astro Session 使用的 KV namespace，并将 Worker binding 命名为 SESSION
-pnpm exec wrangler kv namespace create typecho-cf-session --binding SESSION
 ```
 
 **2. 创建并更新 `wrangler.toml`**
 
-先复制示例配置，再将 `database_id` 与 `SESSION` 的 `id` 分别替换为上一步输出的 D1 数据库 ID 和 KV namespace ID：
+先复制示例配置，再将 `database_id` 替换为上一步输出的 D1 数据库 ID：
 
 ```bash
 cp wrangler.toml.example wrangler.toml
@@ -69,10 +66,6 @@ cp wrangler.toml.example wrangler.toml
 binding = "DB"
 database_name = "typecho-cf-db"
 database_id = "替换为实际的 ID"
-
-[[kv_namespaces]]
-binding = "SESSION"
-id = "替换为实际的 KV namespace ID"
 ```
 
 **3. 设置首次安装令牌（强烈推荐）**
@@ -114,7 +107,7 @@ pnpm run deploy
 | `pnpm run reset-password` | 重置用户密码（本地） |
 | `pnpm run reset-password:cloudflare` | 重置用户密码（Cloudflare） |
 
-`SESSION` 是 Astro Cloudflare adapter 的 Session KV 绑定，生产部署必须指向真实 namespace。修改 `wrangler.toml` / `wrangler.toml.example` 中的 D1、KV、R2 或其他绑定后，请运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制；干净检出时会自动回退到 `wrangler.toml.example` 生成类型。示例配置默认持久化可搜索 Workers Logs，并以 1% 采样率记录调用链；生产环境可按流量和成本调整采样率。密钥仍应使用 `wrangler secret put`，不要写入配置文件。
+修改 `wrangler.toml` / `wrangler.toml.example` 中的 D1、R2 或其他绑定后，请运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制；干净检出时会自动回退到 `wrangler.toml.example` 生成类型。示例配置默认持久化可搜索 Workers Logs，并以 1% 采样率记录调用链；生产环境可按流量和成本调整采样率。密钥仍应使用 `wrangler secret put`，不要写入配置文件。
 
 ---
 
