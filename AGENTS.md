@@ -62,7 +62,7 @@
 src/middleware.ts       — 请求入口，安装检测，缓存，URL 重写
   ├─ src/lib/plugin.ts  — 插件注册表 + Hook 事件总线（核心）
   ├─ src/lib/options.ts — 站点配置 CRUD + computeUrls
-  ├─ src/lib/cache.ts   — 选项查询缓存（module-scope Map）
+  ├─ src/lib/cache.ts   — 选项缓存（Cache API + cacheVersion 版本戳 + 内存 memo）
   └─ src/db/index.ts    — Drizzle DB 实例工厂
 
 src/lib/context.ts      — 请求上下文（DB / options / user / CSRF）
@@ -110,6 +110,7 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 - Schema 定义在 `src/db/schema.ts`，修改后必须运行 `pnpm run db:generate`；`drizzle/` 目录（迁移 SQL + meta 快照）已纳入版本控制，生成的迁移必须随 schema 变更一起提交
 - **禁止手动修改 `drizzle/` 目录下的迁移文件**
 - 建表 SQL 由 `src/lib/schema-sql.ts` 在运行时从 Drizzle schema 反射生成（`generateCreateSQL()` 同时输出 CREATE TABLE 与 CREATE INDEX；中间件首次命中时会在后台幂等地补齐生产库索引）
+- FTS5 搜索索引（`typecho_contents_fts` 虚拟表 + 同步触发器）由运行时引导创建/回填（`src/lib/fulltext.ts`、`isolate-boot.ts`），属于派生索引，**不纳入 Drizzle schema 与迁移**；新库安装时由 `generateCreateSQL()` 一并创建
 - D1 不支持真实事务；批量改写应使用 `db.batch([...])` 单次往返
 - 评论的「能否审核」必须查 `contents.authorId`，禁止以 `comments.ownerId` 作为权限判定来源（ownerId 仅是历史快照，G7-4）
 
@@ -382,7 +383,7 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 - 副作用类管理操作禁止响应 GET（`delete-spam` 等），统一走 POST + CSRF
 - 公共归档（首页/分类/标签/作者/搜索）必须过滤 `created > now()` 的将来贴（G7-5）
 - 评论 / 注册 / 登录 等公共 POST 必须做 Origin 同源校验（参考 `isSameOriginRequest`）
-- 搜索 LIKE 必须套 `[2,50]` 字符护栏：长度不在范围内时短路 `1=0`（G4-5）
+- 搜索优先走 FTS5 trigram（`src/lib/fulltext.ts`，仅当每个空白分隔词都 ≥ `FTS_MIN_CHARS` 且 FTS 就绪时启用，MATCH 按词 AND 匹配）；其余情况回退 LIKE 并套 `[2,50]` 字符护栏，长度不在范围内时短路 `1=0`（G4-5）
 - Feed 路由的条数受 `options.feedItems` 控制并 clamp 到 `[5,50]`（G7-7）；description 始终走 excerpt，content:encoded 仅在 `feedFullText` 开启时才输出（G7-6）
 
 ### 9.2 管理后台页面
@@ -394,9 +395,13 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 
 Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的：
 - `src/lib/plugin.ts`：`pluginRegistry` 与 loader 在启动时登记；`hookRegistry` 在插件首次激活时幂等写入，初始化完成后只读；`initialisingPlugins` 合并并发初始化
-- `src/lib/cache.ts`：options 查询缓存
+- `src/lib/cache.ts`：`cacheVersion` memo（60s）+ options 版本戳缓存（Cache API）
+- `src/lib/options.ts`：`optionSnapshots` / `pendingOptionLoads`（WeakMap，5 分钟快照 + 并发合并）
+- `src/lib/sidebar.ts`：`navSnapshots` 等版本化快照（WeakMap）
+- `src/lib/comment-page.ts`：`commentRootCounts`（按 cacheVersion 键控的根评论计数缓存，TTL + 条数上限）
+- `src/lib/fulltext.ts`：`ftsAvailability`（FTS5 就绪状态）
+- `src/lib/isolate-boot.ts`：`state`（表检查 / 索引回填 / FTS 引导的一次性标志）
 - `src/lib/login-rate-limit.ts`：登录限流（D1 持久化） + 上传限流（`trackSlidingWindow`，内存级滑动窗口）
-- `src/middleware.ts`：`regexCache`、`tableCheckPassed`、`indexCheckPassed`
 
 ### 9.4 插件配置表单类型
 
@@ -478,12 +483,17 @@ src/
 │   ├── client-ip.ts                 # 统一客户端 IP 提取
 │   ├── content-visibility.ts        # 公共内容可见性规则
 │   ├── permalink-pattern.ts         # 固定链接渲染/匹配统一语法
+│   ├── pagination.ts                # 归档/评论 keyset 分页与总数
 │   ├── auth.ts                      # 密码哈希 + Session + CSRF
 │   ├── admin-auth.ts                # 管理后台认证中间件 + 安全重定向
 │   ├── options.ts                   # 站点配置 CRUD
-│   ├── cache.ts                     # 选项缓存 + 边缘缓存清除
+│   ├── options-snapshot-generation.ts # options 快照代数失效
+│   ├── cache.ts                     # 选项缓存（Cache API + cacheVersion 版本戳）
+│   ├── fulltext.ts                  # FTS5 全文搜索（运行时索引 DDL + MATCH 表达式）
 │   ├── schema-sql.ts                # 建表 SQL 反射生成
 │   ├── sidebar.ts                   # 侧边栏/导航数据加载
+│   ├── comment-page.ts              # 评论分页 + 根计数缓存
+│   ├── request-bootstrap.ts         # 请求引导 + 边缘缓存写入（finalizeRequestResponse）
 │   ├── theme-props.ts               # 主题 Props 类型定义
 │   ├── security-headers.ts          # 安全响应头（CSP、HSTS、X-Frame 等）+ csp:directives filter
 │   ├── markdown.ts                  # Markdown 渲染 + HTML 净化
@@ -514,8 +524,8 @@ tests/
 ├── setup.ts                         # 全局测试 setup
 ├── helpers.ts                       # 测试工具函数 (createTestDb, seedAdmin, makeAuthCookie)
 ├── __mocks__/cloudflare-workers.ts  # cloudflare:workers stub + caches mock
-├── unit/                            # 单元测试 (33 个文件)
-└── integration/                     # 集成测试 (29 个文件)
+├── unit/                            # 单元测试
+└── integration/                     # 集成测试
 scripts/
 ├── migrate.ts                       # PHP Typecho 数据迁移
 └── reset-password.ts                # 密码重置工具

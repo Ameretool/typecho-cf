@@ -8,7 +8,7 @@ A modern rewrite of [Typecho](https://typecho.org) in TypeScript, running on **A
 
 ## Features
 
-**Frontend**: Post list / category / tag / author / search archives, nested comments (Gravatar), RSS 2.0 / Atom 1.0 / RSS 1.0, password-protected posts, responsive default theme
+**Frontend**: Post list / category / tag / author / search archives (FTS5 full-text with automatic LIKE fallback for short terms), nested comments (Gravatar), RSS 2.0 / Atom 1.0 / RSS 1.0, password-protected posts, responsive default theme
 
 **Admin Dashboard**: Post & page editor, comment moderation, media manager (R2 drag-and-drop upload), user management (5 roles), theme switcher, plugin manager (enable/disable/configure), site settings, installation wizard
 

@@ -34,6 +34,16 @@ describe('schema-sql index emission (G4-1)', () => {
     expect(index).toContain('typecho_metas_type_slug');
   });
 
+  it('emits the FTS5 search index with trigram tokenizer and sync triggers on fresh install', () => {
+    expect(create).toContain('CREATE VIRTUAL TABLE IF NOT EXISTS `typecho_contents_fts` USING fts5');
+    expect(create).toContain("tokenize='trigram'");
+    expect(create).toContain('CREATE TRIGGER IF NOT EXISTS typecho_contents_fts_ai');
+  });
+
+  it('keeps FTS DDL out of the index backfill (ensureFtsReady handles it)', () => {
+    expect(index).not.toContain('typecho_contents_fts');
+  });
+
   it('every emitted index uses CREATE INDEX IF NOT EXISTS for idempotent backfill', () => {
     for (const stmt of generateIndexSQL()) {
       expect(stmt).toMatch(/CREATE (UNIQUE )?INDEX IF NOT EXISTS/);
