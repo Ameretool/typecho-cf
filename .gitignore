@@ -3,7 +3,6 @@
 /dist
 /node_modules
 /.wrangler
-/drizzle
 /public/themes
 /public/js
 /public/plugin-assets
@@ -14,5 +13,6 @@ wrangler.toml
 /.env
 /.pnpm-store
 /docs
+/specs
 CONTEXT.md
 worker-configuration.d.ts

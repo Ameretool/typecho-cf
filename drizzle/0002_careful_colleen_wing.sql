@@ -1,0 +1,1 @@
+CREATE INDEX `typecho_contents_type_status_modified` ON `typecho_contents` (`type`,`status`,`modified`);

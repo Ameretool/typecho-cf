@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1785394595857,
+      "tag": "0000_outgoing_manta",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785396008842,
+      "tag": "0001_tough_stellaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785904236858,
+      "tag": "0002_careful_colleen_wing",
+      "breakpoints": true
+    }
+  ]
+}
