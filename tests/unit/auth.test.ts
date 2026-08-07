@@ -533,6 +533,20 @@ describe('shouldUseSecureCookie()', () => {
     expect(shouldUseSecureCookie(new Request('http://localhost:4321/'))).toBe(false);
   });
 
+  it('treats x-forwarded-proto: https as secure behind a TLS terminator', () => {
+    const req = new Request('http://localhost:4321/', {
+      headers: { 'x-forwarded-proto': 'https' },
+    });
+    expect(shouldUseSecureCookie(req)).toBe(true);
+  });
+
+  it('ignores non-https x-forwarded-proto on http URLs', () => {
+    const req = new Request('http://localhost:4321/', {
+      headers: { 'x-forwarded-proto': 'http' },
+    });
+    expect(shouldUseSecureCookie(req)).toBe(false);
+  });
+
   it('omits Secure on dev cookies', () => {
     const headers = setAuthCookieHeaders(1, 'hash', 3600, new Request('http://localhost:4321/'));
     expect(headers[0]).not.toContain('Secure');

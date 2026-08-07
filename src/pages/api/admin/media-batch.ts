@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { isAdminActionResponse, requireAdminAction, safeAdminRedirectUrl } from '@/lib/admin-auth';
 import { deleteAttachments } from '@/lib/attachment-lifecycle';
+import { readAdminFormOrError } from '@/lib/input';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = handler;
@@ -15,7 +16,8 @@ async function handler({ request, locals, url }: { request: Request; locals: App
   // Get selected cids from form body
   let cids: number[] = [];
   if (request.method === 'POST') {
-    const formData = await request.formData();
+    const formData = await readAdminFormOrError(request);
+    if (formData instanceof Response) return formData;
     cids = formData.getAll('cid[]').map(v => parseInt(v.toString(), 10)).filter(Boolean);
   }
 

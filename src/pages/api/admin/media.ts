@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { deleteAttachments } from '@/lib/attachment-lifecycle';
 import { resolveUniqueContentSlug } from '@/lib/slug';
+import { readAdminFormOrError } from '@/lib/input';
 import { eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -11,7 +12,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await requireAdminAction(request, 'editor');
   if (isAdminActionResponse(auth)) return auth;
 
-  const formData = await request.formData();
+  const formData = await readAdminFormOrError(request);
+  if (formData instanceof Response) return formData;
   const action = formData.get('do')?.toString() || 'update';
   const cid = parseInt(formData.get('cid')?.toString() || '0', 10);
 

@@ -43,6 +43,14 @@ async function readCacheVersion(db: Database, now = Date.now()): Promise<string>
   return cachedVersion;
 }
 
+/**
+ * Cheap cacheVersion probe used by loadOptions to invalidate the isolate
+ * options snapshot after a cross-PoP bump (bounded by the memo TTL).
+ */
+export async function peekCacheVersion(db: Database): Promise<string> {
+  return readCacheVersion(db);
+}
+
 /** Test-only: reset the in-memory version memo so unit tests start fresh. */
 export function resetCacheVersionMemo(): void {
   cachedVersion = null;
@@ -96,7 +104,7 @@ export async function bumpCacheVersion(db: Database): Promise<void> {
   // after their memo expires — see CACHE_VERSION_MEMO_TTL_MS).
   cachedVersion = stamp;
   cachedVersionAt = Date.now();
-  advanceOptionsSnapshotGeneration(db);
+  advanceOptionsSnapshotGeneration();
 }
 
 /**

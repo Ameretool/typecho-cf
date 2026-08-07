@@ -101,9 +101,9 @@ export const metas = sqliteTable('typecho_metas', {
   parent: integer('parent').default(0),
 }, (table) => [
   index('typecho_metas_slug').on(table.slug),
-  // G4-1: most reads filter by both (type='category' AND slug=?) so a
-  // composite index avoids the secondary single-column scan.
-  index('typecho_metas_type_slug').on(table.type, table.slug),
+  // Unique (type, slug) prevents concurrent tag/category duplicates while
+  // still serving the common (type, slug) lookup path.
+  uniqueIndex('typecho_metas_type_slug').on(table.type, table.slug),
 ]);
 
 // ==================== Relationships (Content <-> Meta) ====================

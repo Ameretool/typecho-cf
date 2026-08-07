@@ -202,7 +202,7 @@ export async function loadCommentPage(
       db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(approvedForContent),
     );
   }
-  if (threaded && !cachedRootCount) {
+  if (threaded && cachedRootCount === undefined) {
     countStatements.push(
       db.select({ count: sql<number>`count(*)` }).from(schema.comments).where(approvedRootForContent),
     );
@@ -217,12 +217,12 @@ export async function loadCommentPage(
       totalComments = Number(countResults[index][0]?.count ?? 0);
       index += 1;
     }
-    if (threaded && !cachedRootCount) {
+    if (threaded && cachedRootCount === undefined) {
       totalPageItems = Number(countResults[index][0]?.count ?? 0);
       writeCachedRootCount(rootCacheKey, totalPageItems);
     }
   }
-  if (threaded && cachedRootCount) {
+  if (threaded && cachedRootCount !== undefined) {
     totalPageItems = cachedRootCount;
   }
   if (!threaded) {
@@ -238,20 +238,86 @@ export async function loadCommentPage(
     totalPageItems,
     totalComments,
   );
-  const offset = (pagination.currentPage - 1) * pageSize;
+  const pageOffset = (pagination.currentPage - 1) * pageSize;
 
   if (!threaded) {
+    // Keyset page: index-only boundary seek, then (created, coid) range.
+    // Page 1 needs no seek; deeper pages avoid OFFSET over full comment rows.
+    let cursor: { created: number; coid: number } | null = null;
+    if (pageOffset > 0) {
+      const [boundary] = await db
+        .select({ created: schema.comments.created, coid: schema.comments.coid })
+        .from(schema.comments)
+        .where(approvedForContent)
+        .orderBy(orderExpression, order === 'DESC' ? desc(schema.comments.coid) : asc(schema.comments.coid))
+        .limit(1)
+        .offset(pageOffset - 1);
+      if (!boundary) return { rows: [], pagination };
+      cursor = { created: boundary.created ?? 0, coid: boundary.coid };
+    }
+
+    const tieOrder = order === 'DESC' ? desc(schema.comments.coid) : asc(schema.comments.coid);
+    const cursorWhere = cursor
+      ? order === 'DESC'
+        ? sql`(
+            ${schema.comments.created} < ${cursor.created}
+            OR (${schema.comments.created} = ${cursor.created} AND ${schema.comments.coid} < ${cursor.coid})
+          )`
+        : sql`(
+            ${schema.comments.created} > ${cursor.created}
+            OR (${schema.comments.created} = ${cursor.created} AND ${schema.comments.coid} > ${cursor.coid})
+          )`
+      : null;
     const rows = await db
       .select()
       .from(schema.comments)
-      .where(approvedForContent)
-      .orderBy(orderExpression)
-      .limit(pageSize)
-      .offset(offset);
+      .where(cursorWhere ? and(approvedForContent, cursorWhere) : approvedForContent)
+      .orderBy(orderExpression, tieOrder)
+      .limit(pageSize);
     return { rows, pagination };
   }
 
   const orderSql = order === 'DESC' ? sql`DESC` : sql`ASC`;
+  const coidOrderSql = order === 'DESC' ? sql`DESC` : sql`ASC`;
+  // Seek the root boundary with an index-friendly OFFSET on (created, coid)
+  // only, then keyset-select the page of roots for the recursive thread CTE.
+  let rootCursor: { created: number; coid: number } | null = null;
+  if (pageOffset > 0) {
+    const boundaryRows = await db.all<{ created: number; coid: number }>(sql`
+      SELECT candidate.created AS created, candidate.coid AS coid
+      FROM ${schema.comments} AS candidate
+      WHERE candidate.cid = ${cid}
+        AND candidate.status = 'approved'
+        AND (
+          candidate.parent = 0
+          OR NOT EXISTS (
+            SELECT 1
+            FROM ${schema.comments} AS parent_comment
+            WHERE parent_comment.coid = candidate.parent
+              AND parent_comment.cid = ${cid}
+              AND parent_comment.status = 'approved'
+          )
+        )
+      ORDER BY candidate.created ${orderSql}, candidate.coid ${coidOrderSql}
+      LIMIT 1 OFFSET ${pageOffset - 1}
+    `);
+    const boundary = boundaryRows[0];
+    if (!boundary) return { rows: [], pagination };
+    rootCursor = { created: boundary.created ?? 0, coid: boundary.coid };
+  }
+
+  const rootCursorSql = rootCursor
+    ? order === 'DESC'
+      ? sql`AND (
+          candidate.created < ${rootCursor.created}
+          OR (candidate.created = ${rootCursor.created} AND candidate.coid < ${rootCursor.coid})
+        )`
+      : sql`AND (
+          candidate.created > ${rootCursor.created}
+          OR (candidate.created = ${rootCursor.created} AND candidate.coid > ${rootCursor.coid})
+        )`
+    : sql``;
+
   const rows = await db.all<CommentRow>(sql`
     WITH RECURSIVE selected_roots(coid) AS (
       SELECT candidate.coid
@@ -268,8 +334,9 @@ export async function loadCommentPage(
               AND parent_comment.status = 'approved'
           )
         )
-      ORDER BY candidate.created ${orderSql}
-      LIMIT ${pageSize} OFFSET ${offset}
+        ${rootCursorSql}
+      ORDER BY candidate.created ${orderSql}, candidate.coid ${coidOrderSql}
+      LIMIT ${pageSize}
     ),
     thread AS (
       SELECT comment.*
@@ -284,7 +351,7 @@ export async function loadCommentPage(
     )
     SELECT *
     FROM thread
-    ORDER BY created ${orderSql}
+    ORDER BY created ${orderSql}, coid ${coidOrderSql}
   `);
   return { rows, pagination };
 }

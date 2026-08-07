@@ -10,6 +10,8 @@ import {
   setActivatedPlugins,
   registerPluginInit,
   registerPluginLoaders,
+  getPluginInitFailures,
+  resetPluginInitState,
   type HookContext,
 } from '@/lib/plugin';
 
@@ -76,7 +78,21 @@ describe('lazy plugin init (G6-3)', () => {
     expect(good).toHaveBeenCalled();
     expect(bad).toHaveBeenCalled();
     expect(errSpy).toHaveBeenCalled();
+    expect(getPluginInitFailures()['lazy-bad']?.error).toBe('boom');
     errSpy.mockRestore();
+  });
+
+  it('backs off retrying a failed plugin init', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const bad = vi.fn(() => { throw new Error('still-bad'); });
+    registerPluginInit({ 'lazy-retry': bad }, { addHook, HookPoints: {} as any });
+    const ctx = mockCtx();
+    await setActivatedPlugins(ctx, ['lazy-retry']);
+    await setActivatedPlugins(ctx, ['lazy-retry']);
+    expect(bad).toHaveBeenCalledTimes(1);
+    expect(getPluginInitFailures()['lazy-retry']?.attempts).toBe(1);
+    errSpy.mockRestore();
+    resetPluginInitState();
   });
 
   it('waits for async init before hooks are used', async () => {

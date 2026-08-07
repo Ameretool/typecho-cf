@@ -2,7 +2,7 @@
 import Admin from '@/layouts/Admin.astro';
 import { createContext, requireAuth } from '@/lib/context';
 import { hasPermission, requireAdminCSRF } from '@/lib/auth';
-import { getAvailablePlugins, getPluginCount, isPluginActive, pluginHasConfig, parseActivatedPlugins } from '@/lib/plugin';
+import { getAvailablePlugins, getPluginCount, getPluginInitFailures, isPluginActive, pluginHasConfig, parseActivatedPlugins } from '@/lib/plugin';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const authCheck = requireAuth(ctx);
@@ -88,6 +88,7 @@ if (Astro.request.method === 'POST') {
 
 const plugins = getAvailablePlugins(ctx);
 const pluginCount = getPluginCount();
+const initFailures = getPluginInitFailures();
 ---
 <Admin title="插件管理" options={options} urls={urls} user={user} activeMenu="plugins" pluginCtx={ctx}>
   <div class="col-mb-12" role="main">
@@ -95,6 +96,18 @@ const pluginCount = getPluginCount();
       <div class={`typecho-option-tabs notice typecho-dismissible ${messageType === 'error' ? 'notice-error' : 'notice-success'}`}
         style={`padding: 10px 15px; margin-bottom: 20px; border-radius: 3px; ${messageType === 'error' ? 'background: #ffeaea; color: #c33;' : 'background: #e7f5e7; color: #3a3;'}`}>
         <p>{message}</p>
+        <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
+      </div>
+    )}
+    {Object.keys(initFailures).length > 0 && (
+      <div class="typecho-option-tabs notice notice-error typecho-dismissible"
+        style="padding: 10px 15px; margin-bottom: 20px; border-radius: 3px; background: #ffeaea; color: #c33;">
+        <p>以下已启用插件初始化失败（将按退避策略重试）：</p>
+        <ul>
+          {Object.entries(initFailures).map(([id, failure]) => (
+            <li><code>{id}</code>：{failure.error}（attempts={failure.attempts}）</li>
+          ))}
+        </ul>
         <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
       </div>
     )}

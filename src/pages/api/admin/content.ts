@@ -3,7 +3,7 @@ import { schema } from '@/db';
 import { type SiteOptions } from '@/lib/options';
 import { canManageResource } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
-import { normalizeSlug } from '@/lib/input';
+import { normalizeSlug, readAdminFormOrError } from '@/lib/input';
 import { resolveUniqueContentSlug, resolveUniqueMetaSlug } from '@/lib/slug';
 import { applyFilter, doHook } from '@/lib/plugin';
 import { bumpCacheVersion } from '@/lib/cache';
@@ -55,40 +55,72 @@ function parseTagNames(tags: string): string[] {
 }
 
 async function attachTags(db: any, cid: number, tags: string) {
-  for (const tagName of parseTagNames(tags)) {
-    const tagSlug = normalizeSlug(tagName, 'tag');
-    let tagRow = await db.query.metas.findFirst({
-      where: and(eq(schema.metas.slug, tagSlug), eq(schema.metas.type, 'tag')),
-    });
+  const tagNames = parseTagNames(tags);
+  if (tagNames.length === 0) return;
 
-    if (!tagRow) {
-      const uniqueTagSlug = await resolveUniqueMetaSlug(db, tagSlug, 'tag', 0, tagName);
+  const desired = tagNames.map((tagName) => ({
+    name: tagName,
+    slug: normalizeSlug(tagName, 'tag'),
+  }));
+  const slugs = [...new Set(desired.map((t) => t.slug))];
+
+  const existingTags = await db
+    .select({ mid: schema.metas.mid, slug: schema.metas.slug, name: schema.metas.name })
+    .from(schema.metas)
+    .where(and(
+      eq(schema.metas.type, 'tag'),
+      sql`${schema.metas.slug} IN (${sql.join(slugs.map((s) => sql`${s}`), sql`, `)})`,
+    ));
+  const tagBySlug = new Map<string, { mid: number; slug: string; name: string | null }>(
+    existingTags.map((row: { mid: number; slug: string; name: string | null }) => [row.slug, row]),
+  );
+
+  for (const tag of desired) {
+    if (tagBySlug.has(tag.slug)) continue;
+    const uniqueTagSlug = await resolveUniqueMetaSlug(db, tag.slug, 'tag', 0, tag.name);
+    try {
       const inserted = await db.insert(schema.metas).values({
-        name: tagName,
+        name: tag.name,
         slug: uniqueTagSlug,
         type: 'tag',
         count: 0,
-      }).returning({ mid: schema.metas.mid });
-      tagRow = { mid: inserted[0].mid } as any;
+      }).returning({ mid: schema.metas.mid, slug: schema.metas.slug, name: schema.metas.name });
+      if (inserted[0]) tagBySlug.set(inserted[0].slug, inserted[0]);
+    } catch {
+      // Concurrent create of the same (type, slug) — re-read the winner.
+      const [existing] = await db
+        .select({ mid: schema.metas.mid, slug: schema.metas.slug, name: schema.metas.name })
+        .from(schema.metas)
+        .where(and(eq(schema.metas.type, 'tag'), eq(schema.metas.slug, uniqueTagSlug)))
+        .limit(1);
+      if (existing) tagBySlug.set(existing.slug, existing);
     }
-
-    if (!tagRow) continue;
-
-    const existingRel = await db.query.relationships.findFirst({
-      where: and(
-        eq(schema.relationships.cid, cid),
-        eq(schema.relationships.mid, tagRow.mid),
-      ),
-    });
-    if (existingRel) continue;
-
-    await db.batch([
-      db.insert(schema.relationships).values({ cid, mid: tagRow.mid }),
-      db.update(schema.metas)
-        .set({ count: sql`${schema.metas.count} + 1` })
-        .where(eq(schema.metas.mid, tagRow.mid)),
-    ]);
   }
+
+  const mids = [...new Set(
+    desired
+      .map((tag) => tagBySlug.get(tag.slug)?.mid)
+      .filter((mid): mid is number => typeof mid === 'number'),
+  )];
+  if (mids.length === 0) return;
+
+  const existingRels = await db
+    .select({ mid: schema.relationships.mid })
+    .from(schema.relationships)
+    .where(and(
+      eq(schema.relationships.cid, cid),
+      sql`${schema.relationships.mid} IN (${sql.join(mids.map((id) => sql`${id}`), sql`, `)})`,
+    ));
+  const linked = new Set(existingRels.map((row: { mid: number }) => row.mid));
+  const toLink = mids.filter((mid) => !linked.has(mid));
+  if (toLink.length === 0) return;
+
+  await db.batch([
+    ...toLink.map((mid) => db.insert(schema.relationships).values({ cid, mid })),
+    ...toLink.map((mid) => db.update(schema.metas)
+      .set({ count: sql`${schema.metas.count} + 1` })
+      .where(eq(schema.metas.mid, mid))),
+  ]);
 }
 
 async function purgeContentAndRelatedCache(
@@ -126,7 +158,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const auth = { uid: admin.uid, user: admin.user };
   const pluginCtx = admin.pluginCtx;
 
-  const formData = await request.formData();
+  const formData = await readAdminFormOrError(request);
+  if (formData instanceof Response) return formData;
   const action = formData.get('do')?.toString() || 'create';
   const typeInput = formData.get('type')?.toString() || 'post';
   const VALID_TYPES = ['post', 'page'];

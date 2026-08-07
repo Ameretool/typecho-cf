@@ -31,7 +31,7 @@ const editCat: any = editRows[0] ?? null;
 const isDefault = (mid: number) => options.defaultCategory === mid;
 ---
 <Admin title="管理分类" options={options} urls={urls} user={user} activeMenu="manage-categories" pluginCtx={ctx}>
-  <div class="col-mb-12" role="main">
+  <div class="col-mb-12 typecho-list" role="main">
     <form method="post" name="manage_categories" class="operate-form">
       <input type="hidden" name="_" value={csrfToken} />
       <div class="typecho-list-operate clearfix">
@@ -83,9 +83,11 @@ const isDefault = (mid: number) => options.defaultCategory === mid;
                     {isDefault(cat.mid) ? (
                       <span>默认</span>
                     ) : (
-                      <a class="hidden-by-mouse"
-                        href={`/api/admin/meta?action=default&mid=${cat.mid}&type=category&_=${csrfToken}`}
-                        title="设为默认">默认</a>
+                      <button type="submit"
+                        class="hidden-by-mouse"
+                        formaction={`/api/admin/meta?action=default&mid=${cat.mid}&type=category`}
+                        formmethod="post"
+                        title="设为默认">默认</button>
                     )}
                   </td>
                   <td class="kit-hidden-mb">

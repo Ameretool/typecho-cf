@@ -6,6 +6,7 @@
  * (install redirect, asset proxy) without each call site reinventing
  * directives.
  */
+import { isRequestHttps } from '@/lib/auth';
 import { applyFilterSafely, type HookContext } from '@/lib/plugin';
 
 /**
@@ -75,8 +76,7 @@ export async function applySecurityHeaders(
   secCtx: SecurityHeaderContext = {},
   pluginCtx?: HookContext,
 ): Promise<Response> {
-  const proto = secCtx.request ? safeProtocol(secCtx.request.url) : 'https:';
-  const isHttps = proto === 'https:';
+  const isHttps = isRequestHttps(secCtx.request);
 
   // Build CSP — for upload responses use a locked-down policy; otherwise
   // start from defaults and let plugins extend via filter hook.
@@ -126,6 +126,3 @@ export async function applySecurityHeaders(
   });
 }
 
-function safeProtocol(url: string): string {
-  try { return new URL(url).protocol; } catch { return 'https:'; }
-}

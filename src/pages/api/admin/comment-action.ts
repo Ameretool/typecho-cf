@@ -6,6 +6,7 @@ import {
   normalizeCommentAction,
   purgeCommentModerationCache,
 } from '@/lib/comment-moderation';
+import { readAdminFormOrError } from '@/lib/input';
 
 export const GET: APIRoute = async () =>
   new Response('Method Not Allowed', { status: 405 });
@@ -14,7 +15,8 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const auth = await requireAdminAction(request, 'contributor');
   if (isAdminActionResponse(auth)) return auth;
 
-  const formData = await request.formData();
+  const formData = await readAdminFormOrError(request);
+  if (formData instanceof Response) return formData;
   const action = normalizeCommentAction(
     formData.get('action')?.toString() || url.searchParams.get('action') || '',
   );

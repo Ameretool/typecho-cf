@@ -13,25 +13,35 @@ let testDb: TestDatabase;
 // We need env.DB to be a real-enough D1 stub so ensureTablesReady doesn't throw.
 // The test DB is a @libsql/client SQLite file — we don't need the D1 stub for
 // anything except middleware's table-existence check.
-function createD1Stub(db: TestDatabase) {
+function createD1Stub(_db: TestDatabase) {
+  const stmt = {
+    first: (sql?: string) => Promise.resolve(
+      typeof sql === 'string' && sql.includes('runtimeSchemaVersion')
+        ? { runtimeSchemaVersion: '20260808' }
+        : { name: 'typecho_options' } as any,
+    ),
+    all: () => Promise.resolve({
+      results: [
+        { name: 'email' },
+        { name: 'lastSentAt' },
+        { name: 'uid' },
+        { name: 'tokenHash' },
+        { name: 'expiresAt' },
+      ],
+    }),
+    run: () => Promise.resolve({}),
+    bind() { return this; },
+  };
   return {
     prepare: (sql: string) => ({
+      ...stmt,
       first: () => Promise.resolve(
         sql.includes('runtimeSchemaVersion')
-          ? { runtimeSchemaVersion: '20260805' }
+          ? { runtimeSchemaVersion: '20260808', loginFailuresExists: 1 }
           : { name: 'typecho_options' } as any,
       ),
-      all: () => Promise.resolve({
-        results: [
-          { name: 'email' },
-          { name: 'lastSentAt' },
-          { name: 'uid' },
-          { name: 'tokenHash' },
-          { name: 'expiresAt' },
-        ],
-      }),
+      bind() { return this; },
       run: () => Promise.resolve({}),
-      bind: (): any => ({}),
     }),
     batch: (_stmts: any[]) => Promise.resolve([]),
     dump: () => Promise.resolve([]),
@@ -147,8 +157,18 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     ) as Response;
 
     expect(response.status).toBe(200);
-    expect(putSpy).toHaveBeenCalledOnce();
-    expect(waitUntil).toHaveBeenCalledWith(putSpy.mock.results[0].value);
+    // loadOptions may also write the options blob into caches.default; assert
+    // the page entry itself was scheduled through waitUntil.
+    const pagePutIndex = putSpy.mock.calls.findIndex(([req]) => {
+      const key = typeof req === 'string'
+        ? req
+        : req instanceof Request
+          ? req.url
+          : String(req);
+      return key.includes('/cache-write');
+    });
+    expect(pagePutIndex).toBeGreaterThanOrEqual(0);
+    expect(waitUntil).toHaveBeenCalledWith(putSpy.mock.results[pagePutIndex]?.value);
     putSpy.mockRestore();
   });
 
@@ -204,7 +224,8 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     d1Stub = createD1Stub(testDb);
     (d1Stub as any).prepare = () => ({
       first: () => Promise.resolve(null), // no typecho_options table
-      bind: () => ({}),
+      bind() { return this; },
+      run: () => Promise.resolve({}),
     });
 
     const request = new Request(`${SITE}/`, { method: 'GET' });
@@ -240,7 +261,7 @@ describe('Middleware: activated plugin routes (registry imported by middleware)'
     d1Stub = createD1Stub(testDb);
     resetIsolateBoot();
     // Invalidate any 60s options snapshot so loadOptions re-reads the rows below.
-    advanceOptionsSnapshotGeneration(testDb as any);
+    advanceOptionsSnapshotGeneration();
     await testDb.insert(schema.options).values({
       name: 'activatedPlugins',
       user: 0,

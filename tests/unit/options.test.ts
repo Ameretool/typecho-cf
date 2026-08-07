@@ -16,7 +16,7 @@ import {
   computeUrls,
   ensureSecret,
 } from '@/lib/options';
-import { bumpCacheVersion } from '@/lib/cache';
+import { bumpCacheVersion, resetCacheVersionMemo } from '@/lib/cache';
 
 async function createOptionsTestDb() {
   return await createTestDb() as any;
@@ -80,6 +80,31 @@ describe('loadOptions()', () => {
     await bumpCacheVersion(db);
     const after = await loadOptions(db);
     expect(after.cacheVersion).toBe(101);
+  });
+
+  it('reloads when cacheVersion changes without a local snapshot generation bump', async () => {
+    const db = await createOptionsTestDb();
+    await setOption(db, 'title', 'Local');
+    const first = await loadOptions(db);
+    expect(first.title).toBe('Local');
+
+    // Simulate a remote PoP write: mutate rows + bump stamp without advancing
+    // this isolate's snapshot generation.
+    await db.insert(schema.options).values({ name: 'title', user: 0, value: 'Remote' })
+      .onConflictDoUpdate({
+        target: [schema.options.name, schema.options.user],
+        set: { value: 'Remote' },
+      });
+    await db.insert(schema.options).values({ name: 'cacheVersion', user: 0, value: '42' })
+      .onConflictDoUpdate({
+        target: [schema.options.name, schema.options.user],
+        set: { value: '42' },
+      });
+    resetCacheVersionMemo();
+
+    const second = await loadOptions(db);
+    expect(second.title).toBe('Remote');
+    expect(second.cacheVersion).toBe(42);
   });
 
   it('ensureSecret generates and persists on first call, reuses on subsequent calls', async () => {

@@ -59,14 +59,25 @@ export function resolveRequestTarget(request: Request, locals: App.Locals): Requ
   };
 }
 
+export interface BootstrapOptions {
+  /**
+   * When false, skip lazy plugin init so middleware can attempt an edge-cache
+   * hit before paying plugin import cost. Callers must activate plugins later
+   * when the cache misses (or when activated plugins are non-empty).
+   */
+  plugins?: boolean;
+  executionContext?: { waitUntil(promise: Promise<unknown>): void } | null;
+}
+
 /** Initialize the database, Site Options, and activated Hook Context once. */
 export async function bootstrapRequestCore(
   request: Request,
   locals: App.Locals,
+  bootstrapOptions: BootstrapOptions = {},
 ): Promise<BootstrapResult> {
   const d1 = env.DB;
   try {
-    await ensureDatabaseReady(d1);
+    await ensureDatabaseReady(d1, bootstrapOptions.executionContext);
   } catch (error) {
     if (error instanceof TablesMissingError) {
       return { ok: false, response: new Response(null, { status: 302, headers: { Location: '/install' } }) };
@@ -87,10 +98,12 @@ export async function bootstrapRequestCore(
     }
 
     const pluginCtx: HookContext = { activatedPlugins: new Set<string>() };
-    await setActivatedPlugins(
-      pluginCtx,
-      parseActivatedPlugins(options.activatedPlugins as string | undefined),
-    );
+    if (bootstrapOptions.plugins !== false) {
+      await setActivatedPlugins(
+        pluginCtx,
+        parseActivatedPlugins(options.activatedPlugins as string | undefined),
+      );
+    }
     const core = { db, options, pluginCtx };
     setRequestCoreContext(locals, core, request);
     return { ok: true, core };

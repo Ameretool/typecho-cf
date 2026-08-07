@@ -1,6 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { schema } from '@/db';
-import { applyFilter, isPluginAdminPath } from '@/lib/plugin';
+import { applyFilter, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
 import { compilePermalinkPattern } from '@/lib/permalink-pattern';
 import {
@@ -54,11 +54,44 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return await finalizeRequestResponse(await next(), { request: context.request });
   }
 
-  const bootstrap = await bootstrapRequestCore(context.request, context.locals);
+  // Defer plugin init until after a possible edge-cache hit when no plugins
+  // are activated — avoids paying import/init cost on every public cache hit.
+  const bootstrap = await bootstrapRequestCore(context.request, context.locals, {
+    plugins: false,
+    executionContext: context.locals.cfContext,
+  });
   if (!bootstrap.ok) {
     return finalizeRequestResponse(bootstrap.response, { request: context.request });
   }
   const { db, options, pluginCtx } = bootstrap.core;
+  const activatedIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
+
+  // ── Edge Cache Layer ──────────────────────────────────────────────────────
+  const isGetRequest = context.request.method === 'GET';
+  const hasAuth = hasAuthCookies(context.request.headers.get('cookie'));
+  const isCacheable =
+    options.cacheEnabled &&
+    isGetRequest &&
+    !hasAuth &&
+    !path.startsWith('/admin') &&
+    !path.startsWith('/api/') &&
+    !path.startsWith('/usr/');
+
+  // Reuse a single Request for both cache.match and cache.put
+  const cacheKey = isCacheable
+    ? new Request(withCacheVersion(context.request.url, options.cacheVersion), { method: 'GET' })
+    : null;
+
+  // Safe early hit: no activated plugins means no route:request overrides and
+  // no csp:directives filter contributions on the cached response.
+  if (cacheKey && activatedIds.length === 0) {
+    const cached = await caches.default.match(cacheKey);
+    if (cached) {
+      return await finalizeRequestResponse(cached, { request: context.request, pluginCtx });
+    }
+  }
+
+  await setActivatedPlugins(pluginCtx, activatedIds);
 
   const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
     request: context.request,
@@ -80,22 +113,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return await finalizeRequestResponse(pluginRoute.response, { request: context.request, pluginCtx });
     }
   }
-
-  // ── Edge Cache Layer ──────────────────────────────────────────────────────
-  const isGetRequest = context.request.method === 'GET';
-  const hasAuth = hasAuthCookies(context.request.headers.get('cookie'));
-  const isCacheable =
-    options.cacheEnabled &&
-    isGetRequest &&
-    !hasAuth &&
-    !path.startsWith('/admin') &&
-    !path.startsWith('/api/') &&
-    !path.startsWith('/usr/');
-
-  // Reuse a single Request for both cache.match and cache.put
-  const cacheKey = isCacheable
-    ? new Request(withCacheVersion(context.request.url, options.cacheVersion), { method: 'GET' })
-    : null;
 
   if (cacheKey) {
     const cached = await caches.default.match(cacheKey);

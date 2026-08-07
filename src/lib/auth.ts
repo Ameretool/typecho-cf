@@ -377,17 +377,33 @@ const AUTH_COOKIE_NAME = '__typecho_uid';
 const AUTH_CODE_COOKIE_NAME = '__typecho_authCode';
 
 /**
+ * Whether the request should be treated as HTTPS for Secure cookies / HSTS.
+ * Prefer the request URL scheme (Cloudflare Workers serve https:// at the edge).
+ * Also honour a trusted `x-forwarded-proto: https` for TLS-terminated proxies.
+ *
+ * Trust model: only enable forwarded-proto reliance behind a proxy that strips
+ * or overwrites client-supplied X-Forwarded-Proto. On the Cloudflare Worker
+ * edge the request URL is already https://, so the header is unused.
+ */
+export function isRequestHttps(request?: Request): boolean {
+  if (!request) return true;
+  try {
+    if (new URL(request.url).protocol === 'https:') return true;
+  } catch {
+    return true;
+  }
+  const forwarded = request.headers.get('x-forwarded-proto');
+  if (!forwarded) return false;
+  return forwarded.split(',')[0]?.trim().toLowerCase() === 'https';
+}
+
+/**
  * Decide whether to emit the `Secure` cookie attribute. Production deploys
  * always run on HTTPS via Cloudflare, but `pnpm run dev` exposes the worker
  * over plain http://localhost. Marking cookies Secure on http drops them.
  */
 export function shouldUseSecureCookie(request?: Request): boolean {
-  if (!request) return true;
-  try {
-    return new URL(request.url).protocol === 'https:';
-  } catch {
-    return true;
-  }
+  return isRequestHttps(request);
 }
 
 export function getAuthCookies(cookieHeader: string | null): { token: string | null; uid: string | null; code: string | null } {

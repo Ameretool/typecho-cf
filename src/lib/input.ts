@@ -1,4 +1,4 @@
-import { MAX_PAGE_NUMBER } from '@/lib/constants';
+import { MAX_PAGE_NUMBER, REQUEST_BODY_LIMITS } from '@/lib/constants';
 
 export class InputError extends Error {
   constructor(
@@ -7,6 +7,24 @@ export class InputError extends Error {
   ) {
     super(message);
     this.name = 'InputError';
+  }
+}
+
+/**
+ * Read a bounded admin form body, returning a Response on size/parse errors
+ * so call sites can `if (formData instanceof Response) return formData`.
+ */
+export async function readAdminFormOrError(
+  request: Request,
+  maxBytes: number = REQUEST_BODY_LIMITS.adminForm,
+): Promise<FormData | Response> {
+  try {
+    return await readBoundedFormData(request, maxBytes);
+  } catch (error) {
+    if (error instanceof InputError) {
+      return new Response(error.message, { status: error.status });
+    }
+    throw error;
   }
 }
 

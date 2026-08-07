@@ -2,6 +2,9 @@ import { hasPermission, registerPluginAdminPath } from 'typecho/plugin-sdk';
 import type { PluginInitContext, PluginRouteResult } from 'typecho/plugin-sdk';
 import type { Database } from 'typecho/db';
 import { validateAuthToken, getAuthCookies, requireAdminCSRF } from '@/lib/auth';
+import { isSameOriginRequest } from '@/lib/admin-auth';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { InputError, readBoundedFormData, readBoundedJson } from '@/lib/input';
 
 import { PLUGIN_ID } from './types';
 import type { WebDavConfig, WebDavStorageAdapter } from './types';
@@ -134,7 +137,18 @@ async function handleAdminApiRequest(request: Request, config: WebDavConfig, wor
     const contentType = request.headers.get('content-type') || '';
 
     if (contentType.includes('multipart/form-data')) {
-      const formData = await request.formData();
+      let formData: FormData;
+      try {
+        formData = await readBoundedFormData(request, REQUEST_BODY_LIMITS.uploadEnvelope);
+      } catch (error) {
+        if (error instanceof InputError) {
+          return new Response(JSON.stringify({ error: error.message }), {
+            status: error.status,
+            headers: jsonHeaders,
+          });
+        }
+        throw error;
+      }
       const action = String(formData.get('action') || 'upload');
       const dirPath = String(formData.get('path') || '');
       const file = formData.get('file') as File | null;
@@ -148,7 +162,18 @@ async function handleAdminApiRequest(request: Request, config: WebDavConfig, wor
       return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: jsonHeaders });
     }
 
-    const body = await request.json() as { action?: string; path?: string; newPath?: string; paths?: string[] };
+    let body: { action?: string; path?: string; newPath?: string; paths?: string[] };
+    try {
+      body = await readBoundedJson(request, REQUEST_BODY_LIMITS.adminForm) as typeof body;
+    } catch (error) {
+      if (error instanceof InputError) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: error.status,
+          headers: jsonHeaders,
+        });
+      }
+      throw error;
+    }
     const action = body.action || '';
     const targetPath = body.path || '';
 
@@ -326,6 +351,15 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
           }
 
           if (extra.request.method === 'POST') {
+            if (!isSameOriginRequest(extra.request, String(options.siteUrl || ''))) {
+              return {
+                handled: true,
+                response: new Response(JSON.stringify({ error: 'Forbidden' }), {
+                  status: 403,
+                  headers: { 'Content-Type': 'application/json' },
+                }),
+              };
+            }
             const csrfError = await requireAdminCSRF(
               extra.request,
               String(options.secret || ''),

@@ -60,7 +60,6 @@ describe('ensureTablesReady', () => {
         bind: vi.fn().mockReturnThis(),
       }),
     } as unknown as D1Database;
-    // D1 failure → generic Error, NOT TablesMissingError
     await expect(ensureTablesReady(d1)).rejects.toThrow('D1 down');
   });
 
@@ -76,7 +75,7 @@ describe('ensureTablesReady', () => {
 
 describe('ensureDatabaseReady', () => {
   it('uses the persistent schema version fast path on a cold isolate', async () => {
-    const first = vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260805' });
+    const first = vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260808' });
     const d1 = {
       prepare: vi.fn().mockReturnValue({ first }),
       batch: vi.fn(),
@@ -92,7 +91,7 @@ describe('ensureDatabaseReady', () => {
     const createRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
       if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260805', loginFailuresExists: 0 }) };
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260808', loginFailuresExists: 0 }) };
       }
       return { run: createRun };
     });
@@ -114,13 +113,53 @@ describe('ensureDatabaseReady', () => {
 
     const a = ensureDatabaseReady(d1);
     const b = ensureDatabaseReady(d1);
-    release({ runtimeSchemaVersion: '20260805' } as any);
+    release({ runtimeSchemaVersion: '20260808' } as any);
     await Promise.all([a, b]);
 
     expect(d1.prepare).toHaveBeenCalledOnce();
   });
 
   it('upgrades a stale marker and persists the current schema version', async () => {
+    const markerRun = vi.fn().mockResolvedValue({});
+    const indexRun = vi.fn().mockResolvedValue({});
+    const prepare = vi.fn((sql: string) => {
+      if (sql.startsWith('SELECT (SELECT value')) {
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      }
+      if (sql.includes("name IN ('typecho_password_reset_requests'")) {
+        return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
+      }
+      if (sql.startsWith('PRAGMA table_info')) {
+        return { all: vi.fn().mockResolvedValue({
+          results: ['email', 'lastSentAt', 'uid', 'tokenHash', 'expiresAt'].map(name => ({ name })),
+        }) };
+      }
+      if (sql.startsWith('INSERT INTO typecho_options')) {
+        return { bind: vi.fn(() => ({ run: markerRun })) };
+      }
+      if (sql.includes('sqlite_master') && sql.includes('typecho_metas_type_slug')) {
+        return {
+          bind: vi.fn(() => ({
+            first: vi.fn().mockResolvedValue({ sql: 'CREATE UNIQUE INDEX typecho_metas_type_slug ON typecho_metas (type, slug)' }),
+          })),
+        };
+      }
+      if (sql.startsWith('CREATE INDEX') || sql.startsWith('CREATE UNIQUE INDEX')) {
+        return { run: indexRun };
+      }
+      return { sql, first: vi.fn().mockResolvedValue(null), run: vi.fn().mockResolvedValue({}), bind: vi.fn().mockReturnThis() };
+    });
+    const batch = vi.fn().mockResolvedValue([]);
+    const d1 = { prepare, batch } as unknown as D1Database;
+
+    await ensureDatabaseReady(d1);
+
+    expect(indexRun).toHaveBeenCalled();
+    expect(batch).toHaveBeenCalled();
+    expect(markerRun).toHaveBeenCalledOnce();
+  });
+
+  it('does not persist the schema marker when metas unique index fails', async () => {
     const markerRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
       if (sql.startsWith('SELECT (SELECT value')) {
@@ -137,15 +176,68 @@ describe('ensureDatabaseReady', () => {
       if (sql.startsWith('INSERT INTO typecho_options')) {
         return { bind: vi.fn(() => ({ run: markerRun })) };
       }
-      return { sql, first: vi.fn().mockResolvedValue(null) };
+      if (sql.includes('sqlite_master') && sql.includes('typecho_metas_type_slug')) {
+        return {
+          bind: vi.fn(() => ({
+            first: vi.fn().mockResolvedValue({ sql: 'CREATE INDEX typecho_metas_type_slug ON typecho_metas (type, slug)' }),
+          })),
+        };
+      }
+      return { sql, first: vi.fn().mockResolvedValue(null), run: vi.fn().mockResolvedValue({}), bind: vi.fn().mockReturnThis() };
     });
-    const batch = vi.fn().mockResolvedValue([]);
+    const batch = vi.fn().mockImplementation((stmts: unknown[]) => {
+      // metas unique conversion batch fails (duplicates)
+      if (Array.isArray(stmts) && stmts.length >= 3) {
+        return Promise.reject(new Error('UNIQUE failed'));
+      }
+      return Promise.resolve([]);
+    });
     const d1 = { prepare, batch } as unknown as D1Database;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await ensureDatabaseReady(d1);
 
-    // Index backfill + FTS5 setup each use one batch in the upgrade path.
-    expect(batch).toHaveBeenCalledTimes(2);
+    expect(markerRun).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('defers index/FTS upgrade through waitUntil when available', async () => {
+    const markerRun = vi.fn().mockResolvedValue({});
+    const prepare = vi.fn((sql: string) => {
+      if (sql.startsWith('SELECT (SELECT value')) {
+        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      }
+      if (sql.includes("name IN ('typecho_password_reset_requests'")) {
+        return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
+      }
+      if (sql.startsWith('PRAGMA table_info')) {
+        return { all: vi.fn().mockResolvedValue({
+          results: ['email', 'lastSentAt', 'uid', 'tokenHash', 'expiresAt'].map(name => ({ name })),
+        }) };
+      }
+      if (sql.startsWith('INSERT INTO typecho_options')) {
+        return { bind: vi.fn(() => ({ run: markerRun })) };
+      }
+      if (sql.includes('sqlite_master') && sql.includes('typecho_metas_type_slug')) {
+        return {
+          bind: vi.fn(() => ({
+            first: vi.fn().mockResolvedValue({ sql: 'CREATE UNIQUE INDEX typecho_metas_type_slug ON typecho_metas (type, slug)' }),
+          })),
+        };
+      }
+      return { sql, first: vi.fn().mockResolvedValue(null), run: vi.fn().mockResolvedValue({}), bind: vi.fn().mockReturnThis() };
+    });
+    const batch = vi.fn().mockResolvedValue([]);
+    const d1 = { prepare, batch } as unknown as D1Database;
+    let deferred: Promise<unknown> | undefined;
+    const executionContext = {
+      waitUntil: (p: Promise<unknown>) => { deferred = p; },
+    };
+
+    await ensureDatabaseReady(d1, executionContext);
+    expect(markerRun).not.toHaveBeenCalled();
+    expect(deferred).toBeDefined();
+    await deferred;
     expect(markerRun).toHaveBeenCalledOnce();
   });
 
@@ -166,17 +258,23 @@ describe('ensureDatabaseReady', () => {
       if (sql.startsWith('INSERT INTO typecho_options')) {
         return { bind: vi.fn(() => ({ run: markerRun })) };
       }
-      return { sql, first: vi.fn().mockResolvedValue(null) };
+      if (sql.includes('sqlite_master') && sql.includes('typecho_metas_type_slug')) {
+        return {
+          bind: vi.fn(() => ({
+            first: vi.fn().mockResolvedValue({ sql: 'CREATE UNIQUE INDEX typecho_metas_type_slug ON typecho_metas (type, slug)' }),
+          })),
+        };
+      }
+      return { sql, first: vi.fn().mockResolvedValue(null), run: vi.fn().mockResolvedValue({}), bind: vi.fn().mockReturnThis() };
     });
-    const batch = vi.fn((stmts: Array<{ sql: string }>) => {
-      if (stmts.some(stmt => stmt.sql.includes('typecho_contents_fts'))) {
+    const batch = vi.fn((stmts: Array<{ sql?: string }>) => {
+      if (stmts.some(stmt => String(stmt.sql || '').includes('typecho_contents_fts'))) {
         return Promise.reject(new Error('FTS down'));
       }
       return Promise.resolve([]);
     });
     const d1 = { prepare, batch } as unknown as D1Database;
 
-    // Boot must not throw — the isolate degrades to LIKE search.
     await expect(ensureDatabaseReady(d1)).resolves.toBeUndefined();
 
     expect(markerRun).not.toHaveBeenCalled();
@@ -185,18 +283,21 @@ describe('ensureDatabaseReady', () => {
 });
 
 describe('ensureIndexes', () => {
-  it('only runs once per isolate', () => {
-    const d1 = { prepare: vi.fn(), batch: vi.fn().mockResolvedValue([]) } as unknown as D1Database;
+  it('only runs once per isolate', async () => {
+    const run = vi.fn().mockResolvedValue({});
+    const d1 = { prepare: vi.fn().mockReturnValue({ run }) } as unknown as D1Database;
     ensureIndexes(d1);
     ensureIndexes(d1);
-    expect(d1.batch).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(run).toHaveBeenCalled());
+    const calls = run.mock.calls.length;
+    await Promise.resolve();
+    expect(run).toHaveBeenCalledTimes(calls);
   });
 
   it('uses waitUntil when available', () => {
     let waited: Promise<unknown> | undefined;
     const d1 = {
-      prepare: vi.fn().mockReturnValue({}),
-      batch: vi.fn().mockResolvedValue([]),
+      prepare: vi.fn().mockReturnValue({ run: vi.fn().mockResolvedValue({}) }),
     } as unknown as D1Database;
     const executionContext = {
       waitUntil: (p: Promise<unknown>) => { waited = p; },
@@ -208,8 +309,7 @@ describe('ensureIndexes', () => {
 
   it('preserves the ExecutionContext receiver when scheduling index backfill', () => {
     const d1 = {
-      prepare: vi.fn().mockReturnValue({}),
-      batch: vi.fn().mockResolvedValue([]),
+      prepare: vi.fn().mockReturnValue({ run: vi.fn().mockResolvedValue({}) }),
     } as unknown as D1Database;
     const executionContext = {
       waitUntil(this: unknown, _promise: Promise<unknown>) {
@@ -222,12 +322,10 @@ describe('ensureIndexes', () => {
     expect(() => ensureIndexes(d1, executionContext)).not.toThrow();
   });
 
-  it('does not crash when batch fails', () => {
+  it('does not crash when index creation fails', () => {
     const d1 = {
-      prepare: vi.fn().mockReturnValue({}),
-      batch: vi.fn().mockRejectedValue(new Error('D1 down')),
+      prepare: vi.fn().mockReturnValue({ run: vi.fn().mockRejectedValue(new Error('D1 down')) }),
     } as unknown as D1Database;
-    // Should not throw — fire-and-forget with catch
     expect(() => ensureIndexes(d1)).not.toThrow();
   });
 });

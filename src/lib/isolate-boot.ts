@@ -29,7 +29,7 @@ interface IsolateBoot {
   databaseReadyPending?: Promise<void>;
   tableCheckPending?: Promise<void>;
   passwordResetSchemaPending?: Promise<void>;
-  indexEnsurePending?: Promise<void>;
+  indexEnsurePending?: Promise<boolean>;
 }
 
 const state: IsolateBoot = {
@@ -58,10 +58,14 @@ export function resetIsolateBoot(): void {
 // runtime password-reset upgrade or generated index set changes. A stable
 // database needs one query per cold isolate instead of probing every table,
 // column and index.
-const RUNTIME_SCHEMA_VERSION = '20260805';
+const RUNTIME_SCHEMA_VERSION = '20260808';
 const RUNTIME_SCHEMA_VERSION_KEY = 'runtimeSchemaVersion';
+const METAS_TYPE_SLUG_INDEX = 'typecho_metas_type_slug';
 
-export async function ensureDatabaseReady(d1: D1Database): Promise<void> {
+export async function ensureDatabaseReady(
+  d1: D1Database,
+  executionContext?: Pick<ExecutionContext, 'waitUntil'> | null,
+): Promise<void> {
   if (state.databaseReadyPassed) return;
   if (state.databaseReadyPending) return state.databaseReadyPending;
 
@@ -104,20 +108,31 @@ export async function ensureDatabaseReady(d1: D1Database): Promise<void> {
       return;
     }
 
+    // Password-reset schema is request-critical (login/reset paths). Index and
+    // FTS rebuilds can be large — defer them off the hot path when possible.
     await ensurePasswordResetSchema(d1);
-    await ensureIndexesReady(d1);
-    // Persist the marker only after FTS is confirmed ready. Otherwise the
-    // fast path would skip FTS setup on every future cold start and search
-    // would keep hitting a missing table. A failed setup is retried on the
-    // next cold start while this isolate falls back to LIKE search.
-    const ftsReady = await ensureFtsReady(d1);
-    if (ftsReady) {
-      await d1.prepare(
-        'INSERT INTO typecho_options (name, user, value) VALUES (?, ?, ?) ' +
-        'ON CONFLICT(name, user) DO UPDATE SET value=excluded.value',
-      ).bind(RUNTIME_SCHEMA_VERSION_KEY, 0, RUNTIME_SCHEMA_VERSION).run();
-    }
     state.databaseReadyPassed = true;
+
+    const finishUpgrade = async () => {
+      const indexesOk = await ensureIndexesReady(d1);
+      // Persist the marker only after required indexes AND FTS are ready.
+      // A failed unique-index conversion must not permanently skip retries.
+      const ftsReady = await ensureFtsReady(d1);
+      if (indexesOk && ftsReady) {
+        await d1.prepare(
+          'INSERT INTO typecho_options (name, user, value) VALUES (?, ?, ?) ' +
+          'ON CONFLICT(name, user) DO UPDATE SET value=excluded.value',
+        ).bind(RUNTIME_SCHEMA_VERSION_KEY, 0, RUNTIME_SCHEMA_VERSION).run();
+      }
+    };
+
+    if (executionContext?.waitUntil) {
+      executionContext.waitUntil(
+        finishUpgrade().catch(err => console.warn('[isolate-boot] deferred schema upgrade failed:', err)),
+      );
+    } else {
+      await finishUpgrade();
+    }
   })();
   state.databaseReadyPending = pending;
   try {
@@ -272,27 +287,95 @@ export function ensureIndexes(
   if (executionContext) executionContext.waitUntil(backfill);
 }
 
-async function ensureIndexesReady(d1: D1Database): Promise<void> {
-  if (state.indexEnsurePassed) return;
+async function ensureIndexesReady(d1: D1Database): Promise<boolean> {
+  if (state.indexEnsurePassed) return true;
   if (state.indexEnsurePending) return state.indexEnsurePending;
   const indexStatements = generateIndexSQL();
-  if (indexStatements.length === 0) {
-    state.indexEnsurePassed = true;
-    return;
-  }
-  // Explicit loop — .prepare() loses its `this` binding when passed as a
-  // .map() callback inside Cloudflare Workers' native API proxies.
-  const stmts: D1PreparedStatement[] = [];
-  for (const sql of indexStatements) {
-    stmts.push(d1.prepare(sql));
-  }
-  const pending = d1.batch(stmts).then(() => {
-    state.indexEnsurePassed = true;
-  });
+  const pending = (async () => {
+    let allOk = true;
+
+    // Convert metas (type, slug) to UNIQUE: drop legacy non-unique index of the
+    // same name, dedupe rows, then create the unique index. Failure must not
+    // be swallowed into a successful schema marker.
+    if (!(await ensureMetasTypeSlugUnique(d1))) {
+      allOk = false;
+    }
+
+    for (const sql of indexStatements) {
+      if (sql.includes(METAS_TYPE_SLUG_INDEX)) continue;
+      try {
+        await d1.prepare(sql).run();
+      } catch (error) {
+        allOk = false;
+        console.warn(
+          '[isolate-boot] index backfill skipped:',
+          sql,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+    state.indexEnsurePassed = allOk;
+    return allOk;
+  })();
   state.indexEnsurePending = pending;
   try {
-    await pending;
+    return await pending;
   } finally {
     if (state.indexEnsurePending === pending) state.indexEnsurePending = undefined;
+  }
+}
+
+/**
+ * Ensure typecho_metas has a UNIQUE (type, slug) index.
+ * Legacy installs may still have a non-unique index of the same name and/or
+ * duplicate rows — both must be repaired before CREATE UNIQUE INDEX.
+ */
+async function ensureMetasTypeSlugUnique(d1: D1Database): Promise<boolean> {
+  try {
+    const existing = await d1.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='index' AND name=?",
+    ).bind(METAS_TYPE_SLUG_INDEX).first<{ sql: string | null }>();
+
+    if (existing?.sql && /\bUNIQUE\b/i.test(existing.sql)) {
+      return true;
+    }
+
+    // Remap relationships from duplicate metas onto the keeper (MIN mid),
+    // collapse duplicate (cid, mid) pairs, then drop duplicate meta rows.
+    await d1.batch([
+      d1.prepare(
+        'UPDATE typecho_relationships SET mid = (' +
+        'SELECT MIN(keeper.mid) FROM typecho_metas AS keeper ' +
+        'INNER JOIN typecho_metas AS loser ON loser.mid = typecho_relationships.mid ' +
+        'WHERE keeper.type = loser.type ' +
+        "AND IFNULL(keeper.slug, '') = IFNULL(loser.slug, '')" +
+        ') WHERE mid IN (' +
+        'SELECT loser.mid FROM typecho_metas AS loser ' +
+        'WHERE EXISTS (' +
+        'SELECT 1 FROM typecho_metas AS keeper ' +
+        'WHERE keeper.type = loser.type ' +
+        "AND IFNULL(keeper.slug, '') = IFNULL(loser.slug, '') " +
+        'AND keeper.mid < loser.mid))',
+      ),
+      d1.prepare(
+        'DELETE FROM typecho_relationships WHERE rowid NOT IN (' +
+        'SELECT MIN(rowid) FROM typecho_relationships GROUP BY cid, mid)',
+      ),
+      d1.prepare(
+        'DELETE FROM typecho_metas WHERE mid NOT IN (' +
+        "SELECT MIN(mid) FROM typecho_metas GROUP BY type, IFNULL(slug, ''))",
+      ),
+      d1.prepare(`DROP INDEX IF EXISTS ${METAS_TYPE_SLUG_INDEX}`),
+      d1.prepare(
+        `CREATE UNIQUE INDEX ${METAS_TYPE_SLUG_INDEX} ON typecho_metas (type, slug)`,
+      ),
+    ]);
+    return true;
+  } catch (error) {
+    console.warn(
+      '[isolate-boot] metas (type, slug) unique index failed:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return false;
   }
 }

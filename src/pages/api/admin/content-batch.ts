@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction, safeAdminRedirectUrl } from '@/lib/admin-auth';
 import { doHook } from '@/lib/plugin';
 import { bumpCacheVersion, purgeContentCache } from '@/lib/cache';
+import { readAdminFormOrError } from '@/lib/input';
 import { eq, sql } from 'drizzle-orm';
 
 export const POST: APIRoute = handler;
@@ -28,7 +29,8 @@ async function handler({ request, locals, url }: { request: Request; locals: App
 
   let cids: number[] = [];
   if (request.method === 'POST') {
-    const formData = await request.formData();
+    const formData = await readAdminFormOrError(request);
+    if (formData instanceof Response) return formData;
     cids = formData.getAll('cid[]').map(v => parseInt(v.toString(), 10)).filter(Boolean);
   }
 

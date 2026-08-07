@@ -7,6 +7,7 @@ import {
   normalizeCommentAction,
   purgeCommentModerationCache,
 } from '@/lib/comment-moderation';
+import { readAdminFormOrError } from '@/lib/input';
 
 export const GET: APIRoute = async () =>
   new Response('Method Not Allowed', { status: 405 });
@@ -37,7 +38,8 @@ async function handler({ request, locals, url }: { request: Request; locals: App
   // Get selected coids from form body
   let coids: number[] = [];
   if (request.method === 'POST') {
-    const formData = await request.formData();
+    const formData = await readAdminFormOrError(request);
+    if (formData instanceof Response) return formData;
     coids = [...new Set(
       formData.getAll('coid[]').map(v => parseInt(v.toString(), 10)).filter(Boolean),
     )];

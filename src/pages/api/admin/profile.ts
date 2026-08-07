@@ -8,6 +8,7 @@ import {
 } from '@/lib/auth';
 import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
+import { readAdminFormOrError } from '@/lib/input';
 import { normalizeHttpUrl } from '@/lib/url';
 import { eq, and, ne } from 'drizzle-orm';
 
@@ -15,7 +16,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const auth = await requireAdminAction(request, 'visitor');
   if (isAdminActionResponse(auth)) return auth;
 
-  const formData = await request.formData();
+  const formData = await readAdminFormOrError(request);
+  if (formData instanceof Response) return formData;
   const screenName = formData.get('screenName')?.toString()?.trim() || auth.user.name;
   const mail = formData.get('mail')?.toString()?.trim() || '';
   const url = formData.get('url')?.toString()?.trim() || '';

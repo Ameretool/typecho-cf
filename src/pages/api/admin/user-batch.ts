@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { schema } from '@/db';
 import { isAdminActionResponse, requireAdminAction, safeAdminRedirectUrl } from '@/lib/admin-auth';
+import { readAdminFormOrError } from '@/lib/input';
 import { eq, sql } from 'drizzle-orm';
 
 export const POST: APIRoute = handler;
@@ -15,7 +16,8 @@ async function handler({ request, locals, url }: { request: Request; locals: App
   // Get selected uids from form body
   let uids: number[] = [];
   if (request.method === 'POST') {
-    const formData = await request.formData();
+    const formData = await readAdminFormOrError(request);
+    if (formData instanceof Response) return formData;
     uids = formData.getAll('uid[]').map(v => parseInt(v.toString(), 10)).filter(Boolean);
   }
 

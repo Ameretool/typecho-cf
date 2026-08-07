@@ -257,7 +257,26 @@ type PluginInitLoader = () => PluginInitFn | Promise<PluginInitFn>;
 const pluginInitLoaders = new Map<string, PluginInitLoader>();
 const initialisedPlugins = new Set<string>();
 const initialisingPlugins = new Map<string, Promise<void>>();
+const failedPlugins = new Map<string, { error: string; failedAt: number; attempts: number }>();
+/** Backoff base between init retries after a failure (doubles up to 5×). */
+const PLUGIN_INIT_FAIL_BACKOFF_MS = 60_000;
 let pluginInitContext: { addHook: typeof addHook; HookPoints: typeof HookPoints } | null = null;
+
+/** Snapshot of plugins whose lazy init failed (for admin visibility). */
+export function getPluginInitFailures(): Record<string, { error: string; attempts: number; failedAt: number }> {
+  const out: Record<string, { error: string; attempts: number; failedAt: number }> = {};
+  for (const [id, failure] of failedPlugins) {
+    out[id] = { error: failure.error, attempts: failure.attempts, failedAt: failure.failedAt };
+  }
+  return out;
+}
+
+/** Test-only: clear init success/failure state. */
+export function resetPluginInitState(): void {
+  initialisedPlugins.clear();
+  initialisingPlugins.clear();
+  failedPlugins.clear();
+}
 
 /**
  * Plugins can register admin paths that bypass the reserved-core-path guard
@@ -337,6 +356,11 @@ export async function setActivatedPlugins(ctx: HookContext, ids: string[]): Prom
   if (!pluginInitContext) return;
   for (const id of ids) {
     if (initialisedPlugins.has(id)) continue;
+    const failure = failedPlugins.get(id);
+    if (failure) {
+      const backoff = PLUGIN_INIT_FAIL_BACKOFF_MS * Math.min(failure.attempts, 5);
+      if (Date.now() - failure.failedAt < backoff) continue;
+    }
     const existingInit = initialisingPlugins.get(id);
     if (existingInit) {
       await existingInit;
@@ -353,8 +377,16 @@ export async function setActivatedPlugins(ctx: HookContext, ids: string[]): Prom
         }))
       .then(() => {
         initialisedPlugins.add(id);
+        failedPlugins.delete(id);
       })
       .catch(err => {
+        const message = err instanceof Error ? err.message : String(err);
+        const prior = failedPlugins.get(id);
+        failedPlugins.set(id, {
+          error: message,
+          failedAt: Date.now(),
+          attempts: (prior?.attempts ?? 0) + 1,
+        });
         console.error(`[plugin] Failed to init ${id}:`, err);
       })
       .finally(() => {

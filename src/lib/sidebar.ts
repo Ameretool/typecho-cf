@@ -31,8 +31,16 @@ export interface SidebarData {
 type SidebarSnapshot = { key: string; expiresAt: number; data: SidebarData };
 type NavPage = { title: string; slug: string; permalink: string };
 type NavSnapshot = { key: string; expiresAt: number; data: NavPage[] };
-const sidebarSnapshots = new WeakMap<object, SidebarSnapshot>();
-const navSnapshots = new WeakMap<object, NavSnapshot>();
+// Isolate-level snapshots (not WeakMap-by-db): getDb() yields a fresh handle
+// each request, so Database-keyed WeakMaps never reuse across requests.
+let sidebarSnapshot: SidebarSnapshot | null = null;
+let navSnapshot: NavSnapshot | null = null;
+
+/** Test-only: clear isolate sidebar/nav snapshots. */
+export function resetSidebarSnapshots(): void {
+  sidebarSnapshot = null;
+  navSnapshot = null;
+}
 
 function cloneSidebarData(data: SidebarData): SidebarData {
   return {
@@ -52,7 +60,7 @@ export async function loadSidebarData(
   cacheVersion: string | number = 0,
 ): Promise<SidebarData> {
   const cacheKey = `${cacheVersion}\0${siteUrl}\0${permalinkPattern || ''}\0${categoryPattern || ''}`;
-  const cached = sidebarSnapshots.get(db as object);
+  const cached = sidebarSnapshot;
   if (cached && cached.key === cacheKey && cached.expiresAt > Date.now()) {
     return await applyFilterSafely(
       ctx,
@@ -158,11 +166,11 @@ export async function loadSidebarData(
   }));
 
   const sidebarData = { recentPosts, recentComments, categories, archives };
-  sidebarSnapshots.set(db as object, {
+  sidebarSnapshot = {
     key: cacheKey,
     expiresAt: Date.now() + SIDEBAR_SNAPSHOT_TTL_MS,
     data: sidebarData,
-  });
+  };
 
   // Apply widget:sidebar filter — plugins can add/modify sidebar widgets
   return await applyFilterSafely(ctx, 'widget:sidebar', cloneSidebarData(sidebarData), db, siteUrl);
@@ -178,7 +186,7 @@ export async function loadNavPages(
   cacheVersion: string | number = 0,
 ): Promise<NavPage[]> {
   const cacheKey = `${cacheVersion}\0${siteUrl}\0${pagePattern || ''}`;
-  const cached = navSnapshots.get(db as object);
+  const cached = navSnapshot;
   if (cached && cached.key === cacheKey && cached.expiresAt > Date.now()) {
     return cached.data.map(item => ({ ...item }));
   }
@@ -211,10 +219,10 @@ export async function loadNavPages(
       pagePattern,
     ),
   }));
-  navSnapshots.set(db as object, {
+  navSnapshot = {
     key: cacheKey,
     expiresAt: Date.now() + SIDEBAR_SNAPSHOT_TTL_MS,
     data: pages,
-  });
+  };
   return pages.map(item => ({ ...item }));
 }

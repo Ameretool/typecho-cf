@@ -219,6 +219,37 @@ interface ArchiveParams {
   authorOverride?: AuthorMap;
   /** FTS5 MATCH expression; set only for search (see prepareSearchData). */
   ftsMatch?: string | null;
+  /** Stable key fragment for versioned archive count caching. */
+  countKey?: string;
+}
+
+const ARCHIVE_COUNT_CACHE_TTL_MS = 60_000;
+const ARCHIVE_COUNT_CACHE_MAX = 200;
+const archiveCountCache = new Map<string, { count: number; expiresAt: number }>();
+
+/** Test-only: clear archive count cache. */
+export function resetArchiveCountCache(): void {
+  archiveCountCache.clear();
+}
+
+function readCachedArchiveCount(key: string): number | undefined {
+  const entry = archiveCountCache.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    archiveCountCache.delete(key);
+    return undefined;
+  }
+  return entry.count;
+}
+
+function writeCachedArchiveCount(key: string, count: number): void {
+  archiveCountCache.set(key, { count, expiresAt: Date.now() + ARCHIVE_COUNT_CACHE_TTL_MS });
+  if (archiveCountCache.size > ARCHIVE_COUNT_CACHE_MAX) {
+    const now = Date.now();
+    for (const [cacheKey, entry] of archiveCountCache) {
+      if (entry.expiresAt <= now) archiveCountCache.delete(cacheKey);
+    }
+  }
 }
 
 async function prepareArchiveData(
@@ -301,22 +332,38 @@ async function prepareArchiveData(
   const requestedPage = Math.max(1, page);
   // Exact count so pagination shows accurate page numbers. The
   // (type, status, created) index keeps plain archive counts index-only.
-  const countStatement = applyJoins(
-    db.select({ count: sql<number>`count(*)` }).from(schema.contents),
-  ).where(countWhere);
+  // Cache by cacheVersion + archive identity to avoid repeating count(*)
+  // on every page view within an isolate.
+  const countCacheKey = `${options.cacheVersion}\0${params.archiveType}\0${params.countKey || params.baseUrl}\0${params.joinMid ?? ''}\0${params.ftsMatch || ''}`;
+  const cachedCount = readCachedArchiveCount(countCacheKey);
+  const countStatement = cachedCount === undefined
+    ? applyJoins(
+        db.select({ count: sql<number>`count(*)` }).from(schema.contents),
+      ).where(countWhere)
+    : null;
 
   // Batch the count with either the page-1 list (no cursor needed) or the
   // index-only boundary lookup for the requested page.
-  const [common, [countResult, initialPosts]] = await Promise.all([
+  const listOrBoundary = requestedPage === 1
+    ? makeListStatement(null)
+    : makeBoundaryStatement((requestedPage - 1) * pageSize - 1);
+  const [common, batchResult] = await Promise.all([
     commonPromise,
-    db.batch([
-      countStatement,
-      requestedPage === 1
-        ? makeListStatement(null)
-        : makeBoundaryStatement((requestedPage - 1) * pageSize - 1),
-    ]),
+    countStatement
+      ? db.batch([countStatement, listOrBoundary])
+      : db.batch([listOrBoundary]),
   ]);
-  const totalPosts = Number(countResult?.[0]?.count ?? 0);
+  let totalPosts: number;
+  let initialPosts: unknown;
+  if (countStatement) {
+    const [countResult, posts] = batchResult as [Array<{ count: number }>, unknown];
+    totalPosts = Number(countResult?.[0]?.count ?? 0);
+    writeCachedArchiveCount(countCacheKey, totalPosts);
+    initialPosts = posts;
+  } else {
+    totalPosts = cachedCount!;
+    initialPosts = batchResult[0];
+  }
   const pg = paginate(totalPosts, page, pageSize, params.baseUrl);
   const currentPage = pg.currentPage;
 

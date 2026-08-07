@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generateAuthToken, hashPassword } from '@/lib/auth';
+import { generateAuthToken, generateSecurityToken, hashPassword } from '@/lib/auth';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
 import init, {
   clearWebDavAuthFailures,
   getWebDavClientIp,
@@ -1023,6 +1024,101 @@ describe('typecho-plugin-webdav admin panel', () => {
     expect(body.success).toBe(true);
     expect(body.data.prefixes).toEqual(['media/', 'backup/']);
     expect(body.data.objects).toEqual([]);
+  });
+
+  it('rejects cross-origin POST on admin API', async () => {
+    const hooks = collectHooks();
+    const route = hooks.get('route:request')!;
+    const secret = 'admin-secret';
+    const authCode = 'admin-auth';
+    const token = await generateAuthToken(1, authCode, secret);
+    const csrf = await generateSecurityToken(secret, authCode, 1);
+
+    const result = await route({ handled: false }, {
+      request: new Request('https://example.com/api/admin/webdav', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf,
+          Origin: 'https://evil.example',
+          cookie: `__typecho_uid=1; __typecho_authCode=${token.split(':')[1]}`,
+        },
+        body: JSON.stringify({ action: 'mkdir', path: 'x' }),
+      }),
+      path: '/api/admin/webdav',
+      db: {
+        query: {
+          users: {
+            findFirst: async () => ({
+              uid: 1,
+              name: 'admin',
+              authCode,
+              group: 'administrator',
+            }),
+          },
+        },
+      },
+      options: {
+        secret,
+        siteUrl: 'https://example.com',
+        'plugin:typecho-plugin-webdav': JSON.stringify({
+          routePath: '/webdav',
+          mounts: [{ mount: 'media', provider: 'r2', bindingName: 'BUCKET' }],
+        }),
+      },
+      env: { BUCKET: new MemoryR2Bucket() },
+    });
+
+    expect(result.handled).toBe(true);
+    expect(result.response.status).toBe(403);
+  });
+
+  it('rejects oversized JSON bodies on admin API', async () => {
+    const hooks = collectHooks();
+    const route = hooks.get('route:request')!;
+    const secret = 'admin-secret';
+    const authCode = 'admin-auth';
+    const token = await generateAuthToken(1, authCode, secret);
+    const csrf = await generateSecurityToken(secret, authCode, 1);
+    const oversized = 'x'.repeat(REQUEST_BODY_LIMITS.adminForm + 1);
+
+    const result = await route({ handled: false }, {
+      request: new Request('https://example.com/api/admin/webdav', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf,
+          Origin: 'https://example.com',
+          cookie: `__typecho_uid=1; __typecho_authCode=${token.split(':')[1]}`,
+        },
+        body: JSON.stringify({ action: 'mkdir', path: oversized }),
+      }),
+      path: '/api/admin/webdav',
+      db: {
+        query: {
+          users: {
+            findFirst: async () => ({
+              uid: 1,
+              name: 'admin',
+              authCode,
+              group: 'administrator',
+            }),
+          },
+        },
+      },
+      options: {
+        secret,
+        siteUrl: 'https://example.com',
+        'plugin:typecho-plugin-webdav': JSON.stringify({
+          routePath: '/webdav',
+          mounts: [{ mount: 'media', provider: 'r2', bindingName: 'BUCKET' }],
+        }),
+      },
+      env: { BUCKET: new MemoryR2Bucket() },
+    });
+
+    expect(result.handled).toBe(true);
+    expect(result.response.status).toBe(413);
   });
 
   it('injects WebDav menu item for administrators via admin:footer', () => {

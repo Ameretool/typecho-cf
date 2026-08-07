@@ -6,6 +6,7 @@ import {
   getCachedOptions,
   setCachedOptions,
   resetCacheVersionMemo,
+  peekCacheVersion,
 } from '@/lib/cache';
 import {
   advanceOptionsSnapshotGeneration,
@@ -141,18 +142,33 @@ const defaultOptions: Partial<SiteOptions> = {
 };
 
 // Site options change rarely. Local writes invalidate this snapshot
-// immediately; writes from another PoP become visible after at most five
-// minutes, avoiding an inter-region D1 version read on every cold request.
+// immediately; cross-PoP writes become visible once peekCacheVersion
+// observes the bumped stamp (memo TTL ~60s), even while the parsed
+// snapshot TTL is longer.
+// Isolate-level (not WeakMap-by-db): getDb() builds a fresh Sessions handle
+// per request, so a Database-keyed WeakMap never hits across requests.
 const OPTIONS_SNAPSHOT_TTL_MS = 300_000;
-type OptionsSnapshot = { value: SiteOptions; expiresAt: number; generation: number };
+type OptionsSnapshot = {
+  value: SiteOptions;
+  expiresAt: number;
+  generation: number;
+  /** Stamp observed when the snapshot was built — must match peekCacheVersion. */
+  cacheVersion: string;
+};
 type PendingOptionsLoad = { promise: Promise<SiteOptions>; generation: number };
-const optionSnapshots = new WeakMap<Database, OptionsSnapshot>();
-const pendingOptionLoads = new WeakMap<Database, PendingOptionsLoad>();
+let optionSnapshot: OptionsSnapshot | null = null;
+let pendingOptionLoad: PendingOptionsLoad | null = null;
 
-function invalidateOptionsSnapshot(db: Database): void {
-  advanceOptionsSnapshotGeneration(db);
-  optionSnapshots.delete(db);
-  pendingOptionLoads.delete(db);
+function invalidateOptionsSnapshot(): void {
+  advanceOptionsSnapshotGeneration();
+  optionSnapshot = null;
+  pendingOptionLoad = null;
+}
+
+/** Test-only: drop the isolate options snapshot. */
+export function resetOptionsSnapshot(): void {
+  optionSnapshot = null;
+  pendingOptionLoad = null;
 }
 
 async function executeOptionBatch(db: Database, statements: any[]): Promise<void> {
@@ -188,37 +204,50 @@ function cacheVersionUpsert(db: Database) {
  */
 export async function loadOptions(db: Database): Promise<SiteOptions> {
   const now = Date.now();
-  const generation = getOptionsSnapshotGeneration(db);
-  const snapshot = optionSnapshots.get(db);
+  const generation = getOptionsSnapshotGeneration();
+  // Cross-PoP writes bump cacheVersion in D1. The memo bound is ~60s, so a
+  // remote plugin activation / options change is visible here within that
+  // window even when the parsed snapshot TTL is longer.
+  const currentVersion = await peekCacheVersion(db);
   if (
-    snapshot &&
-    snapshot.generation === generation &&
-    snapshot.expiresAt > now
+    optionSnapshot &&
+    optionSnapshot.generation === generation &&
+    optionSnapshot.expiresAt > now &&
+    optionSnapshot.cacheVersion === currentVersion
   ) {
-    return { ...snapshot.value };
+    return { ...optionSnapshot.value };
   }
 
-  const existingLoad = pendingOptionLoads.get(db);
-  if (existingLoad?.generation === generation) {
-    return { ...await existingLoad.promise };
+  if (
+    optionSnapshot &&
+    optionSnapshot.cacheVersion !== currentVersion
+  ) {
+    // Stamp moved (local or remote) — drop the stale parsed snapshot.
+    optionSnapshot = null;
+    pendingOptionLoad = null;
+  }
+
+  if (pendingOptionLoad?.generation === generation) {
+    return { ...await pendingOptionLoad.promise };
   }
 
   const pending = loadOptionsFresh(db);
   const pendingRecord = { promise: pending, generation };
-  pendingOptionLoads.set(db, pendingRecord);
+  pendingOptionLoad = pendingRecord;
   try {
     const value = await pending;
-    if (getOptionsSnapshotGeneration(db) === generation) {
-      optionSnapshots.set(db, {
+    if (getOptionsSnapshotGeneration() === generation) {
+      optionSnapshot = {
         value,
         expiresAt: Date.now() + OPTIONS_SNAPSHOT_TTL_MS,
         generation,
-      });
+        cacheVersion: currentVersion,
+      };
     }
     return { ...value };
   } finally {
-    if (pendingOptionLoads.get(db) === pendingRecord) {
-      pendingOptionLoads.delete(db);
+    if (pendingOptionLoad === pendingRecord) {
+      pendingOptionLoad = null;
     }
   }
 }
@@ -329,7 +358,7 @@ export async function setOption(db: Database, name: string, value: string, userI
     ]);
     resetCacheVersionMemo();
   }
-  invalidateOptionsSnapshot(db);
+  invalidateOptionsSnapshot();
 }
 
 /**
@@ -348,7 +377,7 @@ export async function deleteOption(db: Database, name: string, userId = 0): Prom
     ]);
     resetCacheVersionMemo();
   }
-  invalidateOptionsSnapshot(db);
+  invalidateOptionsSnapshot();
 }
 
 /**
@@ -382,7 +411,7 @@ export async function setOptionsBatch(
   // The batch wrote a new version without going through bumpCacheVersion().
   // Force the next local read to observe it instead of serving the old memo.
   resetCacheVersionMemo();
-  invalidateOptionsSnapshot(db);
+  invalidateOptionsSnapshot();
 }
 
 /**

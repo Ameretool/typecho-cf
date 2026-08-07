@@ -3,6 +3,7 @@ import { getDb, schema } from '@/db';
 import { hashPassword, generateRandomString } from '@/lib/auth';
 import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
+import { readAdminFormOrError } from '@/lib/input';
 import { normalizeHttpUrl } from '@/lib/url';
 import { and, eq, ne, sql } from 'drizzle-orm';
 
@@ -11,7 +12,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (isAdminActionResponse(auth)) return auth;
   const db = auth.db;
 
-  const formData = await request.formData();
+  const formData = await readAdminFormOrError(request);
+  if (formData instanceof Response) return formData;
   const action = formData.get('do')?.toString() || 'create';
   const uid = parseInt(formData.get('uid')?.toString() || '0', 10);
   const name = formData.get('name')?.toString()?.trim() || '';
