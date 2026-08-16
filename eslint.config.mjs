@@ -1,8 +1,9 @@
 import Module from 'node:module';
 
-// TypeScript 7 currently ships a compiler API that typescript-eslint does not
-// consume yet. Keep the project compiler on TS 7 while routing only the lint
-// toolchain's `typescript` imports to the supported side-by-side TS 6 API.
+// TypeScript 7 does not yet expose a stable programmatic API that
+// typescript-eslint can consume (peer range remains `>=4.8.4 <6.1.0`).
+// Keep the project compiler on TS 7 while routing only the lint toolchain's
+// `typescript` imports to the side-by-side TS 6.0.x API package alias.
 const originalResolveFilename = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (request.startsWith('typescript') && /@typescript-eslint|ts-api-utils/.test(parent?.filename || '')) {

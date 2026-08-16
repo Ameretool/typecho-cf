@@ -20,7 +20,7 @@ typecho-plugin-example/
 
 ## package.json
 
-Plugin metadata should use the `typecho.plugin` field. The loader still accepts legacy `plugin.json`, but new plugins should not use it.
+Plugin metadata belongs in the `typecho.plugin` field. Do not use the retired root-level `plugin.json`.
 
 ```json
 {
@@ -161,7 +161,9 @@ Config storage: `typecho_options` table, `name = "plugin:<pluginId>"`, value is 
 
 ## Currently Wired Hook Reference
 
-`HookPoints` retains some Typecho compatibility constants, but only the hooks below have explicit trigger sites in the current runtime. Plugins should not depend on unlisted reserved constants. Adding a trigger requires updating `HookPoints`, the call site, and this guide together.
+Plugins must only depend on the hooks listed below, which have explicit runtime call sites. Unlisted `HookPoints` constants have no call guarantee.
+
+Adding a hook requires updating `HookPoints`, the call site, and this guide together.
 
 ### call type (side effects, no return value)
 

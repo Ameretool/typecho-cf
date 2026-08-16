@@ -93,7 +93,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Race-lock: try to claim an exclusive `installing` row backed by the
-    // unique `typecho_options_name_user` index. If the row already
+    // unique `typecho_options_user_name` index. If the row already
     // exists another isolate is mid-install; back off with 409 so they
     // can finish.
     const stampToken = generateRandomString(24);

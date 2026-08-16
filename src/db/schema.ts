@@ -122,7 +122,9 @@ export const options = sqliteTable('typecho_options', {
   user: integer('user').notNull().default(0),
   value: text('value'),
 }, (table) => [
-  uniqueIndex('typecho_options_name_user').on(table.name, table.user),
+  // user-first: loadOptions hot path is WHERE user = ?; (user, name) still
+  // covers point lookups / ON CONFLICT(user, name).
+  uniqueIndex('typecho_options_user_name').on(table.user, table.name),
 ]);
 
 // ==================== Fields ====================

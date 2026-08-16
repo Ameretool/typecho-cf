@@ -17,7 +17,7 @@ function createD1Stub(_db: TestDatabase) {
   const stmt = {
     first: (sql?: string) => Promise.resolve(
       typeof sql === 'string' && sql.includes('runtimeSchemaVersion')
-        ? { runtimeSchemaVersion: '20260808' }
+        ? { runtimeSchemaVersion: '20260816' }
         : { name: 'typecho_options' } as any,
     ),
     all: () => Promise.resolve({
@@ -37,7 +37,7 @@ function createD1Stub(_db: TestDatabase) {
       ...stmt,
       first: () => Promise.resolve(
         sql.includes('runtimeSchemaVersion')
-          ? { runtimeSchemaVersion: '20260808', loginFailuresExists: 1 }
+          ? { runtimeSchemaVersion: '20260816', loginFailuresExists: 1 }
           : { name: 'typecho_options' } as any,
       ),
       bind() { return this; },

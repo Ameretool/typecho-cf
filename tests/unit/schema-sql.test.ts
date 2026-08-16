@@ -38,7 +38,10 @@ describe('generateCreateSQL', () => {
     expect(indexNames).toContain('typecho_users_mail');
     expect(indexNames).toContain('typecho_contents_slug');
     expect(indexNames).toContain('typecho_relationships_cid_mid');
-    expect(indexNames).toContain('typecho_options_name_user');
+    expect(indexNames).toContain('typecho_options_user_name');
+    expect(
+      uniqueIndexes.some(s => /typecho_options_user_name[\s\S]*\(`user`, `name`\)/.test(s)),
+    ).toBe(true);
     expect(indexNames).toContain('typecho_fields_cid_name');
     expect(indexNames).toContain('typecho_password_reset_requests_tokenHash');
     expect(indexNames).toContain('typecho_metas_type_slug');

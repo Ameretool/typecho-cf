@@ -186,7 +186,7 @@ function cacheVersionUpsert(db: Database) {
     .insert(schema.options)
     .values({ name: 'cacheVersion', user: 0, value: '1' })
     .onConflictDoUpdate({
-      target: [schema.options.name, schema.options.user],
+      target: [schema.options.user, schema.options.name],
       set: {
         value: sql`cast(coalesce(${schema.options.value}, '0') as integer) + 1`,
       },
@@ -346,7 +346,7 @@ export async function setOption(db: Database, name: string, value: string, userI
     .insert(schema.options)
     .values({ name, user: userId, value })
     .onConflictDoUpdate({
-      target: [schema.options.name, schema.options.user],
+      target: [schema.options.user, schema.options.name],
       set: { value },
     });
   if (name === 'cacheVersion') {
@@ -402,7 +402,7 @@ export async function setOptionsBatch(
       .insert(schema.options)
       .values({ name, user: userId, value: entries[name] })
       .onConflictDoUpdate({
-        target: [schema.options.name, schema.options.user],
+        target: [schema.options.user, schema.options.name],
         set: { value: entries[name] },
       })
   );

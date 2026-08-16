@@ -58,9 +58,11 @@ export function resetIsolateBoot(): void {
 // runtime password-reset upgrade or generated index set changes. A stable
 // database needs one query per cold isolate instead of probing every table,
 // column and index.
-const RUNTIME_SCHEMA_VERSION = '20260808';
+const RUNTIME_SCHEMA_VERSION = '20260816';
 const RUNTIME_SCHEMA_VERSION_KEY = 'runtimeSchemaVersion';
 const METAS_TYPE_SLUG_INDEX = 'typecho_metas_type_slug';
+const OPTIONS_USER_NAME_INDEX = 'typecho_options_user_name';
+const OPTIONS_NAME_USER_INDEX_LEGACY = 'typecho_options_name_user';
 
 export async function ensureDatabaseReady(
   d1: D1Database,
@@ -121,7 +123,7 @@ export async function ensureDatabaseReady(
       if (indexesOk && ftsReady) {
         await d1.prepare(
           'INSERT INTO typecho_options (name, user, value) VALUES (?, ?, ?) ' +
-          'ON CONFLICT(name, user) DO UPDATE SET value=excluded.value',
+          'ON CONFLICT(user, name) DO UPDATE SET value=excluded.value',
         ).bind(RUNTIME_SCHEMA_VERSION_KEY, 0, RUNTIME_SCHEMA_VERSION).run();
       }
     };
@@ -301,8 +303,15 @@ async function ensureIndexesReady(d1: D1Database): Promise<boolean> {
       allOk = false;
     }
 
+    // Reorder options unique index to (user, name) so WHERE user = ? can use
+    // the leftmost prefix. Drop the legacy (name, user) index of the old name.
+    if (!(await ensureOptionsUserNameUnique(d1))) {
+      allOk = false;
+    }
+
     for (const sql of indexStatements) {
       if (sql.includes(METAS_TYPE_SLUG_INDEX)) continue;
+      if (sql.includes(OPTIONS_USER_NAME_INDEX)) continue;
       try {
         await d1.prepare(sql).run();
       } catch (error) {
@@ -322,6 +331,45 @@ async function ensureIndexesReady(d1: D1Database): Promise<boolean> {
     return await pending;
   } finally {
     if (state.indexEnsurePending === pending) state.indexEnsurePending = undefined;
+  }
+}
+
+/**
+ * Ensure typecho_options has UNIQUE (user, name).
+ * Legacy installs used UNIQUE (name, user) under typecho_options_name_user —
+ * that index cannot serve the loadOptions hot path `WHERE user = ?`.
+ */
+async function ensureOptionsUserNameUnique(d1: D1Database): Promise<boolean> {
+  try {
+    const existing = await d1.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='index' AND name=?",
+    ).bind(OPTIONS_USER_NAME_INDEX).first<{ sql: string | null }>();
+
+    const sql = existing?.sql ?? '';
+    const hasCorrect =
+      /\bUNIQUE\b/i.test(sql) &&
+      /\(\s*`?user`?\s*,\s*`?name`?\s*\)/i.test(sql);
+
+    if (hasCorrect) {
+      // Clean up the legacy name if a previous upgrade left both indexes.
+      await d1.prepare(`DROP INDEX IF EXISTS ${OPTIONS_NAME_USER_INDEX_LEGACY}`).run();
+      return true;
+    }
+
+    await d1.batch([
+      d1.prepare(`DROP INDEX IF EXISTS ${OPTIONS_NAME_USER_INDEX_LEGACY}`),
+      d1.prepare(`DROP INDEX IF EXISTS ${OPTIONS_USER_NAME_INDEX}`),
+      d1.prepare(
+        `CREATE UNIQUE INDEX ${OPTIONS_USER_NAME_INDEX} ON typecho_options (user, name)`,
+      ),
+    ]);
+    return true;
+  } catch (error) {
+    console.warn(
+      '[isolate-boot] options (user, name) unique index failed:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return false;
   }
 }
 

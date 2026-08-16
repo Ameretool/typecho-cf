@@ -92,7 +92,7 @@ export async function bumpCacheVersion(db: Database): Promise<void> {
   const [updated] = await db.insert(schema.options)
     .values({ name: 'cacheVersion', user: 0, value: '1' })
     .onConflictDoUpdate({
-      target: [schema.options.name, schema.options.user],
+      target: [schema.options.user, schema.options.name],
       set: {
         value: sql`cast(coalesce(${schema.options.value}, '0') as integer) + 1`,
       },

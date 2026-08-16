@@ -193,7 +193,7 @@ describe('POST /api/admin/plugin-config', () => {
       user: 0,
       value: JSON.stringify(['typecho-plugin-test', pluginId]),
     }).onConflictDoUpdate({
-      target: [schema.options.name, schema.options.user],
+      target: [schema.options.user, schema.options.name],
       set: { value: JSON.stringify(['typecho-plugin-test', pluginId]) },
     });
 
@@ -229,7 +229,7 @@ describe('POST /api/admin/plugin-config', () => {
       user: 0,
       value: JSON.stringify(['typecho-plugin-test', pluginId]),
     }).onConflictDoUpdate({
-      target: [schema.options.name, schema.options.user],
+      target: [schema.options.user, schema.options.name],
       set: { value: JSON.stringify(['typecho-plugin-test', pluginId]) },
     });
 

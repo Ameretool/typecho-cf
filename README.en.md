@@ -20,46 +20,56 @@ A modern rewrite of [Typecho](https://typecho.org) in TypeScript, running on **A
 
 ### Prerequisites
 
-- Node.js 22.12+
-- pnpm (`npm install -g pnpm`)
-- Cloudflare account
+- Node.js **22.12+**
+- [pnpm](https://pnpm.io) (`npm install -g pnpm`)
+- A Cloudflare account (only required for Cloudflare deployment)
 
-### Local Development
+### Local development (zero to running)
 
 ```bash
-# Clone and install dependencies
 git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# Create local Wrangler config (fill in the D1 database ID when needed)
+# Create local Wrangler config (placeholder database_id is fine for local D1/R2 simulation)
 cp wrangler.toml.example wrangler.toml
 
-# Start dev server (D1 + R2 are automatically simulated by wrangler)
+# Optional: protect the local install window (restart dev after writing)
+# echo 'INSTALL_TOKEN=your-secret' >> .dev.vars
+
 pnpm run dev
 ```
 
-Visit http://localhost:4321 — first visit auto-redirects to the installation wizard.
+1. Open http://localhost:4321 — uninstalled sites redirect to `/install`
+2. Complete the install form: site title / description, admin username, password (min 12 chars), email; if `INSTALL_TOKEN` is set, enter the install token too
+3. After submit, tables and the admin user are created; sign in at `/admin`
 
-### Deploy to Cloudflare
+`wrangler.toml` is gitignored — do not commit real `database_id` values or secrets.
 
-**1. Create Cloudflare resources**
+### Deploy to Cloudflare (zero to production)
+
+**1. Log in to Cloudflare**
 
 ```bash
-# Create D1 database
-pnpm exec wrangler d1 create typecho-cf-db
+pnpm exec wrangler login
+```
 
-# Create R2 bucket
+**2. Create resources**
+
+```bash
+pnpm exec wrangler d1 create typecho-cf-db
 pnpm exec wrangler r2 bucket create typecho-cf-uploads
 ```
 
-**2. Create and update `wrangler.toml`**
+Note the D1 `database_id` from the create output.
 
-Copy the example, then replace `database_id` with the D1 database ID returned above:
+**3. Configure `wrangler.toml`**
 
 ```bash
 cp wrangler.toml.example wrangler.toml
 ```
+
+Replace `database_id` with the real ID:
 
 ```toml
 [[d1_databases]]
@@ -68,21 +78,25 @@ database_name = "typecho-cf-db"
 database_id = "your-actual-database-id"
 ```
 
-**3. Set a first-install token (strongly recommended)**
+If you used a different R2 bucket name, update `[[r2_buckets]].bucket_name` to match.
+
+**4. Set an install token (recommended)**
 
 ```bash
 pnpm exec wrangler secret put INSTALL_TOKEN
 ```
 
-Installation still works without `INSTALL_TOKEN`, but the first visitor could claim the initial administrator account.
+Install still works without it, but anyone who reaches `/install` first can claim the initial administrator. With the secret set, the install form requires the same token.
 
-**4. Build and deploy**
+**5. Build and deploy**
 
 ```bash
 pnpm run deploy
 ```
 
-After deployment, visit your Worker URL — first visit auto-redirects to the installation wizard.
+**6. Finish installation**
+
+Visit the Worker URL → `/install` → submit site + admin details (and `INSTALL_TOKEN`) → sign in at `/admin`.
 
 ---
 
@@ -95,7 +109,7 @@ After deployment, visit your Worker URL — first visit auto-redirects to the in
 | `pnpm run deploy` | Build + deploy to Cloudflare Workers |
 | `pnpm run lint` | Type-aware static checks, including floating Promises |
 | `pnpm run types:workers` | Generate Worker binding and runtime types from Wrangler config |
-| `pnpm run typecheck` | Generate Workers types and run the TypeScript type check |
+| `pnpm run typecheck` | Generate Workers / Astro types and run the TypeScript check |
 | `pnpm run test` | Run all tests |
 | `pnpm run test:watch` | Watch mode |
 | `pnpm run test:coverage` | Generate coverage report |
@@ -107,32 +121,30 @@ After deployment, visit your Worker URL — first visit auto-redirects to the in
 | `pnpm run reset-password` | Reset user password (local) |
 | `pnpm run reset-password:cloudflare` | Reset user password (Cloudflare) |
 
-After changing D1, R2, or other bindings in `wrangler.toml` or `wrangler.toml.example`, run `pnpm run types:workers`. The generated `worker-configuration.d.ts` is used locally and in CI but is not committed. On a clean checkout, generation automatically falls back to `wrangler.toml.example`.
+After changing bindings in `wrangler.toml` or `wrangler.toml.example`, run `pnpm run types:workers`. Generated `worker-configuration.d.ts` is for local/CI use only and is not committed. On a clean checkout without `wrangler.toml`, type generation falls back to `wrangler.toml.example`.
+
+The example config persists searchable Workers Logs and records traces at about 1% sampling; tune for production traffic and cost. Put secrets via `wrangler secret put` (or `.dev.vars` locally), never in tracked config files.
 
 ---
 
 ## Migrating from PHP Typecho
 
-### Migration Steps
-
 ```bash
-# Migrate to Cloudflare (production)
+# Cloudflare (production)
 pnpm run db:migrate:cloudflare \
   --source /path/to/typecho.db \
   --uploads /path/to/usr/uploads
 
-# Migrate to local (development)
+# Local (development)
 pnpm run db:migrate:local \
   --source /path/to/typecho.db \
   --uploads /path/to/usr/uploads
 
-# Preview mode (no data written)
+# Preview (no writes)
 pnpm run db:migrate:dry-run \
   --source /path/to/typecho.db \
   --uploads /path/to/usr/uploads
 ```
-
-### Migration Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -144,16 +156,11 @@ pnpm run db:migrate:dry-run \
 | `--d1-name` | D1 database name | `typecho-cf-db` |
 | `--r2-bucket` | R2 bucket name | `typecho-cf-uploads` |
 
-### Reset Password After Migration
-
-Password hashing is incompatible (PHP phpass → PBKDF2-SHA256 with 600,000 iterations and a 16-byte salt), so passwords must be reset after migration:
+Password hashing is incompatible (PHP phpass → PBKDF2-SHA256), so reset passwords after migration:
 
 ```bash
-# Local
-pnpm run reset-password
-
-# Cloudflare
-pnpm run reset-password:cloudflare
+pnpm run reset-password              # local
+pnpm run reset-password:cloudflare   # Cloudflare
 ```
 
 ---
@@ -177,11 +184,13 @@ See [Theme Development Guide](src/themes/README.en.md).
 | Component | Technology |
 |-----------|------------|
 | Framework | [Astro](https://astro.build) 7.x (SSR) |
+| Adapter | [@astrojs/cloudflare](https://docs.astro.build/en/guides/integrations-guide/cloudflare/) 14.x |
 | Runtime | [Cloudflare Workers](https://workers.cloudflare.com) |
 | Database | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) |
-| ORM | [Drizzle ORM](https://orm.drizzle.team) |
+| ORM | [Drizzle ORM](https://orm.drizzle.team) 0.45.x |
 | File Storage | [Cloudflare R2](https://developers.cloudflare.com/r2/) |
-| Testing | [Vitest](https://vitest.dev) |
+| Language | TypeScript 7.x |
+| Testing | [Vitest](https://vitest.dev) 4.x |
 | Package Manager | pnpm |
 
 ---
@@ -199,7 +208,7 @@ See [Theme Development Guide](src/themes/README.en.md).
 
 | Aspect | Status |
 |--------|--------|
-| Database schema | ✅ Seven core tables remain compatible; migration scripts import SQLite data and runtime setup adds login-rate-limit and password-reset helper tables |
+| Database schema | ✅ Seven core tables remain compatible; runtime setup adds login-rate-limit and password-reset helper tables |
 | Default theme style | ✅ CSS & HTML structure matches Typecho default theme |
 | URL structure | ✅ Routes match Typecho default permalink settings |
 | Password hashing | ⚠️ Reset required after migration (different algorithm) |
@@ -210,3 +219,11 @@ See [Theme Development Guide](src/themes/README.en.md).
 ## License
 
 MIT
+
+---
+
+## Development Guides
+
+- Plugin guide: [src/plugins/README.en.md](src/plugins/README.en.md)
+- Theme guide: [src/themes/README.en.md](src/themes/README.en.md)
+- AI agent spec: [AGENTS.md](AGENTS.md)

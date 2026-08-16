@@ -20,7 +20,7 @@ typecho-plugin-example/
 
 ## package.json
 
-插件元数据推荐放在 `typecho.plugin` 字段中。加载器仍兼容旧的 `plugin.json`，但新插件不要再使用该格式。
+插件元数据放在 `typecho.plugin` 字段。不要使用已淘汰的根级 `plugin.json`。
 
 ```json
 {
@@ -161,7 +161,7 @@ addHook('feedback:comment', pluginId, async (commentData: { _rejected?: string }
 
 ## 当前已接入的 Hook 参考
 
-`HookPoints` 还保留部分 Typecho 兼容性常量，但只有下表 Hook 已在当前运行时接入明确触发位置。插件不要依赖未列出的预留常量；新增触发点时需同时更新 `HookPoints`、调用位置和本文档。
+插件只应依赖下表已在运行时接入的 Hook。未列出的 `HookPoints` 常量无调用保证；新增触发点时需同时更新 `HookPoints`、调用位置和本文档。
 
 ### call 类型（副作用，无需返回值）
 

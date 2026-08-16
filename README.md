@@ -20,46 +20,56 @@
 
 ### 前置要求
 
-- Node.js 22.12+
-- pnpm（`npm install -g pnpm`）
-- Cloudflare 帐号
+- Node.js **22.12+**
+- [pnpm](https://pnpm.io)（`npm install -g pnpm`）
+- Cloudflare 帐号（仅部署到 Cloudflare 时需要）
 
 ### 本地开发
 
 ```bash
-# 克隆并安装依赖
 git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# 生成本地 Wrangler 配置（按需填写 D1 数据库 ID）
+# 生成本地 Wrangler 配置（本地模拟 D1/R2 时可保留示例中的占位 database_id）
 cp wrangler.toml.example wrangler.toml
 
-# 启动开发服务器（D1 + R2 由 wrangler 自动模拟）
+# 可选：保护本地安装窗口（写入后重启 dev）
+# echo 'INSTALL_TOKEN=your-secret' >> .dev.vars
+
 pnpm run dev
 ```
 
-访问 http://localhost:4321，首次访问自动跳转安装向导。
+1. 打开 http://localhost:4321 ，未安装时会跳转到 `/install`
+2. 填写安装表单：站点名称 / 描述、管理员用户名、密码（至少 12 位）、邮箱；若配置了 `INSTALL_TOKEN`，还需填写安装令牌
+3. 提交后完成建表与管理员创建，随后可访问 `/admin` 登录
+
+`wrangler.toml` 已加入 `.gitignore`，勿提交真实 `database_id` 或密钥。
 
 ### 部署到 Cloudflare
 
-**1. 创建 Cloudflare 资源**
+**1. 登录 Cloudflare**
 
 ```bash
-# 创建 D1 数据库
-pnpm exec wrangler d1 create typecho-cf-db
+pnpm exec wrangler login
+```
 
-# 创建 R2 存储桶
+**2. 创建资源**
+
+```bash
+pnpm exec wrangler d1 create typecho-cf-db
 pnpm exec wrangler r2 bucket create typecho-cf-uploads
 ```
 
-**2. 创建并更新 `wrangler.toml`**
+记下命令输出的 D1 `database_id`。
 
-先复制示例配置，再将 `database_id` 替换为上一步输出的 D1 数据库 ID：
+**3. 配置 `wrangler.toml`**
 
 ```bash
 cp wrangler.toml.example wrangler.toml
 ```
+
+将 `database_id` 替换为上一步的真实 ID：
 
 ```toml
 [[d1_databases]]
@@ -68,21 +78,25 @@ database_name = "typecho-cf-db"
 database_id = "替换为实际的 ID"
 ```
 
-**3. 设置首次安装令牌（强烈推荐）**
+R2 桶名默认 `typecho-cf-uploads`，若创建时使用了其他名称，同步修改 `[[r2_buckets]].bucket_name`。
+
+**4. 设置安装令牌（推荐）**
 
 ```bash
 pnpm exec wrangler secret put INSTALL_TOKEN
 ```
 
-没有 `INSTALL_TOKEN` 时仍可安装，但首次访问者可能抢先完成管理员注册。
+未设置时仍可安装，但任意先访问 `/install` 的人都能注册首个管理员。设置后，安装表单必须填写同一令牌。
 
-**4. 构建并部署**
+**5. 构建并部署**
 
 ```bash
 pnpm run deploy
 ```
 
-部署完成后访问 Worker URL，首次访问自动跳转安装向导。
+**6. 完成安装**
+
+访问 Worker URL → `/install` → 填写站点与管理员信息（及 `INSTALL_TOKEN`）→ 登录 `/admin`。
 
 ---
 
@@ -94,11 +108,11 @@ pnpm run deploy
 | `pnpm run build` | 生产构建 |
 | `pnpm run deploy` | 构建 + 部署到 Cloudflare Workers |
 | `pnpm run lint` | 类型感知静态检查（含浮空 Promise） |
-| `pnpm run types:workers` | 按 Wrangler 配置重新生成 Worker 绑定与运行时类型 |
+| `pnpm run types:workers` | 按 Wrangler 配置生成 Worker 绑定与运行时类型 |
+| `pnpm run typecheck` | 生成 Workers / Astro 类型并运行 TypeScript 检查 |
 | `pnpm run test` | 运行所有测试 |
 | `pnpm run test:watch` | 监听模式运行测试 |
 | `pnpm run test:coverage` | 生成覆盖率报告 |
-| `pnpm run typecheck` | 生成 Workers 类型并运行 TypeScript 类型检查 |
 | `pnpm run db:generate` | 生成 Drizzle 数据库迁移 |
 | `pnpm run db:studio` | 启动 Drizzle Studio |
 | `pnpm run db:migrate:local` | 迁移 PHP Typecho 数据到本地 |
@@ -107,32 +121,30 @@ pnpm run deploy
 | `pnpm run reset-password` | 重置用户密码（本地） |
 | `pnpm run reset-password:cloudflare` | 重置用户密码（Cloudflare） |
 
-修改 `wrangler.toml` / `wrangler.toml.example` 中的 D1、R2 或其他绑定后，请运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制；干净检出时会自动回退到 `wrangler.toml.example` 生成类型。示例配置默认持久化可搜索 Workers Logs，并以 1% 采样率记录调用链；生产环境可按流量和成本调整采样率。密钥仍应使用 `wrangler secret put`，不要写入配置文件。
+修改 `wrangler.toml` / `wrangler.toml.example` 中的绑定后，运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制；干净检出且缺少 `wrangler.toml` 时，类型生成会自动回退到 `wrangler.toml.example`。
+
+示例配置默认持久化可搜索 Workers Logs，并以约 1% 采样率记录调用链；生产环境可按流量与成本调整。密钥使用 `wrangler secret put`（本地可用 `.dev.vars`），不要写入已跟踪的配置文件。
 
 ---
 
 ## 从 PHP 版 Typecho 迁移
 
-### 迁移步骤
-
 ```bash
-# 迁移到 Cloudflare（生产环境）
+# 迁移到 Cloudflare（生产）
 pnpm run db:migrate:cloudflare \
   --source /path/to/typecho.db \
   --uploads /path/to/usr/uploads
 
-# 迁移到本地（开发调试）
+# 迁移到本地（开发）
 pnpm run db:migrate:local \
   --source /path/to/typecho.db \
   --uploads /path/to/usr/uploads
 
-# 预览模式（不写入任何数据）
+# 预览（不写入）
 pnpm run db:migrate:dry-run \
   --source /path/to/typecho.db \
   --uploads /path/to/usr/uploads
 ```
-
-### 迁移参数
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
@@ -144,16 +156,11 @@ pnpm run db:migrate:dry-run \
 | `--d1-name` | D1 数据库名 | `typecho-cf-db` |
 | `--r2-bucket` | R2 存储桶名 | `typecho-cf-uploads` |
 
-### 迁移后重置密码
-
-密码哈希算法不兼容（PHP phpass → PBKDF2-SHA256，600,000 次迭代 + 16B salt），迁移后需重置密码：
+密码哈希算法不兼容（PHP phpass → PBKDF2-SHA256），迁移后需重置密码：
 
 ```bash
-# 本地
-pnpm run reset-password
-
-# Cloudflare
-pnpm run reset-password:cloudflare
+pnpm run reset-password              # 本地
+pnpm run reset-password:cloudflare   # Cloudflare
 ```
 
 ---
@@ -162,7 +169,7 @@ pnpm run reset-password:cloudflare
 
 参考 [插件开发规范](src/plugins/README.md)。
 
-邮件发送没有内置 SMTP/API 适配器。忘记密码邮件和评论通知只有在启用邮件设置并安装实现 `mail:send` Hook 的插件后才会实际投递；未安装适配器时系统会安全降级为未发送。
+邮件发送没有内置 SMTP/API 适配器。忘记密码与评论通知仅在启用邮件设置且已安装实现 `mail:send` Hook 的插件后才会投递；未安装适配器时安全降级为未发送。
 
 ---
 
@@ -177,11 +184,13 @@ pnpm run reset-password:cloudflare
 | 组件 | 技术 |
 |------|------|
 | 框架 | [Astro](https://astro.build) 7.x (SSR) |
+| 适配器 | [@astrojs/cloudflare](https://docs.astro.build/en/guides/integrations-guide/cloudflare/) 14.x |
 | 运行时 | [Cloudflare Workers](https://workers.cloudflare.com) |
 | 数据库 | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) |
-| ORM | [Drizzle ORM](https://orm.drizzle.team) |
+| ORM | [Drizzle ORM](https://orm.drizzle.team) 0.45.x |
 | 文件存储 | [Cloudflare R2](https://developers.cloudflare.com/r2/) |
-| 测试 | [Vitest](https://vitest.dev) |
+| 语言 | TypeScript 7.x |
+| 测试 | [Vitest](https://vitest.dev) 4.x |
 | 包管理 | pnpm |
 
 ---

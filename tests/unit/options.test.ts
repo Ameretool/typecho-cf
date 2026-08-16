@@ -92,12 +92,12 @@ describe('loadOptions()', () => {
     // this isolate's snapshot generation.
     await db.insert(schema.options).values({ name: 'title', user: 0, value: 'Remote' })
       .onConflictDoUpdate({
-        target: [schema.options.name, schema.options.user],
+        target: [schema.options.user, schema.options.name],
         set: { value: 'Remote' },
       });
     await db.insert(schema.options).values({ name: 'cacheVersion', user: 0, value: '42' })
       .onConflictDoUpdate({
-        target: [schema.options.name, schema.options.user],
+        target: [schema.options.user, schema.options.name],
         set: { value: '42' },
       });
     resetCacheVersionMemo();
