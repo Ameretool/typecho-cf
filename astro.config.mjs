@@ -8,6 +8,7 @@ import { sharedAliases } from './vite.shared.mjs';
 const isBuild = process.argv.includes('build');
 
 export default defineConfig({
+  session: false,
   output: 'server',
   adapter: cloudflare({
     imageService: 'passthrough',
