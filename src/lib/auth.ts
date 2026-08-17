@@ -58,7 +58,7 @@ export function canManageResource(
  * verify, and `passwordHashNeedsRehash` flags them for transparent upgrade
  * after the next successful login.
  */
-export const PBKDF2_ITERATIONS = 600_000;
+export const PBKDF2_ITERATIONS = 100_000;
 
 /**
  * Hash a password using PBKDF2 with a random salt (Cloudflare Workers compatible).
