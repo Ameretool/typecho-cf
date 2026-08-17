@@ -52,13 +52,18 @@ export function canManageResource(
 }
 
 /**
- * Recommended PBKDF2 iteration count (OWASP 2024+).
- * `verifyPassword` honours whatever count is embedded in the stored hash, so
- * raising this value is fully backwards compatible — older hashes still
- * verify, and `passwordHashNeedsRehash` flags them for transparent upgrade
- * after the next successful login.
+ * PBKDF2 iteration count for new hashes.
+ *
+ * Capped at 100,000 because Cloudflare Workers' Web Crypto rejects higher
+ * PBKDF2 iteration counts in production (workerd#1346). OWASP recommends
+ * 600,000 for PBKDF2-SHA256; we cannot reach that on this runtime.
+ *
+ * `verifyPassword` still honours the count embedded in a stored hash when it
+ * is ≤ this value. Counts above the cap return `needs_reset` (they cannot be
+ * verified on Workers). `passwordHashNeedsRehash` flags weaker hashes for
+ * transparent upgrade after the next successful login.
  */
-export const PBKDF2_ITERATIONS = 600_000;
+export const PBKDF2_ITERATIONS = 100_000;
 
 /**
  * Hash a password using PBKDF2 with a random salt (Cloudflare Workers compatible).
@@ -73,8 +78,8 @@ export async function hashPassword(password: string): Promise<string> {
 
 /**
  * Detect whether a stored PBKDF2 hash uses fewer iterations than the current
- * recommendation. The login route uses this to opportunistically upgrade
- * legacy hashes to the new strength without forcing a password reset.
+ * default. The login route uses this to opportunistically upgrade weaker
+ * hashes without forcing a password reset.
  */
 export function passwordHashNeedsRehash(storedHash: string): boolean {
   if (!storedHash.startsWith('$PBKDF2$')) return false;
@@ -89,8 +94,8 @@ export function passwordHashNeedsRehash(storedHash: string): boolean {
  * Verify a password against a stored hash.
  *
  * @returns `true` if the password matches, `'wrong_password'` if it doesn't,
- *          or `'needs_reset'` if the stored hash is a legacy format that
- *          requires the user to reset their password.
+ *          or `'needs_reset'` if the stored hash cannot be verified on this
+ *          runtime (legacy formats, or PBKDF2 iterations above the Workers cap).
  */
 export async function verifyPassword(
   password: string,
@@ -103,6 +108,9 @@ export async function verifyPassword(
     const salt = parts[3];
     const hash = parts[4];
     if (isNaN(iterations) || !salt || !hash) return 'wrong_password';
+    // Production Workers throw on PBKDF2 iterations above the platform cap;
+    // force a reset instead of surfacing a 500 on login.
+    if (iterations > PBKDF2_ITERATIONS) return 'needs_reset';
     const computed = await pbkdf2Hash(password, salt, iterations);
     return timeSafeEqual(hash, computed) ? true : 'wrong_password';
   }

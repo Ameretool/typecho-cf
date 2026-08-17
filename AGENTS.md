@@ -40,7 +40,7 @@
 | 数据库 | Cloudflare D1 (SQLite) | — |
 | ORM | Drizzle ORM | 0.45.x |
 | 文件存储 | Cloudflare R2 | — |
-| 密码哈希 | PBKDF2-SHA256 | 600,000 迭代 + 16B salt（更低迭代的存量 hash 在登录时机会式重哈希） |
+| 密码哈希 | PBKDF2-SHA256 | 100,000 迭代 + 16B salt（Cloudflare Workers Web Crypto 上限；更低迭代的存量 hash 在登录时机会式重哈希） |
 | 测试 | Vitest | 4.x |
 | 语言 | TypeScript | 7.x（ESLint / typescript-eslint 侧通过 `typescript-eslint-typescript` 别名固定使用 TS 6.0.x API） |
 
@@ -316,11 +316,11 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 ### 8.1 密码哈希
 
 - 算法：PBKDF2-SHA256
-- 迭代次数：600,000
+- 迭代次数：100,000（Cloudflare Workers Web Crypto 生产环境硬上限；高于此值的存量 hash 无法在 Workers 上校验，登录时返回需重置）
 - Salt 长度：16 字节
 - 存储格式：`$PBKDF2$iterations$salt$hash`
 - 位于 `src/lib/auth.ts`
-- `passwordHashNeedsRehash(hash)` 检测低于当前迭代次数的存量 hash；`/api/users/login` 命中时机会式重哈希为 600k
+- `passwordHashNeedsRehash(hash)` 检测低于当前迭代次数的存量 hash；`/api/users/login` 命中时机会式重哈希为 100k
 
 ### 8.2 Session Token
 

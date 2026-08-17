@@ -271,25 +271,20 @@ describe('PBKDF2 password hashing', () => {
     // ['', 'PBKDF2', iterations, salt, hash]
     expect(parts).toHaveLength(5);
     expect(parts[1]).toBe('PBKDF2');
-    expect(parseInt(parts[2], 10)).toBe(600000);
+    expect(parseInt(parts[2], 10)).toBe(PBKDF2_ITERATIONS);
     expect(parts[3].length).toBeGreaterThan(0); // hex salt
     expect(parts[4]).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hash = 64 hex chars
   });
 
-  it('verifies legacy 100k-iteration hashes against current 600k default', async () => {
+  it('verifies hashes that embed a lower iteration count than the current default', async () => {
     // Legacy hashes embed their iteration count, so verify still works
-    // even after the default was raised (G1-6 forward compatibility).
+    // as long as the count is within the Workers Web Crypto cap.
     const password = 'legacy-pw';
-    // Fixed legacy hash format with 100000 iterations.
-    const legacyIter = 100000;
-    // Recreate via the same crypto.subtle call shape: pretend we have a
-    // pre-existing $PBKDF2$100000$... hash. Easiest reliable way is to
-    // emit one ourselves with a small helper; here we instead just
-    // verify the round-trip behaviour by hashing then patching the iter.
+    const legacyIter = 50_000;
     const fresh = await hashPassword(password);
     const parts = fresh.split('$');
     parts[2] = String(legacyIter);
-    // Recompute the actual hash for legacy iteration count.
+    // Recompute the actual hash for the weaker iteration count.
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
     const derived = await crypto.subtle.deriveBits(
@@ -302,6 +297,11 @@ describe('PBKDF2 password hashing', () => {
 
     expect(await verifyPassword(password, legacyHash)).toBe(true);
     expect(await verifyPassword('wrong', legacyHash)).toBe('wrong_password');
+  });
+
+  it('returns needs_reset for PBKDF2 hashes above the Workers iteration cap', async () => {
+    const overCap = `$PBKDF2$600000$salt$${'a'.repeat(64)}`;
+    expect(await verifyPassword('anything', overCap)).toBe('needs_reset');
   });
 
   it('legacy $SHA256$ hashes are rejected (force password reset)', async () => {
@@ -568,17 +568,22 @@ describe('shouldUseSecureCookie()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// G1-6 PBKDF2 600k + opportunistic upgrade
+// PBKDF2 Workers cap + opportunistic upgrade of weaker hashes
 // ---------------------------------------------------------------------------
 describe('passwordHashNeedsRehash()', () => {
   it('flags hashes with iterations below current default', () => {
-    const legacy = `$PBKDF2$100000$salt$${'a'.repeat(64)}`;
+    const legacy = `$PBKDF2$50000$salt$${'a'.repeat(64)}`;
     expect(passwordHashNeedsRehash(legacy)).toBe(true);
   });
 
   it('does not flag hashes at the current default', () => {
     const current = `$PBKDF2$${PBKDF2_ITERATIONS}$salt$${'a'.repeat(64)}`;
     expect(passwordHashNeedsRehash(current)).toBe(false);
+  });
+
+  it('does not flag hashes above the Workers cap (those force reset instead)', () => {
+    const overCap = `$PBKDF2$600000$salt$${'a'.repeat(64)}`;
+    expect(passwordHashNeedsRehash(overCap)).toBe(false);
   });
 
   it('does not flag malformed hashes', () => {

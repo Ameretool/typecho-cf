@@ -39,7 +39,7 @@ const LOGIN_URL = '/admin/login';
  * the dummy path from allocating a fresh salt on every no-user request.
  */
 const DUMMY_PASSWORD_HASH =
-  '$PBKDF2$600000$0123456789abcdef0123456789abcdef$0000000000000000000000000000000000000000000000000000000000000000';
+  '$PBKDF2$100000$0123456789abcdef0123456789abcdef$0000000000000000000000000000000000000000000000000000000000000000';
 
 function redirectWithLoginError(message: string, request?: Request): Response {
   return new Response(null, {

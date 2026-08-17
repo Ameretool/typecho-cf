@@ -28,7 +28,7 @@ async function seedSite(secretValue = 'sekret') {
 async function seedUser(password: string, opts: { group?: string; iterations?: number } = {}) {
   let hash = await hashPassword(password);
   if (opts.iterations) {
-    // Rebuild with explicit iteration count (used to simulate legacy 100k hashes).
+    // Rebuild with explicit iteration count (used to simulate weaker legacy hashes).
     const parts = hash.split('$');
     parts[2] = String(opts.iterations);
     const enc = new TextEncoder();
@@ -174,9 +174,9 @@ describe('login security', () => {
     expect(response.headers.get('Location')).toBe('/admin/');
   });
 
-  it('opportunistically rehashes legacy 100k passwords on success (G1-6)', async () => {
+  it('opportunistically rehashes weaker PBKDF2 passwords on success', async () => {
     await seedSite();
-    await seedUser('correct-password', { iterations: 100_000 });
+    await seedUser('correct-password', { iterations: 50_000 });
 
     const response = await POST({
       request: makeRequest({
