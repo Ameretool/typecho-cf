@@ -5,3 +5,5 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@astrojs/cloudflare@14.2.1'
   - astro@7.2.2
+packages:
+  - '.'
