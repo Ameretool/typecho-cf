@@ -60,6 +60,7 @@ export function canManageResource(
  */
 export const PBKDF2_ITERATIONS = 100_000;
 
+
 /**
  * Hash a password using PBKDF2 with a random salt (Cloudflare Workers compatible).
  * Output format: $PBKDF2$iterations$salt$hash
