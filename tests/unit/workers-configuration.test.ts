@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 
 describe('Workers configuration and static checks', () => {
-  it('generates Worker binding declarations from the committed example config', () => {
-    const example = read('wrangler.toml.example');
+  it('generates Worker binding declarations from the committed Wrangler config', () => {
+    const config = read('wrangler.toml');
     const appEnv = read('src/env.d.ts');
     const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
     const ci = read('.github/workflows/ci.yml');
-    expect(example).toContain('binding = "BUCKET"');
-    expect(example).toContain('binding = "DB"');
+    expect(config).toContain('binding = "BUCKET"');
+    expect(config).toContain('binding = "DB"');
     expect(pkg.scripts['types:workers']).toContain('scripts/generate-worker-types.mjs');
     expect(pkg.scripts.typecheck).toContain('pnpm run types:workers');
     expect(pkg.scripts.typecheck).toContain('tsc --noEmit');
@@ -24,8 +24,8 @@ describe('Workers configuration and static checks', () => {
     expect(appEnv).not.toContain('interface R2Bucket');
   });
 
-  it('enables persisted searchable logs and sampled traces in the example', () => {
-    const config = read('wrangler.toml.example');
+  it('enables persisted searchable logs and sampled traces in wrangler.toml', () => {
+    const config = read('wrangler.toml');
     expect(config).toContain('[observability.logs]');
     expect(config).toContain('head_sampling_rate = 1');
     expect(config).toContain('persist = true');

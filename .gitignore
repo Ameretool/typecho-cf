@@ -8,8 +8,9 @@
 /public/plugin-assets
 .DS_Store
 *.log
-wrangler.toml
+.dev.vars
 /.claude
+/.cursor
 /.env
 /.pnpm-store
 /docs

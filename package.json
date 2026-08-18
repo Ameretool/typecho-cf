@@ -3,6 +3,19 @@
   "type": "module",
   "version": "0.1.0",
   "description": "Typecho blog rewrite with Astro + Cloudflare Workers + D1",
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "D1 database for posts, pages, comments, users, and site options. Tables are created by the `/install` wizard, not by Wrangler migrations."
+      },
+      "BUCKET": {
+        "description": "R2 bucket for uploaded media files (images, attachments)."
+      },
+      "INSTALL_TOKEN": {
+        "description": "Recommended. Protects `/install` so only people with this token can create the first administrator. Generate with `openssl rand -hex 32`. Leave empty only for private tests — anyone who opens `/install` first can become admin."
+      }
+    }
+  },
   "engines": {
     "node": ">=22.12.0"
   },

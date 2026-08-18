@@ -2,6 +2,8 @@
 
 [English](README.en.md)
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/eslizn/typecho-cf)
+
 基于 [Typecho](https://typecho.org) 完整重写的现代博客系统，运行在 **Astro + Cloudflare Workers + D1** 之上。保留 Typecho 数据库表结构，支持从 PHP 版 Typecho 直接迁移数据。
 
 ---
@@ -18,6 +20,16 @@
 
 ## 安装部署
 
+### 一键部署到 Cloudflare
+
+点击上方 **Deploy to Cloudflare** 按钮。Cloudflare 会把本仓库复制到你的 GitHub / GitLab 帐号，自动创建 D1 数据库（`typecho-cf-db`）和 R2 存储桶（`typecho-cf-uploads`）并绑定到 Worker，同时配置 [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/)：之后每次推送到生产分支都会自动构建部署。
+
+部署向导会提示填写 `INSTALL_TOKEN`（推荐，可用 `openssl rand -hex 32` 生成）。设置后，打开 Worker URL 的 `/install` 完成站点与管理员初始化时必须填写同一令牌。未设置时仍可安装，但任意先访问 `/install` 的人都能成为首位管理员。
+
+数据表由安装向导在首次提交时创建，不必单独跑 D1 migration。
+
+仓库必须是 **GitHub / GitLab 公开仓库**，Deploy to Cloudflare 按钮才能被他人使用。
+
 ### 前置要求
 
 - Node.js **22.12+**
@@ -31,11 +43,9 @@ git clone https://github.com/eslizn/typecho-cf.git
 cd typecho-cf
 pnpm install
 
-# 生成本地 Wrangler 配置（本地模拟 D1/R2 时可保留示例中的占位 database_id）
-cp wrangler.toml.example wrangler.toml
-
 # 可选：保护本地安装窗口（写入后重启 dev）
-# echo 'INSTALL_TOKEN=your-secret' >> .dev.vars
+# cp .dev.vars.example .dev.vars
+# 然后把 INSTALL_TOKEN 改成自己的随机串
 
 pnpm run dev
 ```
@@ -44,59 +54,21 @@ pnpm run dev
 2. 填写安装表单：站点名称 / 描述、管理员用户名、密码（至少 12 位）、邮箱；若配置了 `INSTALL_TOKEN`，还需填写安装令牌
 3. 提交后完成建表与管理员创建，随后可访问 `/admin` 登录
 
-`wrangler.toml` 已加入 `.gitignore`，勿提交真实 `database_id` 或密钥。
+仓库中的 `wrangler.toml` 只声明绑定名（D1 `DB` / R2 `BUCKET`），不含账号专属 ID。本地 `pnpm run dev` 使用 Miniflare 模拟存储，不必改这个文件。密钥写在 `.dev.vars`（已 gitignore）。
 
-### 部署到 Cloudflare
+### 命令行部署到 Cloudflare
 
-**1. 登录 Cloudflare**
+不必先 `d1 create` / 填写 `database_id`。Wrangler 会按绑定名自动创建 D1（`typecho-cf-db`）和 R2（`typecho-cf-uploads`），并记在你的 Cloudflare 账号上。
 
 ```bash
 pnpm exec wrangler login
-```
-
-**2. 创建资源**
-
-```bash
-pnpm exec wrangler d1 create typecho-cf-db
-pnpm exec wrangler r2 bucket create typecho-cf-uploads
-```
-
-记下命令输出的 D1 `database_id`。
-
-**3. 配置 `wrangler.toml`**
-
-```bash
-cp wrangler.toml.example wrangler.toml
-```
-
-将 `database_id` 替换为上一步的真实 ID：
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "typecho-cf-db"
-database_id = "替换为实际的 ID"
-```
-
-R2 桶名默认 `typecho-cf-uploads`，若创建时使用了其他名称，同步修改 `[[r2_buckets]].bucket_name`。
-
-**4. 设置安装令牌（推荐）**
-
-```bash
-pnpm exec wrangler secret put INSTALL_TOKEN
-```
-
-未设置时仍可安装，但任意先访问 `/install` 的人都能注册首个管理员。设置后，安装表单必须填写同一令牌。
-
-**5. 构建并部署**
-
-```bash
+pnpm exec wrangler secret put INSTALL_TOKEN   # 推荐；未设置时任意先访问 /install 的人都能成为首位管理员
 pnpm run deploy
 ```
 
-**6. 完成安装**
-
 访问 Worker URL → `/install` → 填写站点与管理员信息（及 `INSTALL_TOKEN`）→ 登录 `/admin`。
+
+首次 `wrangler deploy` 可能会把生成的 `database_id` 写回 `wrangler.toml`。不要提交这次改动（`git checkout -- wrangler.toml`）；之后部署仍会绑定到同一资源。若要用别的库名或桶名，再改 `database_name` / `bucket_name`。
 
 ---
 
@@ -121,7 +93,7 @@ pnpm run deploy
 | `pnpm run reset-password` | 重置用户密码（本地） |
 | `pnpm run reset-password:cloudflare` | 重置用户密码（Cloudflare） |
 
-修改 `wrangler.toml` / `wrangler.toml.example` 中的绑定后，运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制；干净检出且缺少 `wrangler.toml` 时，类型生成会自动回退到 `wrangler.toml.example`。
+修改 `wrangler.toml` 中的绑定后，运行 `pnpm run types:workers`。生成的 `worker-configuration.d.ts` 仅供本地与 CI 使用，不纳入版本控制。
 
 示例配置默认持久化可搜索 Workers Logs，并以约 1% 采样率记录调用链；生产环境可按流量与成本调整。密钥使用 `wrangler secret put`（本地可用 `.dev.vars`），不要写入已跟踪的配置文件。
 
