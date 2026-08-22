@@ -1,4 +1,4 @@
-import { hasPermission, registerPluginAdminPath } from 'typecho/plugin-sdk';
+import { hasPermission, registerPluginAdminPath, registerPluginRoute } from 'typecho/plugin-sdk';
 import type { PluginInitContext, PluginRouteResult } from 'typecho/plugin-sdk';
 import type { Database } from 'typecho/db';
 import { validateAuthToken, getAuthCookies, requireAdminCSRF } from '@/lib/auth';
@@ -298,6 +298,10 @@ LD("");
 
 export default function init({ addHook, pluginId }: PluginInitContext): void {
   registerPluginAdminPath(ADMIN_API_ROUTE);
+  // Default front-end route; the route:request handler below re-registers
+  // the configured routePath lazily (configurable via admin settings), so a
+  // cold isolate with a non-default routePath still gets cache exemptions.
+  registerPluginRoute('/webdav');
 
   addHook(
     'plugin:config:beforeSave',
@@ -385,6 +389,10 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
 
       const routeMatch = matchConfiguredWebDavRoute(settings, extra.path);
       if (!routeMatch) return result;
+
+      // Keep the plugin-route table in sync with the configured entry path
+      // (idempotent) so middleware never caches or deprecation-checks it.
+      registerPluginRoute(routeMatch.routePath);
 
       let config: WebDavConfig;
       try {

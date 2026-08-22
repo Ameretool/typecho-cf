@@ -1,5 +1,12 @@
 export type PermalinkPatternKind = 'post' | 'page' | 'category';
 
+/** Preset default patterns. Single source of truth for all modules. */
+export const DEFAULT_PERMALINK_PATTERNS = {
+  post: '/archives/{cid}/',
+  page: '/{slug}',
+  category: '/category/{slug}/',
+} as const;
+
 export interface PermalinkValues {
   cid?: string | number | null;
   slug?: string | null;

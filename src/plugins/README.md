@@ -185,7 +185,7 @@ addHook('feedback:comment', pluginId, async (commentData: { _rejected?: string }
 
 | Hook | 触发位置 | 参数 | 说明 |
 |------|---------|------|------|
-| `route:request` | 中间件路由分发 | `(result, extra)` | 处理插件自定义路由；管理/API 路径还需 `registerPluginAdminPath` |
+| `route:request` | 中间件路由分发 | `(result, extra)` | 处理插件自定义路由；管理/API 路径还需 `registerPluginAdminPath`，前台路径建议 `registerPluginRoute`（避开内容路由废弃检查与边缘缓存） |
 | `admin:header` / `admin:footer` | 管理后台头部/底部 | `(html, extra)` | 安全展示型 HTML 注入 |
 | `admin:loginHead` / `admin:loginForm` | 登录页头部/表单 | `(html, extra)` | 登录页 HTML 注入 |
 | `admin:writePost:bottom` / `admin:writePage:bottom` | 编辑器底部 | `(html, extra)` | 编辑器 UI 注入 |
@@ -294,7 +294,7 @@ import { schema } from 'typecho/db';
 | 类别 | 导出 |
 |------|------|
 | 类型 | `PluginInitContext`, `PluginRouteResult`, `PluginManifest`, `PluginConfigField`, `AttachmentMeta`, `Database` |
-| 插件系统 | `HookPoints`, `parsePluginOption`, `parsePluginConfigFormData`, `loadPluginConfig`, `escapeAttr`, `registerPluginAdminPath`, `getClientIp` |
+| 插件系统 | `HookPoints`, `parsePluginOption`, `parsePluginConfigFormData`, `loadPluginConfig`, `escapeAttr`, `registerPluginAdminPath`, `registerPluginRoute`, `getClientIp` |
 | 认证 | `hasPermission`, `verifyPassword` |
 | 内容 | `buildPermalink`, `formatDate`, `buildAuthorLink`, `buildCategoryLink` |
 | Markdown/HTML | `escapeHtml`, `renderMarkdown`, `renderMarkdownFiltered`, `renderContentExcerpt`, `generateExcerpt`, `autop`, `stripTypechoMarkers`, `stripHtmlTags` |

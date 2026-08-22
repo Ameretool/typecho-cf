@@ -24,7 +24,7 @@ const postPatterns = [
 const currentPostPattern = options.permalinkPattern || '/archives/{cid}/';
 const isCustomPost = !postPatterns.some(p => p.value === currentPostPattern);
 
-const currentPagePattern = (options.pagePattern as string) || '/{slug}.html';
+const currentPagePattern = (options.pagePattern as string) || '/{slug}';
 const currentCategoryPattern = (options.categoryPattern as string) || '/category/{slug}/';
 ---
 <Admin title="永久链接设置" options={options} urls={urls} user={user} activeMenu="options-permalink" pluginCtx={ctx}>

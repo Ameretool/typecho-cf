@@ -1,4 +1,4 @@
-import { compilePermalinkPattern, type PermalinkPatternKind } from '@/lib/permalink-pattern';
+import { compilePermalinkPattern, DEFAULT_PERMALINK_PATTERNS, type PermalinkPatternKind } from '@/lib/permalink-pattern';
 
 export class SiteOptionsInputError extends Error {
   constructor(
@@ -137,15 +137,15 @@ export function parseSiteOptionsInput({ formData, sourcePath }: ParseSiteOptions
     const raw = permalinkValue === 'custom'
       ? String(formData.get('customPattern') ?? '')
       : permalinkValue;
-    entries.permalinkPattern = normalizePattern('permalinkPattern', raw, 'post', '/archives/{cid}/');
+    entries.permalinkPattern = normalizePattern('permalinkPattern', raw, 'post', DEFAULT_PERMALINK_PATTERNS.post);
   }
   const pagePattern = formData.get('pagePattern');
   if (typeof pagePattern === 'string') {
-    entries.pagePattern = normalizePattern('pagePattern', pagePattern, 'page', '/{slug}.html');
+    entries.pagePattern = normalizePattern('pagePattern', pagePattern, 'page', DEFAULT_PERMALINK_PATTERNS.page);
   }
   const categoryPattern = formData.get('categoryPattern');
   if (typeof categoryPattern === 'string') {
-    entries.categoryPattern = normalizePattern('categoryPattern', categoryPattern, 'category', '/category/{slug}/');
+    entries.categoryPattern = normalizePattern('categoryPattern', categoryPattern, 'category', DEFAULT_PERMALINK_PATTERNS.category);
   }
 
   const timeoutDays = formData.get('commentsPostTimeout');

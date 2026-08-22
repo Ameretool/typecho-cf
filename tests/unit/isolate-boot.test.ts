@@ -75,7 +75,7 @@ describe('ensureTablesReady', () => {
 
 describe('ensureDatabaseReady', () => {
   it('uses the persistent schema version fast path on a cold isolate', async () => {
-    const first = vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260816' });
+    const first = vi.fn().mockResolvedValue({ value: '20260816' });
     const d1 = {
       prepare: vi.fn().mockReturnValue({ first }),
       batch: vi.fn(),
@@ -87,20 +87,50 @@ describe('ensureDatabaseReady', () => {
     expect(d1.batch).not.toHaveBeenCalled();
   });
 
-  it('creates the login failure table for an older installation', async () => {
+  it('creates the login failure table when upgrading an older installation', async () => {
     const createRun = vi.fn().mockResolvedValue({});
+    const markerRun = vi.fn().mockResolvedValue({});
+    const indexRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
-      if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: '20260816', loginFailuresExists: 0 }) };
+      if (sql.includes("name='runtimeSchemaVersion'")) {
+        return { first: vi.fn().mockResolvedValue({ value: null }) };
       }
-      return { run: createRun };
+      if (sql.startsWith('SELECT EXISTS')) {
+        return { first: vi.fn().mockResolvedValue({ loginFailuresExists: 0 }) };
+      }
+      if (sql.startsWith('CREATE TABLE IF NOT EXISTS typecho_login_failures')) {
+        return { run: createRun };
+      }
+      if (sql.includes("name IN ('typecho_password_reset_requests'")) {
+        return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
+      }
+      if (sql.startsWith('PRAGMA table_info')) {
+        return { all: vi.fn().mockResolvedValue({
+          results: ['email', 'lastSentAt', 'uid', 'tokenHash', 'expiresAt'].map(name => ({ name })),
+        }) };
+      }
+      if (sql.startsWith('INSERT INTO typecho_options')) {
+        return { bind: vi.fn(() => ({ run: markerRun })) };
+      }
+      if (sql.includes('sqlite_master') && sql.includes('typecho_metas_type_slug')) {
+        return {
+          bind: vi.fn(() => ({
+            first: vi.fn().mockResolvedValue({ sql: 'CREATE UNIQUE INDEX typecho_metas_type_slug ON typecho_metas (type, slug)' }),
+          })),
+        };
+      }
+      if (sql.startsWith('CREATE INDEX') || sql.startsWith('CREATE UNIQUE INDEX')) {
+        return { run: indexRun };
+      }
+      return { sql, first: vi.fn().mockResolvedValue(null), run: vi.fn().mockResolvedValue({}), bind: vi.fn().mockReturnThis() };
     });
-    const d1 = { prepare, batch: vi.fn() } as unknown as D1Database;
+    const batch = vi.fn().mockResolvedValue([]);
+    const d1 = { prepare, batch } as unknown as D1Database;
 
     await ensureDatabaseReady(d1);
 
     expect(createRun).toHaveBeenCalledOnce();
-    expect(prepare.mock.calls[1][0]).toContain('CREATE TABLE IF NOT EXISTS typecho_login_failures');
+    expect(prepare.mock.calls.some(([sql]) => String(sql).startsWith('CREATE TABLE IF NOT EXISTS typecho_login_failures'))).toBe(true);
   });
 
   it('coalesces concurrent cold-isolate initialization', async () => {
@@ -113,7 +143,7 @@ describe('ensureDatabaseReady', () => {
 
     const a = ensureDatabaseReady(d1);
     const b = ensureDatabaseReady(d1);
-    release({ runtimeSchemaVersion: '20260816' } as any);
+    release({ value: '20260816' } as any);
     await Promise.all([a, b]);
 
     expect(d1.prepare).toHaveBeenCalledOnce();
@@ -123,8 +153,11 @@ describe('ensureDatabaseReady', () => {
     const markerRun = vi.fn().mockResolvedValue({});
     const indexRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
-      if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      if (sql.includes("name='runtimeSchemaVersion'")) {
+        return { first: vi.fn().mockResolvedValue({ value: null }) };
+      }
+      if (sql.startsWith('SELECT EXISTS')) {
+        return { first: vi.fn().mockResolvedValue({ loginFailuresExists: 1 }) };
       }
       if (sql.includes("name IN ('typecho_password_reset_requests'")) {
         return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
@@ -162,8 +195,11 @@ describe('ensureDatabaseReady', () => {
   it('does not persist the schema marker when metas unique index fails', async () => {
     const markerRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
-      if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      if (sql.includes("name='runtimeSchemaVersion'")) {
+        return { first: vi.fn().mockResolvedValue({ value: null }) };
+      }
+      if (sql.startsWith('SELECT EXISTS')) {
+        return { first: vi.fn().mockResolvedValue({ loginFailuresExists: 1 }) };
       }
       if (sql.includes("name IN ('typecho_password_reset_requests'")) {
         return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
@@ -204,8 +240,11 @@ describe('ensureDatabaseReady', () => {
   it('defers index/FTS upgrade through waitUntil when available', async () => {
     const markerRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
-      if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      if (sql.includes("name='runtimeSchemaVersion'")) {
+        return { first: vi.fn().mockResolvedValue({ value: null }) };
+      }
+      if (sql.startsWith('SELECT EXISTS')) {
+        return { first: vi.fn().mockResolvedValue({ loginFailuresExists: 1 }) };
       }
       if (sql.includes("name IN ('typecho_password_reset_requests'")) {
         return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };
@@ -244,8 +283,11 @@ describe('ensureDatabaseReady', () => {
   it('does not persist the schema marker when FTS setup fails', async () => {
     const markerRun = vi.fn().mockResolvedValue({});
     const prepare = vi.fn((sql: string) => {
-      if (sql.startsWith('SELECT (SELECT value')) {
-        return { first: vi.fn().mockResolvedValue({ runtimeSchemaVersion: null }) };
+      if (sql.includes("name='runtimeSchemaVersion'")) {
+        return { first: vi.fn().mockResolvedValue({ value: null }) };
+      }
+      if (sql.startsWith('SELECT EXISTS')) {
+        return { first: vi.fn().mockResolvedValue({ loginFailuresExists: 1 }) };
       }
       if (sql.includes("name IN ('typecho_password_reset_requests'")) {
         return { all: vi.fn().mockResolvedValue({ results: [{ name: 'typecho_password_reset_requests' }] }) };

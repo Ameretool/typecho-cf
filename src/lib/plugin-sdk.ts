@@ -15,6 +15,7 @@ export {
   loadPluginConfig,
   escapeAttr,
   registerPluginAdminPath,
+  registerPluginRoute,
 } from './plugin';
 export { getClientIp } from './client-ip';
 

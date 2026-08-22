@@ -327,9 +327,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     purgeContentCache(options.siteUrl || '', cid, { contentUrl }),
   ]);
 
-  // Redirect back to the post
-  // Prevent open redirect: only use referer if it's a relative path or same-origin
-  let redirectUrl = `/archives/${cid}/#comments`;
+  // Redirect back to the post. Fall back to the configured permalink (not the
+  // hard-coded default path, which may be deprecated); the referer is only
+  // used when it is a relative path or same-origin.
+  const contentPath = contentUrl.startsWith('http')
+    ? new URL(contentUrl).pathname
+    : contentUrl;
+  let redirectUrl = `${contentPath}#comments`;
   const referer = requestReferer;
   if (referer) {
     redirectUrl = safeCommentRedirectUrl(referer, options.siteUrl || '', request.url, redirectUrl);

@@ -35,6 +35,21 @@ declare namespace App {
      * middleware.ts. Read by page-data prepareArchive* functions.
      */
     _page?: number;
+    /**
+     * Set by middleware.ts when a permalink pattern rewrites the request to
+     * the unified content route (/contents/{cid}/, /{slug}.html,
+     * /category/{slug}/). Survives the rewrite so the deprecated-default-path
+     * check does not reject the internal target. Mirrors how _page crosses
+     * the same rewrite.
+     */
+    _permalinkRewrite?: boolean;
+    /**
+     * Original effective path that triggered the permalink rewrite (set
+     * alongside _permalinkRewrite). contents/[cid].astro compares it against
+     * the configured page pattern to decide whether a canonical redirect
+     * would loop.
+     */
+    _permalinkSourcePath?: string;
     /** Astro Cloudflare adapter attaches this at runtime. */
     runtime?: {
       ctx?: { waitUntil?(promise: Promise<unknown>): void };

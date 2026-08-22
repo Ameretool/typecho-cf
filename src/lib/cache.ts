@@ -14,6 +14,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { schema, type Database } from '@/db';
 import { OPTIONS_CACHE_TTL_SECONDS } from '@/lib/constants';
 import { advanceOptionsSnapshotGeneration } from '@/lib/options-snapshot-generation';
+import { compilePermalinkPattern, DEFAULT_PERMALINK_PATTERNS } from '@/lib/permalink-pattern';
 
 /** Internal namespace used for Cache API keys that are not real URLs */
 const INTERNAL_ORIGIN = 'https://typecho-cf-internal';
@@ -55,6 +56,45 @@ export async function peekCacheVersion(db: Database): Promise<string> {
 export function resetCacheVersionMemo(): void {
   cachedVersion = null;
   cachedVersionAt = 0;
+}
+
+/**
+ * Decide whether a front-end path is eligible for the public edge cache.
+ *
+ * The cacheable URL space is derived from the admin permalink settings
+ * (post / page / category patterns) plus the fixed public archive surfaces
+ * (index, tag, author, search, feeds, sitemap, robots). The caller passes
+ * the pagination-normalized effective path (/page/N/ is already stripped).
+ * Admin, API and upload paths are never eligible even if a custom pattern
+ * would match them (defense in depth against pathological patterns).
+ */
+export function isCacheablePublicPath(
+  path: string,
+  options: {
+    permalinkPattern?: string | null;
+    pagePattern?: string | null;
+    categoryPattern?: string | null;
+  },
+): boolean {
+  // Hard guard: admin/API/uploads are never cached.
+  if (path.startsWith('/admin') || path.startsWith('/api/') || path.startsWith('/usr/')) return false;
+
+  // Index (including /page/N/ which the middleware normalizes to '/').
+  if (path === '/') return true;
+
+  // Content URLs derived from the configured permalink patterns. Defaults
+  // mirror options-input.ts so a fresh install behaves like the presets.
+  const postPattern = compilePermalinkPattern(options.permalinkPattern ?? DEFAULT_PERMALINK_PATTERNS.post, 'post');
+  const pagePattern = compilePermalinkPattern(options.pagePattern ?? DEFAULT_PERMALINK_PATTERNS.page, 'page');
+  const categoryPattern = compilePermalinkPattern(options.categoryPattern ?? DEFAULT_PERMALINK_PATTERNS.category, 'category');
+  if (postPattern?.test(path) || pagePattern?.test(path) || categoryPattern?.test(path)) return true;
+
+  // Fixed public archive surfaces.
+  if (path.startsWith('/tag/') || path.startsWith('/author/') || path.startsWith('/search/')) return true;
+  if (path.startsWith('/feed') || path.endsWith('/feed.xml')) return true;
+  if (path === '/sitemap.xml' || path === '/robots.txt') return true;
+
+  return false;
 }
 
 /**

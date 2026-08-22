@@ -1,16 +1,17 @@
 import { defineMiddleware } from 'astro:middleware';
 import { schema } from '@/db';
-import { applyFilter, isPluginAdminPath, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
+import { applyFilter, isPluginAdminPath, isPluginRoute, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
-import { compilePermalinkPattern } from '@/lib/permalink-pattern';
+import { compilePermalinkPattern, DEFAULT_PERMALINK_PATTERNS } from '@/lib/permalink-pattern';
 import {
   bootstrapRequestCore,
   finalizeRequestResponse,
   resolveRequestTarget,
 } from '@/lib/request-bootstrap';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
-import { publishedPostCondition } from '@/lib/content-visibility';
+import { isCacheablePublicPath } from '@/lib/cache';
+import { CONTENT_ROUTE_PATHS, isContentPathAllowed } from '@/lib/content-path';
 
 // Plugin loader registration (generated at build time by plugin-loader.ts).
 // Statically imported so the lazy plugin loader table exists before the first
@@ -20,10 +21,15 @@ import { publishedPostCondition } from '@/lib/content-visibility';
 // mirrors the generated registry.
 import 'virtual:typecho-plugin-registry';
 
+// Routes that must never enter the permalink-rewrite branch (rewrite targets
+// plus fixed public surfaces). Note: /archives/{cid}/ is the default post
+// URL *form*, not a route — the middleware re-writes it (and any custom
+// post/page pattern) to the /contents/{cid}/ entry below. CONTENT_ROUTE_PATHS
+// still knows the /archives/ form so the whitelist can deprecate it once a
+// custom post pattern is configured.
 const BUILT_IN_ROUTES = [
-  /^\/archives\/\d+\/?$/,       // post: /archives/{cid}/
-  /^\/[^/]+\.html$/,            // page: /{slug}.html
-  /^\/category\/[^/]+\/?$/,     // category: /category/{slug}/
+  /^\/contents\/\d+\/?$/,       // unified content entry (post/page rewrite target)
+  /^\/category\/[^/]+\/?$/,     // category default form + rewrite target
   /^\/tag\//,
   /^\/author\//,
   /^\/search\//,
@@ -73,9 +79,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
     options.cacheEnabled &&
     isGetRequest &&
     !hasAuth &&
-    !path.startsWith('/admin') &&
-    !path.startsWith('/api/') &&
-    !path.startsWith('/usr/');
+    // path is the pagination-normalized effective path. The cacheable URL
+    // space follows the admin permalink settings (post/page/category) plus
+    // the fixed public surfaces; admin/api/usr are guarded inside the policy.
+    // Internal permalink rewrite targets are never cached: the canonical
+    // (configured) URL owns the cache entry, and caching the rewritten
+    // built-in URL would change direct-hit semantics (e.g. page content
+    // served under the post URL space instead of 302/canonical). Plugin
+    // routes are never cached either — they carry their own auth and the
+    // cache layer must not bypass it.
+    !context.locals._permalinkRewrite &&
+    !isPluginRoute(path) &&
+    isCacheablePublicPath(path, options);
 
   // Reuse a single Request for both cache.match and cache.put
   const cacheKey = isCacheable
@@ -93,34 +108,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   await setActivatedPlugins(pluginCtx, activatedIds);
 
-  const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
-    request: context.request,
-    url,
-    path,
-    originalPath,
-    effectivePath: path,
-    db,
-    options,
-    env,
-  });
-  if (pluginRoute?.handled && pluginRoute.response instanceof Response) {
-    // G6-4: hard-block plugins from claiming reserved core paths.
-    // Even a buggy/malicious plugin that returns handled=true on /admin
-    // must not be able to intercept admin auth, install, or core API.
-    if (isReservedCorePath(path)) {
-      console.warn({ event: 'plugin_reserved_path_rejected', path });
-    } else {
-      return await finalizeRequestResponse(pluginRoute.response, { request: context.request, pluginCtx });
-    }
-  }
-
-  if (cacheKey) {
-    const cached = await caches.default.match(cacheKey);
-    if (cached) {
-      return await finalizeRequestResponse(cached, { request: context.request, pluginCtx });
-    }
-  }
-
   // ── Permalink URL Rewriting ────────────────────────────────────────────────
   // After a rewrite the middleware runs again on the NEW path.
   // To avoid infinite loops, skip rewriting for paths that already
@@ -130,23 +117,61 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const categoryPattern = options.categoryPattern as string | undefined;
 
   const isBuiltInRoute = BUILT_IN_ROUTES.some((re) => re.test(path));
+
   let permalinkTarget: string | undefined;
 
   if (
     !isBuiltInRoute &&
+    !context.locals._permalinkRewrite &&
     !path.startsWith('/admin') &&
     !path.startsWith('/api/') &&
     !path.startsWith('/feed') &&
     !path.startsWith('/usr/')
   ) {
     // ── Post permalink rewriting ──
-    if (
-      postPattern &&
-      postPattern !== '/archives/{cid}/'
-    ) {
-      const regex = compilePermalinkPattern(postPattern, 'post');
-      if (regex) {
-        const match = path.match(regex);
+    // The default pattern matches the default URL *form* (/archives/{cid}/),
+    // which is not a built-in route: BUILT_IN_ROUTES above only lists the
+    // rewrite targets. Both default-form and custom-pattern URLs land here and
+    // are re-written to /contents/{cid}/.
+    const postRegex = compilePermalinkPattern(postPattern ?? DEFAULT_PERMALINK_PATTERNS.post, 'post');
+    if (postRegex) {
+      const match = path.match(postRegex);
+      if (match?.groups) {
+        let cid: number | null = null;
+
+        if (match.groups.cid) {
+          cid = parseInt(match.groups.cid, 10);
+        } else if (match.groups.slug) {
+          // Drafts keep the same custom URL as published posts; visibility
+          // (author-only for drafts) is enforced by the route layer.
+          const row = await db.query.contents.findFirst({
+            columns: { cid: true },
+            where: and(
+              eq(schema.contents.slug, match.groups.slug),
+              inArray(schema.contents.type, ['post', 'post_draft']),
+            ),
+          });
+          if (row) {
+            cid = row.cid;
+          }
+        }
+
+        if (cid) {
+          permalinkTarget = `/contents/${cid}/${url.search}`;
+        }
+      }
+    }
+
+    // ── Page permalink rewriting ──
+    // Pages rewrite to the same article route as posts; the route layer
+    // dispatches by type and enforces visibility (author-only for drafts).
+    // First claim wins: when patterns overlap across kinds (e.g. page and
+    // category share a URL shape), an earlier branch already resolved the
+    // path and must not be overridden.
+    if (!permalinkTarget) {
+      const pageRegex = compilePermalinkPattern(pagePattern ?? DEFAULT_PERMALINK_PATTERNS.page, 'page');
+      if (pageRegex) {
+        const match = path.match(pageRegex);
         if (match?.groups) {
           let cid: number | null = null;
 
@@ -155,7 +180,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
           } else if (match.groups.slug) {
             const row = await db.query.contents.findFirst({
               columns: { cid: true },
-              where: and(eq(schema.contents.slug, match.groups.slug), publishedPostCondition()),
+              where: and(
+                eq(schema.contents.slug, match.groups.slug),
+                inArray(schema.contents.type, ['page', 'page_draft']),
+              ),
             });
             if (row) {
               cid = row.cid;
@@ -163,53 +191,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
           }
 
           if (cid) {
-            permalinkTarget = `/archives/${cid}/${url.search}`;
-          }
-        }
-      }
-    }
-
-    // ── Page permalink rewriting ──
-    if (
-      pagePattern &&
-      pagePattern !== '/{slug}.html'
-    ) {
-      const regex = compilePermalinkPattern(pagePattern, 'page');
-      if (regex) {
-        const match = path.match(regex);
-        if (match?.groups) {
-          let slug: string | null = null;
-
-          if (match.groups.slug) {
-            slug = match.groups.slug;
-          } else if (match.groups.cid) {
-            const row = await db.query.contents.findFirst({
-              columns: { slug: true },
-              where: and(
-                eq(schema.contents.cid, parseInt(match.groups.cid, 10)),
-                eq(schema.contents.type, 'page'),
-              ),
-            });
-            if (row?.slug) {
-              slug = row.slug;
-            }
-          }
-
-          if (slug) {
-            permalinkTarget = `/${slug}.html${url.search}`;
+            permalinkTarget = `/contents/${cid}/${url.search}`;
           }
         }
       }
     }
 
     // ── Category permalink rewriting ──
-    if (
-      categoryPattern &&
-      categoryPattern !== '/category/{slug}/'
-    ) {
-      const regex = compilePermalinkPattern(categoryPattern, 'category');
-      if (regex) {
-        const match = path.match(regex);
+    // Category slugs live in the metas namespace, so a category can share a
+    // slug with a page/post; the guard keeps the earlier branch's claim when
+    // the category pattern overlaps a post/page pattern.
+    if (!permalinkTarget) {
+      const categoryRegex = compilePermalinkPattern(categoryPattern ?? DEFAULT_PERMALINK_PATTERNS.category, 'category');
+      if (categoryRegex) {
+        const match = path.match(categoryRegex);
         if (match?.groups) {
           let slug: string | null = null;
 
@@ -236,9 +231,76 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
+  // ── Plugin route table ────────────────────────────────────────────────────
+  // Only paths the system route table did NOT claim reach route:request
+  // (priority: system fixed > system routes > plugin routes). permalinkTarget
+  // is resolved above, so a plugin can never shadow a configured permalink
+  // URL: once a system route claims the path, route:request is skipped. The
+  // same applies to the internal rewrite target (locals._permalinkRewrite is
+  // set on the second middleware pass), so plugins cannot hijack
+  // /contents/{cid}/ either.
+  if (!permalinkTarget && !context.locals._permalinkRewrite) {
+    const pluginRoute = await applyFilter(pluginCtx, 'route:request', { handled: false }, {
+      request: context.request,
+      url,
+      path,
+      originalPath,
+      effectivePath: path,
+      db,
+      options,
+      env,
+    });
+    if (pluginRoute?.handled && pluginRoute.response instanceof Response) {
+      // G6-4: hard-block plugins from claiming reserved core paths.
+      // Even a buggy/malicious plugin that returns handled=true on /admin
+      // must not be able to intercept admin auth, install, or core API.
+      if (isReservedCorePath(path)) {
+        console.warn({ event: 'plugin_reserved_path_rejected', path });
+      } else {
+        return await finalizeRequestResponse(pluginRoute.response, { request: context.request, pluginCtx });
+      }
+    }
+  }
+
+  // ── Content path whitelist ───────────────────────────────────────────────
+  // Content-shaped URLs (default URL forms + the unified content entry) are
+  // served only while they match the configured permalink patterns; once a
+  // custom pattern is set, the old default URLs hard-404. Non-content paths
+  // pass through (isContentPathAllowed returns true for them). Plugin routes
+  // are exempt via isPluginRoute(): route:request above already resolved
+  // plugin paths (lazily registering configurable entry points), and a bare
+  // plugin slug must not be mistaken for a deprecated default page form.
+  // Internal rewrites mark the request with locals._permalinkRewrite
+  // (preserved across the rewrite) so the rewrite target itself is not
+  // rejected.
+  if (
+    !context.locals._permalinkRewrite &&
+    !isPluginRoute(path) &&
+    !isContentPathAllowed(path, { permalinkPattern: postPattern, pagePattern, categoryPattern })
+  ) {
+    return finalizeRequestResponse(new Response('Not Found', { status: 404 }), {
+      request: context.request,
+      pluginCtx,
+    });
+  }
+
+  if (cacheKey) {
+    const cached = await caches.default.match(cacheKey);
+    if (cached) {
+      return await finalizeRequestResponse(cached, { request: context.request, pluginCtx });
+    }
+  }
+
   // Execute the route handler
   let response: Response;
   try {
+    if (permalinkTarget) {
+      context.locals._permalinkRewrite = true;
+      // Original path that triggered the rewrite; contents/[cid].astro uses
+      // it to tell "canonical custom-pattern URL" from "deprecated default
+      // URL" before deciding on a canonical redirect.
+      context.locals._permalinkSourcePath = path;
+    }
     const internalTarget = permalinkTarget || target.routeTarget;
     response = internalTarget ? await next(internalTarget) : await next();
   } catch (err) {

@@ -57,9 +57,10 @@ export async function loadSidebarData(
   siteUrl: string,
   permalinkPattern?: string | null,
   categoryPattern?: string | null,
+  pagePattern?: string | null,
   cacheVersion: string | number = 0,
 ): Promise<SidebarData> {
-  const cacheKey = `${cacheVersion}\0${siteUrl}\0${permalinkPattern || ''}\0${categoryPattern || ''}`;
+  const cacheKey = `${cacheVersion}\0${siteUrl}\0${permalinkPattern || ''}\0${categoryPattern || ''}\0${pagePattern || ''}`;
   const cached = sidebarSnapshot;
   if (cached && cached.key === cacheKey && cached.expiresAt > Date.now()) {
     return await applyFilterSafely(
@@ -88,14 +89,19 @@ export async function loadSidebarData(
       .limit(10),
 
     // Recent comments — only need a short preview, not the whole body.
+    // Join contents so comment permalinks follow the configured patterns.
     db
       .select({
         coid: schema.comments.coid,
         cid: schema.comments.cid,
         author: schema.comments.author,
         text: sql<string>`substr(${schema.comments.text}, 1, 200)`,
+        contentSlug: schema.contents.slug,
+        contentType: schema.contents.type,
+        contentCreated: schema.contents.created,
       })
       .from(schema.comments)
+      .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
       .where(eq(schema.comments.status, 'approved'))
       .orderBy(desc(schema.comments.created))
       .limit(10),
@@ -145,7 +151,12 @@ export async function loadSidebarData(
   const recentComments = recentCommentRows.map((c) => ({
     author: c.author || '匿名',
     excerpt: (c.text || '').replace(/<[^>]+>/g, '').substring(0, 35) + (c.text && c.text.length > 35 ? '...' : ''),
-    permalink: `${siteUrl.replace(/\/$/, '')}/archives/${c.cid}/#comment-${c.coid}`,
+    permalink: `${buildPermalink(
+      { cid: c.cid ?? 0, slug: c.contentSlug, type: c.contentType, created: c.contentCreated },
+      siteUrl,
+      permalinkPattern,
+      pagePattern,
+    )}#comment-${c.coid}`,
   }));
 
   const categories = categoryRows.map((c) => ({

@@ -56,8 +56,8 @@ export function resetIsolateBoot(): void {
 
 // Reserved by Typecho-CF's runtime schema bootstrap. Bump this whenever the
 // runtime password-reset upgrade or generated index set changes. A stable
-// database needs one query per cold isolate instead of probing every table,
-// column and index.
+// database needs one indexed point lookup per cold isolate instead of probing
+// every table, column and index.
 const RUNTIME_SCHEMA_VERSION = '20260816';
 const RUNTIME_SCHEMA_VERSION_KEY = 'runtimeSchemaVersion';
 const METAS_TYPE_SLUG_INDEX = 'typecho_metas_type_slug';
@@ -72,27 +72,43 @@ export async function ensureDatabaseReady(
   if (state.databaseReadyPending) return state.databaseReadyPending;
 
   const pending = (async () => {
-    let marker: { runtimeSchemaVersion: string | null; loginFailuresExists?: boolean | number } | null;
+    let schemaVersion: string | null;
     try {
-      marker = await d1.prepare(
-      "SELECT (SELECT value FROM typecho_options " +
-      "WHERE name='runtimeSchemaVersion' AND user=0 LIMIT 1) AS runtimeSchemaVersion " +
-      ", EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' " +
-      "AND name='typecho_login_failures') AS loginFailuresExists " +
-      "FROM sqlite_master WHERE type='table' AND name='typecho_options' LIMIT 1",
-      ).first<{ runtimeSchemaVersion: string | null; loginFailuresExists?: boolean | number }>();
+      schemaVersion = await d1
+        .prepare(
+          "SELECT value FROM typecho_options " +
+          "WHERE name='runtimeSchemaVersion' AND user=0 LIMIT 1",
+        )
+        .first<{ value: string | null }>()
+        .then(row => row?.value ?? null);
     } catch (error) {
       if (error instanceof Error && /no such table:\s*typecho_options/i.test(error.message)) {
         throw new TablesMissingError();
       }
       throw error;
     }
-    if (!marker) throw new TablesMissingError();
     state.tableCheckPassed = true;
 
+    // Fast path: the marker is only persisted after the login-failure table,
+    // password-reset schema, indexes and FTS are all ready, so a matching
+    // version means the runtime schema is complete. Skip sqlite_master probes
+    // entirely on stable databases.
+    if (schemaVersion === RUNTIME_SCHEMA_VERSION) {
+      state.passwordResetSchemaPassed = true;
+      state.indexEnsurePassed = true;
+      state.databaseReadyPassed = true;
+      return;
+    }
+
     // Older installations may predate the persistent login throttle table.
-    // Create it before the fast path so login never fails with SQLITE_ERROR.
-    if (marker.loginFailuresExists === false || marker.loginFailuresExists === 0) {
+    // Create it before the upgrade so login never fails with SQLITE_ERROR.
+    const marker = await d1
+      .prepare(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' " +
+        "AND name='typecho_login_failures') AS loginFailuresExists",
+      )
+      .first<{ loginFailuresExists?: boolean | number }>();
+    if (marker?.loginFailuresExists === false || marker?.loginFailuresExists === 0) {
       await d1.prepare(
         'CREATE TABLE IF NOT EXISTS typecho_login_failures (' +
         'ip TEXT PRIMARY KEY NOT NULL, ' +
@@ -101,15 +117,6 @@ export async function ensureDatabaseReady(
         'bannedUntil INTEGER NOT NULL DEFAULT 0)',
       ).run();
     }
-
-    if (marker.runtimeSchemaVersion === RUNTIME_SCHEMA_VERSION) {
-      state.tableCheckPassed = true;
-      state.passwordResetSchemaPassed = true;
-      state.indexEnsurePassed = true;
-      state.databaseReadyPassed = true;
-      return;
-    }
-
     // Password-reset schema is request-critical (login/reset paths). Index and
     // FTS rebuilds can be large — defer them off the hot path when possible.
     await ensurePasswordResetSchema(d1);

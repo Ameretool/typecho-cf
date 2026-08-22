@@ -233,7 +233,8 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
 
 - 路径应在插件 `init()` 中注册，在任何 hook handler 之前
 - `isPluginAdminPath(path)` 在中间件 `isReservedCorePath` 中调用，白名单通过后放行
-- `pluginAdminPaths` Set 是模块级状态，插件停用后同一 isolate 内不自动清退
+- 前台自定义路由（如 WebDAV 入口 `/webdav`）通过 `registerPluginRoute(path)` 注册：中间件据此（1）豁免内容路径废弃检查（路由优先级：系统固定 > 系统路由表 > 插件路由表）；（2）禁止插件路径进入边缘缓存（插件自带鉴权，缓存会绕过）
+- `pluginAdminPaths` / `pluginRoutes` Set 是模块级状态，插件停用后同一 isolate 内不自动清退
 
 ### 6.4 插件专属管理页面
 
@@ -517,7 +518,7 @@ src/
 │   ├── plugin-loader.ts             # 构建时插件发现
 │   └── theme-loader.ts              # 构建时主题发现
 ├── pages/
-│   ├── [slug].astro                 # 文章/页面路由
+│   ├── contents/                  # 内容统一渲染入口 contents/[cid].astro（文章/页面/草稿，permalink 重写目标）
 │   ├── admin/                       # 管理后台页面
 │   │   └── plugin/
 │   │       └── [slug].astro         # 插件专属管理页面容器（admin:page hook 注入点）

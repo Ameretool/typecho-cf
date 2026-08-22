@@ -56,6 +56,7 @@ async function loadCommon(ctx: RequestContext, requestUrl: string, withSidebar =
           urls.siteUrl,
           options.permalinkPattern as string | undefined,
           options.categoryPattern as string | undefined,
+          options.pagePattern as string | undefined,
           options.cacheVersion,
         )
       : Promise.resolve(EMPTY_SIDEBAR),
@@ -482,9 +483,11 @@ export async function preparePostData(
 ): Promise<ThemePostProps | Response> {
   const { db, options, urls, user, isLoggedIn } = ctx;
 
-  const contentRow = preloadedRow ?? await db.query.contents.findFirst({
-    where: eq(schema.contents.cid, cidNum),
-  });
+  const contentRow = preloadedRow !== undefined
+    ? preloadedRow
+    : await db.query.contents.findFirst({
+        where: eq(schema.contents.cid, cidNum),
+      });
 
   if (!contentRow) return new Response('Not Found', { status: 404 });
 
@@ -619,9 +622,11 @@ export async function preparePageData(
 ): Promise<ThemePageProps | Response> {
   const { db, options, urls, user, isLoggedIn } = ctx;
 
-  const pageRow = preloadedRow ?? await db.query.contents.findFirst({
-    where: and(eq(schema.contents.slug, cleanSlug), eq(schema.contents.type, 'page')),
-  });
+  const pageRow = preloadedRow !== undefined
+    ? preloadedRow
+    : await db.query.contents.findFirst({
+        where: and(eq(schema.contents.slug, cleanSlug), eq(schema.contents.type, 'page')),
+      });
 
   if (!pageRow) return new Response('Not Found', { status: 404 });
 

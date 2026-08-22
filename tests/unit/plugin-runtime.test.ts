@@ -10,6 +10,8 @@ import {
   setActivatedPlugins,
   registerPluginInit,
   registerPluginLoaders,
+  registerPluginRoute,
+  isPluginRoute,
   getPluginInitFailures,
   resetPluginInitState,
   type HookContext,
@@ -127,5 +129,15 @@ describe('lazy plugin init (G6-3)', () => {
     expect(activeLoader).toHaveBeenCalledOnce();
     expect(activeInit).toHaveBeenCalledOnce();
     expect(inactiveLoader).not.toHaveBeenCalled();
+  });
+});
+
+describe('plugin front-end route table', () => {
+  it('matches registered routes and their sub-paths', () => {
+    registerPluginRoute('/unit-test-route');
+    expect(isPluginRoute('/unit-test-route')).toBe(true);
+    expect(isPluginRoute('/unit-test-route/sub/path')).toBe(true);
+    expect(isPluginRoute('/unit-test-routeish')).toBe(false);
+    expect(isPluginRoute('/unrelated')).toBe(false);
   });
 });

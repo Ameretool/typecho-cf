@@ -82,9 +82,9 @@ describe('buildPermalink()', () => {
     expect(url).toBe('https://example.com/archives/5.html');
   });
 
-  it('uses /{slug}.html pattern for pages', () => {
+  it('uses the default bare-slug pattern for pages', () => {
     const url = buildPermalink({ cid: 2, slug: 'about', type: 'page', created: now }, siteUrl);
-    expect(url).toBe('https://example.com/about.html');
+    expect(url).toBe('https://example.com/about');
   });
 
   it('respects custom page pattern', () => {
@@ -134,9 +134,9 @@ describe('getRedirectPathIfDifferent()', () => {
   it('returns a relative redirect path when the target differs', () => {
     const target = getRedirectPathIfDifferent(
       'https://example.com/',
-      'https://example.com/about.html',
+      'https://example.com/about',
     );
-    expect(target).toBe('/about.html');
+    expect(target).toBe('/about');
   });
 
   it('preserves query strings on real redirects', () => {

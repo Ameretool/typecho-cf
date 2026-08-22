@@ -83,7 +83,8 @@ function makeCommentRequest(
       'content-type': 'application/x-www-form-urlencoded',
       'user-agent': 'TestAgent/1.0',
       'origin': 'https://example.com',
-      'referer': 'https://example.com/',
+      // Note: no default referer — referer-aware redirect tests pass it explicitly,
+      // otherwise the redirect falls back to the configured permalink.
       ...headers,
     },
     body: body.toString(),
@@ -167,6 +168,20 @@ describe('POST /api/comment', () => {
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toContain('#comments');
   });
+  it('redirects to the configured permalink pattern, not the hard-coded /archives/', async () => {
+    await seedOptions(testDb, { permalinkPattern: '/post/{slug}/' });
+    const content = await seedContent(testDb);
+    const req = makeCommentRequest({
+      cid: String(content.cid),
+      text: 'Great post!',
+      author: 'Alice',
+      mail: 'alice@example.com',
+    });
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toContain(`/post/${content.slug}/#comments`);
+  });
+
 
   it('stores comment with correct IP from CF-Connecting-IP', async () => {
     await seedOptions(testDb);

@@ -43,13 +43,13 @@ export function buildPermalink(
 ): string {
   const base = siteUrl.replace(/\/$/, '');
 
-  // Pages use pagePattern (default: /{slug}.html)
+  // Pages use pagePattern (default: /{slug})
   if (content.type === 'page' || content.type === 'page_draft') {
-    const pgPattern = pagePattern || '/{slug}.html';
+    const pgPattern = pagePattern || '/{slug}';
     const url = renderPermalinkPattern(pgPattern, 'page', {
       cid: content.cid,
       slug: content.slug || String(content.cid),
-    }) ?? `/${content.slug || content.cid}.html`;
+    }) ?? `/${content.slug || content.cid}`;
     return `${base}${url}`;
   }
 

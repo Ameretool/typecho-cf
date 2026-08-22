@@ -17,7 +17,7 @@ function createD1Stub(_db: TestDatabase) {
   const stmt = {
     first: (sql?: string) => Promise.resolve(
       typeof sql === 'string' && sql.includes('runtimeSchemaVersion')
-        ? { runtimeSchemaVersion: '20260816' }
+        ? { value: '20260816' }
         : { name: 'typecho_options' } as any,
     ),
     all: () => Promise.resolve({
@@ -37,7 +37,7 @@ function createD1Stub(_db: TestDatabase) {
       ...stmt,
       first: () => Promise.resolve(
         sql.includes('runtimeSchemaVersion')
-          ? { runtimeSchemaVersion: '20260816', loginFailuresExists: 1 }
+          ? { value: '20260816' }
           : { name: 'typecho_options' } as any,
       ),
       bind() { return this; },
@@ -67,6 +67,7 @@ vi.mock('cloudflare:workers', () => ({
 import { schema } from '@/db';
 import { advanceOptionsSnapshotGeneration } from '@/lib/options-snapshot-generation';
 import { onRequest } from '@/middleware';
+import { addHook, registerPluginRoute } from '@/lib/plugin';
 
 const SITE = 'http://localhost:4321';
 
@@ -96,7 +97,6 @@ const routes: TestCase[] = [
 
   // Admin pages (no auth cookie → should still return 200, not 302 loop)
   { method: 'GET', path: '/admin/', expectStatus: 200 },
-  { method: 'GET', path: '/admin/preview', expectStatus: 200 },
   { method: 'GET', path: '/admin/write-post', expectStatus: 200 },
   { method: 'GET', path: '/admin/manage-posts', expectStatus: 200 },
 
@@ -139,10 +139,10 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     });
   }
 
-  it('schedules edge cache persistence through the bound ExecutionContext', async () => {
+  it('schedules edge cache persistence for a cacheable content path', async () => {
     const waitUntil = vi.fn();
     const putSpy = vi.spyOn(caches.default, 'put');
-    const request = new Request(`${SITE}/cache-write`, { method: 'GET' });
+    const request = new Request(`${SITE}/archives/123/`, { method: 'GET' });
     const ctx = {
       request,
       url: new URL(request.url),
@@ -165,20 +165,91 @@ describe('Middleware: no redirect loops when DB is ready', () => {
         : req instanceof Request
           ? req.url
           : String(req);
-      return key.includes('/cache-write');
+      return key.includes('/archives/123/');
     });
     expect(pagePutIndex).toBeGreaterThanOrEqual(0);
     expect(waitUntil).toHaveBeenCalledWith(putSpy.mock.results[pagePutIndex]?.value);
     putSpy.mockRestore();
   });
 
+  it('never caches the internal permalink rewrite target', async () => {
+    // Simulates the second middleware pass after /pages/{slug}/ rewrote to
+    // the built-in /archives/{cid}/ route: the internal URL must not become
+    // a cache entry (otherwise page content could be served at the post URL,
+    // breaking the canonical 302 on a cold cache).
+    const waitUntil = vi.fn();
+    const putSpy = vi.spyOn(caches.default, 'put');
+    const request = new Request(`${SITE}/contents/123/`, { method: 'GET' });
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: { cfContext: { waitUntil }, _permalinkRewrite: true },
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+
+    const response = await onRequest(
+      ctx,
+      async () => new Response('page content', { status: 200 }),
+    ) as Response;
+
+    expect(response.status).toBe(200);
+    // loadOptions may still write the options blob; only the /archives/123/
+    // page entry must be absent.
+    const pagePut = putSpy.mock.calls.find(([req]) => {
+      const key = typeof req === 'string' ? req : req instanceof Request ? req.url : String(req);
+      return key.includes('/contents/123/');
+    });
+    expect(pagePut).toBeUndefined();
+    putSpy.mockRestore();
+  });
+
+  it('rewrites the default bare-slug page form to the unified content entry', async () => {
+    await testDb.insert(schema.contents).values({
+      cid: 777, title: 'About', slug: 'about-default', type: 'page', status: 'publish',
+      authorId: 1, created: Math.floor(Date.now() / 1000),
+    });
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = {
+      request: new Request(`${SITE}/about-default`, { method: 'GET' }),
+      url: new URL(`${SITE}/about-default`),
+      locals: { runtime: undefined },
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/777/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+    expect(ctx.locals._permalinkSourcePath).toBe('/about-default');
+  });
+  it('rewrites the default post URL form to the unified content entry', async () => {
+    // /archives/{cid}/ is the default post pattern; it is a URL *form*, not
+    // a route, so the middleware routes it to /contents/{cid}/ like any
+    // custom pattern URL.
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = {
+      request: new Request(`${SITE}/archives/123/`, { method: 'GET' }),
+      url: new URL(`${SITE}/archives/123/`),
+      locals: { runtime: undefined },
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/123/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+    expect(ctx.locals._permalinkSourcePath).toBe('/archives/123/');
+  });
   it('runs paginated URLs through bootstrap, cache policy, and finalization', async () => {
+    const waitUntil = vi.fn();
+    const putSpy = vi.spyOn(caches.default, 'put');
     const request = new Request(`${SITE}/page/2/?sort=date`, { method: 'GET' });
     const next = vi.fn(async () => new Response('page two', { status: 200 }));
     const ctx = {
       request,
       url: new URL(request.url),
-      locals: {},
+      locals: { cfContext: { waitUntil } },
     } as any;
 
     const response = await onRequest(ctx, next) as Response;
@@ -187,6 +258,16 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     expect(ctx.locals._typechoCore?.db).toBe(testDb);
     expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+
+    // The paginated homepage is part of the fixed public cache surface; its
+    // cache entry (keyed by the original /page/2/ URL) must be persisted.
+    const pagePutIndex = putSpy.mock.calls.findIndex(([req]) => {
+      const key = typeof req === 'string' ? req : req instanceof Request ? req.url : String(req);
+      return key.includes('/page/2/');
+    });
+    expect(pagePutIndex).toBeGreaterThanOrEqual(0);
+    expect(waitUntil).toHaveBeenCalledWith(putSpy.mock.results[pagePutIndex]?.value);
+    putSpy.mockRestore();
   });
 
   it('bypasses all D1 bootstrap work for public uploads', async () => {
@@ -223,7 +304,7 @@ describe('Middleware: no redirect loops when DB is ready', () => {
     // Override D1 stub to report no tables
     d1Stub = createD1Stub(testDb);
     (d1Stub as any).prepare = () => ({
-      first: () => Promise.resolve(null), // no typecho_options table
+      first: () => Promise.reject(new Error('D1_ERROR: no such table: typecho_options')),
       bind() { return this; },
       run: () => Promise.resolve({}),
     });
@@ -317,5 +398,257 @@ describe('Middleware: activated plugin routes (registry imported by middleware)'
     } as any;
     const response = await onRequest(ctx, async () => new Response('not found', { status: 404 })) as Response;
     expect(response.status).toBe(404);
+  });
+
+  it('lets the default page pattern claim /webdav over the plugin route (system routes > plugin routes)', async () => {
+    // A published page whose slug collides with the WebDAV plugin entry:
+    // the default page pattern /{slug} claims the path first, so the
+    // plugin's Basic-auth handler must not shadow the page.
+    await testDb.insert(schema.contents).values({
+      cid: 880, title: 'WebDAV Page', slug: 'webdav', type: 'page', status: 'publish',
+      authorId: 1, created: Math.floor(Date.now() / 1000),
+    });
+    const request = new Request(`${SITE}/webdav`, { method: 'GET' });
+    const ctx = {
+      request,
+      url: new URL(request.url),
+      locals: {},
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/880/');
+  });
+});
+
+describe('Middleware: content path whitelist (default URLs rejected once custom patterns are set)', () => {
+  beforeAll(async () => {
+    d1Stub = createD1Stub(testDb);
+    resetIsolateBoot();
+    // Invalidate the 60s options snapshot so loadOptions re-reads the rows below.
+    advanceOptionsSnapshotGeneration();
+    await testDb.insert(schema.options).values([
+      { name: 'permalinkPattern', user: 0, value: '/post/{slug}/' },
+      { name: 'pagePattern', user: 0, value: '/pages/{slug}/' },
+      { name: 'categoryPattern', user: 0, value: '/topics/{slug}/' },
+    ]);
+    await testDb.insert(schema.users).values({
+      name: 'alice', mail: 'alice@example.com', group: 'editor', authCode: 'x',
+    });
+    const author = (await testDb.query.users.findFirst())!;
+    await testDb.insert(schema.contents).values([
+      {
+        cid: 123, title: 'Hello', slug: 'hello-world', type: 'post', status: 'publish',
+        authorId: author.uid, created: Math.floor(Date.now() / 1000),
+      },
+      {
+        cid: 456, title: 'About', slug: 'about', type: 'page', status: 'publish',
+        authorId: author.uid, created: Math.floor(Date.now() / 1000),
+      },
+      {
+        cid: 789, title: 'Draft Post', slug: 'draft-post', type: 'post_draft', status: 'draft',
+        authorId: author.uid, created: Math.floor(Date.now() / 1000),
+      },
+      {
+        cid: 790, title: 'Draft Page', slug: 'about-draft', type: 'page_draft', status: 'draft',
+        authorId: author.uid, created: Math.floor(Date.now() / 1000),
+      },
+    ]);
+    await testDb.insert(schema.metas).values({
+      mid: 1, name: 'Tech', slug: 'tech', type: 'category',
+    });
+  });
+
+  function makeCtx(path: string, locals: Record<string, unknown> = {}) {
+    const request = new Request(`${SITE}${path}`, { method: 'GET' });
+    return {
+      request,
+      url: new URL(request.url),
+      locals,
+      redirect: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+      rewrite: (p: string) => new Response(null, { status: 302, headers: { Location: p } }),
+    } as any;
+  }
+
+  it('exempts registered plugin routes from the deprecation check', async () => {
+    // Plugin front-end routes are dynamic (route table), not fixed surfaces:
+    // once registered, a bare-slug plugin path survives a custom page pattern
+    // and reaches route:request instead of a middleware 404. The plugin does
+    // not claim this path, so the route falls through to Astro's 404.
+    registerPluginRoute('/unit-plugin-route');
+    const next = vi.fn(async () => new Response('not found', { status: 404 }));
+    const response = await onRequest(makeCtx('/unit-plugin-route'), next) as Response;
+    expect(response.status).toBe(404);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('serves an activated plugin route under a custom page pattern', async () => {
+    // WebDAV is activated earlier in this file; its dynamic route (/webdav,
+    // registered by the plugin init) must still be claimed by route:request
+    // even though the bare-slug form no longer matches the custom page
+    // pattern — priority: system fixed > system routes > plugin routes.
+    const next = vi.fn(async () => new Response('not found', { status: 404 }));
+    const response = await onRequest(makeCtx('/webdav'), next) as Response;
+    expect(response.status).toBe(401);
+    expect(response.headers.get('WWW-Authenticate')).toContain('Basic');
+    expect(next).not.toHaveBeenCalled();
+  });
+  it('rejects direct hits on the unified content entry', async () => {
+    // /contents/{cid}/ is the internal rewrite target, never a public URL.
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const response = await onRequest(makeCtx('/contents/123/'), next) as Response;
+    expect(response.status).toBe(404);
+    expect(next).not.toHaveBeenCalled();
+  });
+  it('hard-404s /archives/{cid}/ once a custom post pattern is configured', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const response = await onRequest(makeCtx('/archives/123/'), next) as Response;
+    expect(response.status).toBe(404);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('hard-404s the bare-slug default form once a custom page pattern is configured', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const response = await onRequest(makeCtx('/about'), next) as Response;
+    expect(response.status).toBe(404);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('hard-404s /category/{slug}/ (and its pagination) once a custom category pattern is configured', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const response = await onRequest(makeCtx('/category/tech/'), next) as Response;
+    expect(response.status).toBe(404);
+    expect(next).not.toHaveBeenCalled();
+
+    const pagedNext = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const pagedResponse = await onRequest(makeCtx('/category/tech/page/2/'), pagedNext) as Response;
+    expect(pagedResponse.status).toBe(404);
+    expect(pagedNext).not.toHaveBeenCalled();
+  });
+
+  it('rewrites published pages through the custom pattern route', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/pages/about/');
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/456/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+  });
+
+  it('rewrites draft pages through the custom pattern route (author-only at render time)', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/pages/about-draft/');
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/790/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+  });
+
+  it('rewrites draft posts through the custom pattern route (author-only at render time)', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/post/draft-post/');
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/789/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+  });
+
+  it('still rewrites the custom pattern URL to the built-in route and marks locals', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/post/hello-world/');
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/123/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+  });
+
+  it('does not reject the internal rewrite target when locals._permalinkRewrite is set', async () => {
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/contents/123/', { _permalinkRewrite: true });
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('lazily serves a custom WebDAV routePath under a custom page pattern (whitelist runs after route:request)', async () => {
+    // Cold-isolate scenario: only the default /webdav is in the plugin route
+    // table; a configured /dav entry is registered lazily by route:request.
+    // The whitelist must run after route:request, otherwise /dav is
+    // mistaken for a deprecated bare-slug page form and 404s forever.
+    await testDb.insert(schema.options).values({
+      name: 'plugin:typecho-plugin-webdav',
+      user: 0,
+      value: JSON.stringify({
+        routePath: '/dav',
+        protocolEnabled: 'true',
+        mounts: [{ mount: '', provider: 'r2', bindingName: 'BUCKET', prefix: '' }],
+      }),
+    }).onConflictDoUpdate({
+      target: [schema.options.user, schema.options.name],
+      set: { value: JSON.stringify({
+        routePath: '/dav',
+        protocolEnabled: 'true',
+        mounts: [{ mount: '', provider: 'r2', bindingName: 'BUCKET', prefix: '' }],
+      }) },
+    });
+    advanceOptionsSnapshotGeneration();
+    const next = vi.fn(async () => new Response('not found', { status: 404 }));
+    const response = await onRequest(makeCtx('/dav'), next) as Response;
+    expect(response.status).toBe(401);
+    expect(response.headers.get('WWW-Authenticate')).toContain('Basic realm="Typecho WebDAV"');
+  });
+
+  it('skips route:request on the internal rewrite target so plugins cannot hijack /contents/{cid}/', async () => {
+    const hijack = vi.fn(async (result: any, extra?: { path?: string }) => {
+      if (extra?.path === '/contents/123/') {
+        return { handled: true, response: new Response('hijacked', { status: 200 }) };
+      }
+      return result;
+    });
+    addHook('route:request', 'test-hijack', hijack, 1);
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/contents/123/', { _permalinkRewrite: true });
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(hijack).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('keeps the page claim when the category pattern overlaps the page pattern', async () => {
+    // Page and category slugs live in separate namespaces (contents vs
+    // metas), so an overlapping category pattern must not steal a page's
+    // own URL: the first claiming branch wins (post > page > category).
+    await testDb.insert(schema.options).values({
+      name: 'categoryPattern', user: 0, value: '/pages/{slug}/',
+    }).onConflictDoUpdate({
+      target: [schema.options.user, schema.options.name],
+      set: { value: '/pages/{slug}/' },
+    });
+    advanceOptionsSnapshotGeneration();
+
+    const next = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const ctx = makeCtx('/pages/about/');
+    const response = await onRequest(ctx, next) as Response;
+    expect(response.status).toBe(200);
+    expect(next).toHaveBeenCalledWith('/contents/456/');
+    expect(ctx.locals._permalinkRewrite).toBe(true);
+
+    // Category-only URLs still fall through to the category branch.
+    const catNext = vi.fn(async () => new Response('rendered', { status: 200 }));
+    const catCtx = makeCtx('/pages/tech/');
+    const catResponse = await onRequest(catCtx, catNext) as Response;
+    expect(catResponse.status).toBe(200);
+    expect(catNext).toHaveBeenCalledWith('/category/tech/');
+
+    // Restore the block default so later tests keep their assumptions.
+    await testDb.insert(schema.options).values({
+      name: 'categoryPattern', user: 0, value: '/topics/{slug}/',
+    }).onConflictDoUpdate({
+      target: [schema.options.user, schema.options.name],
+      set: { value: '/topics/{slug}/' },
+    });
+    advanceOptionsSnapshotGeneration();
   });
 });

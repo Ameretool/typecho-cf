@@ -3,6 +3,7 @@ import { themeTemplates } from 'virtual:theme-templates';
 import { createContextAlongside } from '@/lib/context';
 import { prepareNotFoundData, preparePageData, preparePostData } from '@/lib/page-data';
 import { buildPermalink, getRedirectPathIfDifferent } from '@/lib/content';
+import { compilePermalinkPattern, DEFAULT_PERMALINK_PATTERNS } from '@/lib/permalink-pattern';
 import { eq } from 'drizzle-orm';
 import { schema } from '@/db';
 
@@ -29,20 +30,33 @@ const activeTheme = options.theme || 'typecho-theme-minimal';
 const templates = themeTemplates[activeTheme] ?? {};
 const defaultTemplates = themeTemplates['typecho-theme-minimal']!;
 
-// If it's a page, redirect to its configured page route unless that route is this URL.
+// Pages and page drafts share this branch; the data layer enforces draft
+// visibility (author-only) via canViewContent.
 if (!contentRow) {
   Astro.response.status = 404;
   result = await prepareNotFoundData(ctx, Astro.request.url);
   Component = templates.NotFound ?? defaultTemplates.NotFound!;
-} else if (contentRow.type === 'page') {
-  const pageUrl = buildPermalink(
-    { cid: contentRow.cid, slug: contentRow.slug, type: contentRow.type, created: contentRow.created },
-    ctx.urls.siteUrl,
-    undefined,
-    options.pagePattern as string | undefined,
-  );
-  const redirectPath = getRedirectPathIfDifferent(Astro.request.url, pageUrl);
-  if (redirectPath) return Astro.redirect(redirectPath);
+} else if (contentRow.type === 'page' || contentRow.type === 'page_draft') {
+  // Published pages canonicalize to their configured page route unless the
+  // rewrite source URL already is that canonical form (which would loop).
+  // Draft pages render in place: their canonical URL is not publicly
+  // reachable while unlisted, so redirecting would end in a 404.
+  const pagePattern = options.pagePattern as string | undefined;
+  const sourcePath = Astro.locals._permalinkSourcePath ?? Astro.url.pathname;
+  const sourceIsCanonical = !!compilePermalinkPattern(
+    pagePattern ?? DEFAULT_PERMALINK_PATTERNS.page,
+    'page',
+  )?.test(sourcePath);
+  if (contentRow.type === 'page' && !sourceIsCanonical) {
+    const pageUrl = buildPermalink(
+      { cid: contentRow.cid, slug: contentRow.slug, type: contentRow.type, created: contentRow.created },
+      ctx.urls.siteUrl,
+      undefined,
+      pagePattern,
+    );
+    const redirectPath = getRedirectPathIfDifferent(Astro.request.url, pageUrl);
+    if (redirectPath) return Astro.redirect(redirectPath);
+  }
 
   result = await preparePageData(ctx, contentRow.slug || String(contentRow.cid), Astro.request.url, suppliedPassword, contentRow);
   if (result instanceof Response) {

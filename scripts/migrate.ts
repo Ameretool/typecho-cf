@@ -666,22 +666,27 @@ class WranglerWriter extends TargetWriter {
       });
     }
 
-    // Extract permalink pattern from routingTable
+    // Extract permalink patterns from the source routingTable. The source DB
+    // is the single source of truth for URL shapes: whatever it declares
+    // (including PHP Typecho's own defaults like /{slug}.html for pages) is
+    // written explicitly so migrated URLs keep working. No comparison against
+    // this project's defaults — those only apply when the source has no
+    // routingTable at all (fresh-install fallback).
     if (routingTableValue) {
       const pattern = extractPermalinkFromRoutingTable(routingTableValue);
-      if (pattern && pattern !== '/archives/{cid}/') {
+      if (pattern) {
         console.log(`    📎 Extracted post permalink pattern: ${pattern}`);
         mapped.push({ name: 'permalinkPattern', user: 0, value: pattern });
       }
 
       const pagePattern = extractPagePatternFromRoutingTable(routingTableValue);
-      if (pagePattern && pagePattern !== '/{slug}.html') {
+      if (pagePattern) {
         console.log(`    📎 Extracted page permalink pattern: ${pagePattern}`);
         mapped.push({ name: 'pagePattern', user: 0, value: pagePattern });
       }
 
       const categoryPattern = extractCategoryPatternFromRoutingTable(routingTableValue);
-      if (categoryPattern && categoryPattern !== '/category/{slug}/') {
+      if (categoryPattern) {
         console.log(`    📎 Extracted category permalink pattern: ${categoryPattern}`);
         mapped.push({ name: 'categoryPattern', user: 0, value: categoryPattern });
       }

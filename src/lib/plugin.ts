@@ -294,6 +294,33 @@ export function isPluginAdminPath(path: string): boolean {
 }
 
 /**
+ * Front-end routes served by plugins via route:request. Registered during
+ * plugin init() (and lazily refreshed by plugins whose route path is
+ * configurable). Middleware uses this table to:
+ *   1. exempt plugin routes from the content-path deprecation check, and
+ *   2. never edge-cache plugin responses (they carry their own auth, e.g.
+ *      WebDAV Basic auth) — plugin routes must stay out of the shared cache.
+ *
+ * Routing priority is: system fixed > system routes (admin permalink
+ * patterns) > plugin routes. Middleware resolves the permalink rewrite
+ * target before route:request and skips route:request entirely once a
+ * path is claimed by a configured system pattern, so plugin registrations
+ * never shadow a system route.
+ */
+const pluginRoutes = new Set<string>();
+
+export function registerPluginRoute(path: string): void {
+  pluginRoutes.add(path);
+}
+
+export function isPluginRoute(path: string): boolean {
+  for (const route of pluginRoutes) {
+    if (path === route || path.startsWith(route + '/')) return true;
+  }
+  return false;
+}
+
+/**
  * Backward-compatible registration Interface for tests and integrations that
  * already imported plugin init functions.
  */

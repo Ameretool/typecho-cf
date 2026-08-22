@@ -79,6 +79,23 @@ describe('loadSidebarData', () => {
     expect(data.recentComments[0].permalink).toContain('#comment-');
   });
 
+  it('builds recent comment permalinks from the configured page pattern', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const page = await testDb.insert(schema.contents).values({
+      title: 'About', slug: 'about', created: now, type: 'page', status: 'publish',
+    }).returning({ cid: schema.contents.cid });
+    await testDb.insert(schema.comments).values({
+      cid: page[0]!.cid, created: now, author: 'Commenter', text: 'Nice page!', status: 'approved',
+    });
+
+    const data = await loadSidebarData(
+      mockPluginCtx, testDb, siteUrl,
+      undefined, undefined, '/pages/{slug}/',
+    );
+    expect(data.recentComments).toHaveLength(1);
+    expect(data.recentComments[0].permalink).toContain('/pages/about/#comment-');
+  });
+
   it('excludes non-approved comments from recent comments', async () => {
     const now = Math.floor(Date.now() / 1000);
     const post = await testDb.insert(schema.contents).values({
@@ -120,12 +137,12 @@ describe('loadSidebarData', () => {
       title: 'New Post', slug: 'new-post', created: now, type: 'post', status: 'publish',
     });
 
-    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 77);
+    const data = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, undefined, 77);
     expect(data.archives).toHaveLength(1);
   });
 
   it('reuses the versioned sidebar snapshot and refreshes after a version change', async () => {
-    const first = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 1);
+    const first = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, undefined, 1);
     expect(first.recentPosts).toEqual([]);
 
     await testDb.insert(schema.contents).values({
@@ -136,8 +153,8 @@ describe('loadSidebarData', () => {
       status: 'publish',
     });
 
-    const sameVersion = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 1);
-    const nextVersion = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, 2);
+    const sameVersion = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, undefined, 1);
+    const nextVersion = await loadSidebarData(mockPluginCtx, testDb, siteUrl, undefined, undefined, undefined, 2);
     expect(sameVersion.recentPosts).toEqual([]);
     expect(nextVersion.recentPosts).toHaveLength(1);
   });

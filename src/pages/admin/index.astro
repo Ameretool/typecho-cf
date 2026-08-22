@@ -53,6 +53,9 @@ const [
     author: schema.comments.author,
     text: schema.comments.text,
     created: schema.comments.created,
+    contentSlug: schema.contents.slug,
+    contentType: schema.contents.type,
+    contentCreated: schema.contents.created,
   }).from(schema.comments)
     .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
     .where(visibleCommentCondition('approved'))
@@ -121,7 +124,12 @@ const isContributor = hasPermission(user!.group || 'visitor', 'contributor');
           recentComments.map((comment) => (
             <li>
               <span>{formatDate(comment.created || 0, 'n.j', options.timezone)}</span>
-              <a href={`/archives/${comment.cid}/#comment-${comment.coid}`} class="title">
+              <a href={`${buildPermalink(
+                { cid: comment.cid, slug: comment.contentSlug, type: comment.contentType, created: comment.contentCreated },
+                urls.siteUrl,
+                options.permalinkPattern as string | undefined,
+                options.pagePattern as string | undefined,
+              )}#comment-${comment.coid}`} class="title">
                 {comment.author || '匿名'}
               </a>:
               {(comment.text || '').replace(/<[^>]+>/g, '').substring(0, 35)}...

@@ -5,7 +5,7 @@ import { hasPermission } from '@/lib/auth';
 import { buildGravatarUrl } from '@/lib/gravatar';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { schema } from '@/db';
-import { formatDate } from '@/lib/content';
+import { buildPermalink, formatDate } from '@/lib/content';
 import { parsePageNumber, parsePositiveInteger, withQueryParams } from '@/lib/input';
 
 const ctx = await createContext(Astro.locals, Astro.request);
@@ -63,6 +63,9 @@ const [countResult, commentsList, statusCounts] = await db.batch([
     parent: schema.comments.parent,
     created: schema.comments.created,
     contentTitle: schema.contents.title,
+    contentSlug: schema.contents.slug,
+    contentType: schema.contents.type,
+    contentCreated: schema.contents.created,
   }).from(schema.comments)
     .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
     .where(where)
@@ -200,7 +203,12 @@ for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
                   <td valign="top" class="comment-body">
                     <div class="comment-date">
                       {formatDate(comment.created || 0, 'Y-m-d H:i', options.timezone)} 于
-                      <a href={`/archives/${comment.cid}/`}>{titleMap.get(comment.cid) || `文章 #${comment.cid}`}</a>
+                      <a href={buildPermalink(
+                        { cid: comment.cid, slug: comment.contentSlug, type: comment.contentType, created: comment.contentCreated },
+                        urls.siteUrl,
+                        options.permalinkPattern as string | undefined,
+                        options.pagePattern as string | undefined,
+                      )}>{titleMap.get(comment.cid) || `文章 #${comment.cid}`}</a>
                     </div>
                     <div class="comment-content">
                       {(comment.text || '').substring(0, 200)}
