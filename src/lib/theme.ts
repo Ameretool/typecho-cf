@@ -12,6 +12,7 @@
  *     assets/           - Additional assets (optional)
  */
 import { getConfigDefaults, loadConfig, type ConfigField } from '@/lib/config';
+import { themeRegistryEntries } from 'virtual:typecho-theme-registry';
 
 export interface ThemeManifest {
   /** Unique theme identifier */
@@ -249,4 +250,10 @@ export function loadThemeConfig(
  */
 export function getThemeCount(): number {
   return themeRegistry.size;
+}
+
+// Register themes in every server entrypoint, including API endpoints that do
+// not execute Astro's page-ssr registration script.
+for (const entry of themeRegistryEntries) {
+  registerTheme(entry.packageName, entry.manifest, entry.cssPath);
 }

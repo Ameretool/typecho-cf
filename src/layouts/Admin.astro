@@ -4,6 +4,7 @@ import type { computeUrls } from '@/lib/options';
 import type { UserRow } from '@/lib/context';
 import { hasPermission } from '@/lib/auth';
 import { applyFilterSafely, type HookContext } from '@/lib/plugin';
+import { clearAdminFlash, readAdminFlash } from '@/lib/admin-flash';
 
 interface Props {
   title: string;
@@ -74,6 +75,8 @@ const visibleGroups = menuGroups.filter(g => g.show);
 const focusGroupIdx = visibleGroups.findIndex(g => g.children.some(c => c.active));
 const adminHeadHtml = await applyFilterSafely(_pluginCtx, 'admin:header', '', { options, urls, user, activeMenu, title });
 const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', { options, urls, user, activeMenu, title });
+const flashError = user ? await readAdminFlash(Astro.request, options, user.uid) : null;
+if (flashError) Astro.response.headers.append('Set-Cookie', clearAdminFlash(Astro.request));
 ---
 <!DOCTYPE html>
 <html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>
@@ -126,6 +129,13 @@ const adminFooterHtml = await applyFilterSafely(_pluginCtx, 'admin:footer', '', 
       <div class="typecho-page-title">
         <h2>{title}</h2>
       </div>
+      {flashError && (
+        <div class="typecho-option-tabs notice notice-error typecho-dismissible" role="alert"
+          style="padding: 10px 15px; margin-bottom: 20px; border-radius: 3px; background: #ffeaea; color: #c33;">
+          <p>{flashError}</p>
+          <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
+        </div>
+      )}
       <div class:list={['row', 'typecho-page-main', bodyClass]} role="main">
         <slot />
       </div>

@@ -2,6 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { schema } from '@/db';
 import { applyFilter, isPluginAdminPath, isPluginRoute, parseActivatedPlugins, setActivatedPlugins } from '@/lib/plugin';
 import { hasAuthCookies } from '@/lib/auth';
+import { createAdminErrorRedirect, getAdminUserForFlash, isAdminHtmlFormRequest, adminFallbackForApiPath } from '@/lib/admin-flash';
 import { compilePermalinkPattern, DEFAULT_PERMALINK_PATTERNS } from '@/lib/permalink-pattern';
 import {
   bootstrapRequestCore,
@@ -305,16 +306,42 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response = internalTarget ? await next(internalTarget) : await next();
   } catch (err) {
     console.error({ event: 'route_handler_failed', path, error: err instanceof Error ? err.message : String(err) });
-    return finalizeRequestResponse(new Response('Server error', { status: 500 }), {
-      request: context.request,
-      pluginCtx,
-    });
+    response = new Response('Server error', { status: 500 });
   }
   if (response.status === 404) {
     // Only warn for admin paths (should never 404); info for everything else
     // (bots hitting non-existent routes is normal traffic noise).
     if (path.startsWith('/admin')) {
       console.warn({ event: 'admin_route_not_found', path, method: context.request.method });
+    }
+  }
+
+  // Native admin forms submit directly to API routes. Convert their error
+  // responses into a safe redirect with a one-time flash instead of leaving
+  // the browser on an unstyled/blank API response. JSON and AJAX callers keep
+  // the original machine-readable response.
+  if (isAdminHtmlFormRequest(context.request) && path.startsWith('/api/admin/') && response.status >= 400) {
+    const uid = await getAdminUserForFlash(context.request, db, options);
+    if (uid) {
+      let message = response.status >= 500 ? '操作失败，请稍后重试' : '操作失败';
+      try {
+        const body = await response.clone().text();
+        if (body.trim()) {
+          try {
+            const parsed = JSON.parse(body) as { error?: unknown };
+            if (typeof parsed.error === 'string') message = parsed.error;
+          } catch {
+            message = body.trim();
+          }
+        }
+      } catch { /* preserve generic message */ }
+      response = await createAdminErrorRedirect(
+        context.request,
+        options,
+        uid,
+        message,
+        adminFallbackForApiPath(path),
+      );
     }
   }
 

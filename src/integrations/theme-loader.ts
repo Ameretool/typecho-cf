@@ -44,42 +44,70 @@ function deriveThemeId(packageName: string, manifest?: Record<string, any>): str
   return packageName;
 }
 
-function discoverThemes(rootDir: string): DiscoveredTheme[] {
-  const themes: DiscoveredTheme[] = [];
+export function discoverThemes(rootDir: string): DiscoveredTheme[] {
+  const themes = new Map<string, DiscoveredTheme>();
   const nodeModulesDir = join(rootDir, 'node_modules');
 
-  if (!existsSync(nodeModulesDir)) return themes;
+  const addTheme = (theme: DiscoveredTheme | null): void => {
+    if (theme) themes.set(theme.id, theme);
+  };
 
-  const entries = readdirSync(nodeModulesDir);
-  for (const entry of entries) {
-    if (entry.startsWith('.')) continue;
+  if (existsSync(nodeModulesDir)) {
+    const entries = readdirSync(nodeModulesDir);
+    for (const entry of entries) {
+      if (entry.startsWith('.')) continue;
 
-    if (entry.startsWith('@')) {
-      // Scoped packages
-      const scopeDir = join(nodeModulesDir, entry);
-      try {
-        const realScopeDir = realpathSync(scopeDir);
-        if (!statSync(realScopeDir).isDirectory()) continue;
-        const scopedEntries = readdirSync(realScopeDir);
-        for (const scopedEntry of scopedEntries) {
-          if (scopedEntry.startsWith('.')) continue;
-          try {
-            const pkgDir = realpathSync(join(scopeDir, scopedEntry));
-            const theme = tryLoadTheme(`${entry}/${scopedEntry}`, pkgDir);
-            if (theme) themes.push(theme);
-          } catch { continue; }
-        }
-      } catch { continue; }
-    } else {
-      try {
-        const pkgDir = realpathSync(join(nodeModulesDir, entry));
-        const theme = tryLoadTheme(entry, pkgDir);
-        if (theme) themes.push(theme);
-      } catch { continue; }
+      if (entry.startsWith('@')) {
+        // Scoped packages
+        const scopeDir = join(nodeModulesDir, entry);
+        try {
+          const realScopeDir = realpathSync(scopeDir);
+          if (!statSync(realScopeDir).isDirectory()) continue;
+          const scopedEntries = readdirSync(realScopeDir);
+          for (const scopedEntry of scopedEntries) {
+            if (scopedEntry.startsWith('.')) continue;
+            try {
+              const pkgDir = realpathSync(join(scopeDir, scopedEntry));
+              addTheme(tryLoadTheme(`${entry}/${scopedEntry}`, pkgDir));
+            } catch { continue; }
+          }
+        } catch { continue; }
+      } else {
+        try {
+          const pkgDir = realpathSync(join(nodeModulesDir, entry));
+          addTheme(tryLoadTheme(entry, pkgDir));
+        } catch { continue; }
+      }
     }
   }
 
-  return themes;
+  // pnpm snapshots `file:` dependencies under node_modules. During local theme
+  // development that snapshot can lag behind src/themes until pnpm install is
+  // run again, hiding newly-added manifest fields such as `config`. Prefer the
+  // declared source directory so builds always observe the current workspace.
+  const rootPackagePath = join(rootDir, 'package.json');
+  if (existsSync(rootPackagePath)) {
+    try {
+      const rootPackage = JSON.parse(readFileSync(rootPackagePath, 'utf-8')) as Record<string, any>;
+      const dependencySpecs = {
+        ...rootPackage.devDependencies,
+        ...rootPackage.optionalDependencies,
+        ...rootPackage.dependencies,
+      } as Record<string, unknown>;
+
+      for (const [packageName, spec] of Object.entries(dependencySpecs)) {
+        if (typeof spec !== 'string' || !spec.startsWith('file:')) continue;
+        try {
+          const sourceDir = realpathSync(join(rootDir, spec.slice('file:'.length)));
+          addTheme(tryLoadTheme(packageName, sourceDir));
+        } catch { continue; }
+      }
+    } catch (err) {
+      console.warn('[theme-loader] Failed to inspect local file dependencies:', err);
+    }
+  }
+
+  return [...themes.values()];
 }
 
 /**
@@ -260,6 +288,16 @@ ${entries.join(',\n')}
 `;
 }
 
+/** Generate data-only theme registrations for every server entrypoint. */
+function generateThemeRegistryModule(discoveredThemes: DiscoveredTheme[]): string {
+  const entries = discoveredThemes.map((theme) => ({
+    packageName: theme.packageName,
+    manifest: theme.manifest,
+    cssPath: `/themes/${theme.id}/style.css`,
+  }));
+  return `export const themeRegistryEntries = ${JSON.stringify(entries)};\n`;
+}
+
 export default function themeLoaderIntegration(): AstroIntegration {
   let discoveredThemes: DiscoveredTheme[] = [];
 
@@ -287,6 +325,7 @@ export default function themeLoaderIntegration(): AstroIntegration {
 
         // Generate virtual module source
         const virtualModuleCode = generateVirtualModule(discoveredThemes);
+        const themeRegistryCode = generateThemeRegistryModule(discoveredThemes);
 
         // Add Vite plugin for the virtual module
         updateConfig({
@@ -295,9 +334,11 @@ export default function themeLoaderIntegration(): AstroIntegration {
               name: 'typecho-theme-templates',
               resolveId(id: string) {
                 if (id === 'virtual:theme-templates') return '\0virtual:theme-templates';
+                if (id === 'virtual:typecho-theme-registry') return '\0virtual:typecho-theme-registry';
               },
               load(id: string) {
                 if (id === '\0virtual:theme-templates') return virtualModuleCode;
+                if (id === '\0virtual:typecho-theme-registry') return themeRegistryCode;
               },
             }],
           },

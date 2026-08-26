@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const themesPage = readFileSync(join(process.cwd(), 'src/pages/admin/themes.astro'), 'utf-8');
 const configPage = readFileSync(join(process.cwd(), 'src/pages/admin/theme-config.astro'), 'utf-8');
 const configForm = readFileSync(join(process.cwd(), 'src/components/admin/ConfigForm.astro'), 'utf-8');
+const themeModule = readFileSync(join(process.cwd(), 'src/lib/theme.ts'), 'utf-8');
 
 describe('theme config admin UI', () => {
   it('shows a settings entry only for themes that declare config', () => {
@@ -27,6 +28,11 @@ describe('theme config admin UI', () => {
   it('keeps the admin menu and back link on the themes section', () => {
     expect(configPage).toContain('activeMenu="themes"');
     expect(configPage).toContain('backHref="/admin/themes"');
+  });
+
+  it('initializes the theme registry for API entrypoints without page-ssr', () => {
+    expect(themeModule).toContain("from 'virtual:typecho-theme-registry'");
+    expect(themeModule).toContain('for (const entry of themeRegistryEntries)');
   });
 
   it('keeps the repeatable-row machinery in the shared form component', () => {
