@@ -92,6 +92,7 @@ export function validateFilteredContent(
     authorId: baseline.authorId,
     template: stringField(value.template, '模板', 255, true),
     type: baseline.type,
+    parent: baseline.parent,
     status,
     password: stringField(value.password, '密码', 255, true),
     ...validatedFlags,

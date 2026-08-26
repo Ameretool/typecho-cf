@@ -53,6 +53,11 @@ export function assertBoundedContentLength(request: Request, maxBytes: number): 
   }
 }
 
+export async function readBoundedText(request: Request, maxBytes: number): Promise<string> {
+  const body = await readBoundedBody(request, maxBytes);
+  return new TextDecoder().decode(body);
+}
+
 export async function readBoundedFormData(request: Request, maxBytes: number): Promise<FormData> {
   const body = await readBoundedBody(request, maxBytes);
 
@@ -67,7 +72,7 @@ export async function readBoundedFormData(request: Request, maxBytes: number): P
   }
 }
 
-async function readBoundedBody(request: Request, maxBytes: number): Promise<ArrayBuffer> {
+export async function readBoundedBody(request: Request, maxBytes: number): Promise<ArrayBuffer> {
   assertBoundedContentLength(request, maxBytes);
   if (!request.body) return new ArrayBuffer(0);
 

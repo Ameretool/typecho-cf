@@ -25,7 +25,7 @@ let attachments: AttachmentItem[] = [];
 
 const cidNum = cid ? parseInt(cid, 10) : 0;
 if (cidNum > 0) {
-  const [pageRows, fieldRows, attachmentRows] = await db.batch([
+  let [pageRows, fieldRows, attachmentRows] = await db.batch([
     db.select().from(schema.contents).where(eq(schema.contents.cid, cidNum)).limit(1),
     db.select().from(schema.fields).where(eq(schema.fields.cid, cidNum)),
     db.select().from(schema.contents)
@@ -33,6 +33,15 @@ if (cidNum > 0) {
       .orderBy(schema.contents.created),
   ]);
   page = pageRows[0] || null;
+  if (page?.type === 'page') {
+    const revision = await db.query.contents.findFirst({
+      where: and(eq(schema.contents.parent, page.cid), eq(schema.contents.type, 'revision')),
+    });
+    if (revision) {
+      page = { ...page, ...revision, cid: page.cid, type: 'revision' };
+      fieldRows = await db.select().from(schema.fields).where(eq(schema.fields.cid, revision.cid));
+    }
+  }
   if (page) {
     isEdit = true;
     customFields = fieldRows.map(f => ({

@@ -14,7 +14,11 @@ export async function resolveUniqueContentSlug(
   while (true) {
     const existing = await db.query.contents.findFirst({
       columns: { cid: true },
-      where: and(eq(schema.contents.slug, candidate), ne(schema.contents.cid, cid)),
+      where: and(
+        eq(schema.contents.slug, candidate),
+        ne(schema.contents.cid, cid),
+        ne(schema.contents.type, 'revision'),
+      ),
     });
     if (!existing) return candidate;
     suffix += 1;

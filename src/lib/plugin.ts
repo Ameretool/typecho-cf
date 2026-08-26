@@ -178,6 +178,10 @@ export const HookPoints = {
   // --- Comment Management ---
   'feedback:comment': 'feedback:comment',            // Filter: comment data before save
   'feedback:finishComment': 'feedback:finishComment', // After comment saved
+  'feedback:trackback': 'feedback:trackback',        // Filter: incoming trackback
+  'feedback:finishTrackback': 'feedback:finishTrackback',
+  'feedback:pingback': 'feedback:pingback',          // Filter: incoming pingback
+  'feedback:finishPingback': 'feedback:finishPingback',
   'feedback:reply': 'feedback:reply',                // On comment reply
   'comment:action': 'comment:action',                // Call: comment moderation action applied
 

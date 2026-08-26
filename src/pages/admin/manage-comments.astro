@@ -214,6 +214,7 @@ for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
                       {(comment.text || '').substring(0, 200)}
                     </div>
                     <div class="comment-action hidden-by-mouse">
+                      <a href={`/admin/comment?coid=${comment.coid}`} class="operate-edit">编辑</a>
                       {status === 'approved'
                         ? <span class="weak">通过</span>
                         : <button type="submit" formaction={`/api/admin/comment-action?action=approve&coid=${comment.coid}`} formmethod="post" class="operate-approved">通过</button>

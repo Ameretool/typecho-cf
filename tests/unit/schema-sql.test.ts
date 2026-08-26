@@ -28,7 +28,7 @@ describe('generateCreateSQL', () => {
 
     const uniqueIndexes = stmts.filter(s => s.startsWith('CREATE UNIQUE INDEX'));
     // Core unique indexes plus reset token hash and metas (type, slug).
-    expect(uniqueIndexes.length).toBe(8);
+    expect(uniqueIndexes.length).toBe(7);
 
     const indexNames = uniqueIndexes.map(s => {
       const match = s.match(/`(typecho_\w+)`/);
@@ -36,7 +36,7 @@ describe('generateCreateSQL', () => {
     });
     expect(indexNames).toContain('typecho_users_name');
     expect(indexNames).toContain('typecho_users_mail');
-    expect(indexNames).toContain('typecho_contents_slug');
+    expect(stmts.some(s => s.includes('typecho_contents_slug'))).toBe(true);
     expect(indexNames).toContain('typecho_relationships_cid_mid');
     expect(indexNames).toContain('typecho_options_user_name');
     expect(

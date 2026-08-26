@@ -54,7 +54,11 @@ function parseTagNames(tags: string): string[] {
   return [...new Set(tags.split(',').map((t) => t.trim()).filter(Boolean))];
 }
 
-async function attachTags(db: any, cid: number, tags: string) {
+function hookNameForType(type: 'post' | 'page'): 'post:write' | 'page:write' {
+  return type === 'page' ? 'page:write' : 'post:write';
+}
+
+async function attachTags(db: any, cid: number, tags: string, count = true) {
   const tagNames = parseTagNames(tags);
   if (tagNames.length === 0) return;
 
@@ -117,9 +121,9 @@ async function attachTags(db: any, cid: number, tags: string) {
 
   await db.batch([
     ...toLink.map((mid) => db.insert(schema.relationships).values({ cid, mid })),
-    ...toLink.map((mid) => db.update(schema.metas)
+    ...(count ? toLink.map((mid) => db.update(schema.metas)
       .set({ count: sql`${schema.metas.count} + 1` })
-      .where(eq(schema.metas.mid, mid))),
+      .where(eq(schema.metas.mid, mid))) : []),
   ]);
 }
 
@@ -322,6 +326,67 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
 
     const existingBaseType = existing.type?.startsWith('page') ? 'page' : 'post';
+    const savingRevision = isDraft && (existing.type === existingBaseType);
+
+    // Typecho keeps a published row immutable while editing and stores the
+    // pending version as one revision child. A single revision per parent is
+    // enough for the editor flow and mirrors Typecho's active draft lookup.
+    if (savingRevision) {
+      const revision = await db.query.contents.findFirst({
+        where: and(eq(schema.contents.parent, cid), eq(schema.contents.type, 'revision')),
+      });
+      const revisionBaseline: Record<string, unknown> = {
+        title,
+        slug: slugInput || existing.slug || String(cid),
+        created: existing.created || created,
+        modified: now,
+        text,
+        order,
+        authorId: existing.authorId,
+        template,
+        type: 'revision',
+        status: 'draft',
+        password,
+        allowComment,
+        allowPing,
+        allowFeed,
+        parent: cid,
+      };
+      let revisionData: Record<string, unknown>;
+      try {
+        const filtered = await applyFilter(pluginCtx, hookNameForType(existingBaseType), { ...revisionBaseline }, {
+          request, formData, db, options, user: auth.user, action, existing,
+        });
+        revisionData = validateFilteredContent(revisionBaseline, filtered);
+        revisionData.parent = cid;
+        revisionData.type = 'revision';
+        revisionData.status = 'draft';
+      } catch (error) {
+        if (error instanceof WriteFilterError) return jsonError(400, error.message);
+        throw error;
+      }
+      const revisionCid = revision?.cid ?? (await db.insert(schema.contents).values(revisionData as any)
+        .returning({ cid: schema.contents.cid }))[0]?.cid;
+      if (!revisionCid) return new Response('保存修订失败', { status: 500 });
+      if (revision) {
+        await db.update(schema.contents).set(revisionData as any)
+          .where(eq(schema.contents.cid, revisionCid));
+      }
+      const revisionStatements: any[] = [
+        ...buildCustomFieldStatements(db, revisionCid, formData),
+        db.delete(schema.relationships).where(eq(schema.relationships.cid, revisionCid)),
+      ];
+      if (categoryIds.length) {
+        revisionStatements.push(db.insert(schema.relationships).values(
+          categoryIds.map(mid => ({ cid: revisionCid, mid }))));
+      }
+      await db.batch(revisionStatements as [any, ...any[]]);
+      await attachTags(db, revisionCid, tags, false);
+      await doHook(pluginCtx, existingBaseType === 'page' ? 'page:finishSave' : 'post:finishSave', {
+        ...revisionData, cid: revisionCid, parent: cid,
+      });
+      return new Response(null, { status: 302, headers: { Location: `/admin/write-${existingBaseType}?cid=${cid}` } });
+    }
     const protectedType = isDraft ? `${existingBaseType}_draft` : existingBaseType;
     const protectedContentData: Record<string, unknown> = {
       title,
@@ -394,6 +459,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // Add tags
     if (tags) {
       await attachTags(db, cid, tags);
+    }
+
+    // Publishing a parent promotes its active revision and removes the
+    // revision row after the canonical content has been written.
+    const activeRevision = !isDraft
+      ? await db.query.contents.findFirst({
+        where: and(eq(schema.contents.parent, cid), eq(schema.contents.type, 'revision')),
+      })
+      : null;
+    if (activeRevision) {
+      await db.delete(schema.relationships).where(eq(schema.relationships.cid, activeRevision.cid));
+      await db.delete(schema.fields).where(eq(schema.fields.cid, activeRevision.cid));
+      await db.delete(schema.contents).where(eq(schema.contents.cid, activeRevision.cid));
     }
 
     await purgeContentAndRelatedCache(db, options, cid, {

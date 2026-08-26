@@ -29,7 +29,7 @@ let attachments: PostAttachmentItem[] = [];
 
 const cidNum = cid ? parseInt(cid, 10) : 0;
 if (cidNum > 0) {
-  const [postRows, rels, tagRows, fieldRows, categoryRows, attachmentRows] = await db.batch([
+  let [postRows, rels, tagRows, fieldRows, categoryRows, attachmentRows] = await db.batch([
     db.select().from(schema.contents).where(eq(schema.contents.cid, cidNum)).limit(1),
     db.select({ mid: schema.relationships.mid }).from(schema.relationships)
       .where(eq(schema.relationships.cid, cidNum)),
@@ -45,6 +45,19 @@ if (cidNum > 0) {
       .orderBy(schema.contents.created),
   ]);
   post = postRows[0] || null;
+  if (post?.type === 'post') {
+    const revision = await db.query.contents.findFirst({
+      where: and(eq(schema.contents.parent, post.cid), eq(schema.contents.type, 'revision')),
+    });
+    if (revision) {
+      post = { ...post, ...revision, cid: post.cid, type: 'revision' };
+      [rels, tagRows, fieldRows] = await Promise.all([
+        db.select({ mid: schema.relationships.mid }).from(schema.relationships).where(eq(schema.relationships.cid, revision.cid)),
+        db.select({ name: schema.metas.name }).from(schema.metas).innerJoin(schema.relationships, eq(schema.metas.mid, schema.relationships.mid)).where(and(eq(schema.relationships.cid, revision.cid), eq(schema.metas.type, 'tag'))),
+        db.select().from(schema.fields).where(eq(schema.fields.cid, revision.cid)),
+      ]);
+    }
+  }
   categories = categoryRows;
   if (post) {
     isEdit = true;
