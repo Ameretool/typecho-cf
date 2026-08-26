@@ -13,12 +13,11 @@ import { formatDate } from '@/lib/content';
 type Props = ThemePageProps;
 
 const {
-  options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx, themeConfig,
+  options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
   page, comments, commentOptions, commentPagination, gravatarMap,
 } = Astro.props;
 
 const isIndex = currentPath === '/';
-const footerText = typeof themeConfig.footerText === 'string' ? themeConfig.footerText : '';
 
 const totalComments = commentPagination.totalComments;
 ---
@@ -249,6 +248,5 @@ const totalComments = commentPagination.totalComments;
   <footer id="footer" role="contentinfo">
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
     由 <a href="https://github.com/eslizn/typecho-cf">Typecho CF</a> 强力驱动.
-    {footerText && <span> · {footerText}</span>}
   </footer>
 </Base>

@@ -9,13 +9,5 @@
   "stylesheets": ["normalize.css", "grid.css"],
   "homepage": "https://github.com/eslizn/typecho-cf",
   "license": "GPL-2.0",
-  "tags": ["minimal", "classic", "typecho"],
-  "config": {
-    "footerText": {
-      "type": "text",
-      "label": "页脚附加文字",
-      "description": "显示在页脚版权行末尾的自定义文字（可选）。",
-      "default": ""
-    }
-  }
+  "tags": ["minimal", "classic", "typecho"]
 }

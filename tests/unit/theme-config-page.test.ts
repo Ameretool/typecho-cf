@@ -6,8 +6,13 @@ const themesPage = readFileSync(join(process.cwd(), 'src/pages/admin/themes.astr
 const configPage = readFileSync(join(process.cwd(), 'src/pages/admin/theme-config.astro'), 'utf-8');
 const configForm = readFileSync(join(process.cwd(), 'src/components/admin/ConfigForm.astro'), 'utf-8');
 const themeModule = readFileSync(join(process.cwd(), 'src/lib/theme.ts'), 'utf-8');
+const defaultThemeManifest = JSON.parse(readFileSync(join(process.cwd(), 'src/themes/typecho-theme-minimal/theme.json'), 'utf-8')) as Record<string, unknown>;
 
 describe('theme config admin UI', () => {
+  it('does not expose configuration for the built-in default theme', () => {
+    expect(defaultThemeManifest.config).toBeUndefined();
+  });
+
   it('shows a settings entry only for themes that declare config', () => {
     expect(themesPage).toContain('themeHasConfig(theme.id)');
     expect(themesPage).toContain('/admin/theme-config?id=${theme.id}');

@@ -18,11 +18,8 @@ const {
   sidebarData,
   currentPath,
   pluginCtx,
-  themeConfig,
   errorTitle,
 } = Astro.props;
-
-const footerText = typeof themeConfig.footerText === 'string' ? themeConfig.footerText : '';
 
 const isIndex = currentPath === '/';
 ---
@@ -80,6 +77,5 @@ const isIndex = currentPath === '/';
   <footer id="footer" role="contentinfo">
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
     由 <a href="https://github.com/eslizn/typecho-cf">Typecho CF</a> 强力驱动.
-    {footerText && <span> · {footerText}</span>}
   </footer>
 </Base>
