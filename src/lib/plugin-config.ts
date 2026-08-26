@@ -14,8 +14,19 @@ import {
   type PluginConfigField,
 } from '@/lib/plugin';
 import { withTimeout } from '@/lib/timeout';
+import {
+  allowlistConfigSettings as allowlistSettings,
+  isRecord,
+  maskConfigDefinition as maskFieldDefinition,
+  maskConfigDefinitions as maskedDefinitions,
+  maskConfigValue as maskValue,
+  maskConfigValues as maskValues,
+  restoreConfigSecrets as restoreSecrets,
+  restoreConfigValue as restoreValue,
+  sanitizeConfigValue as sanitizeValue,
+} from '@/lib/config';
 
-export const PLUGIN_CONFIG_SECRET_PLACEHOLDER = '__PLUGIN_CONFIG_SECRET__';
+export { CONFIG_SECRET_PLACEHOLDER as PLUGIN_CONFIG_SECRET_PLACEHOLDER } from '@/lib/config';
 export { PLUGIN_CONFIG_ROW_ID };
 
 export class PluginConfigurationError extends Error {
@@ -47,126 +58,6 @@ export interface PluginConfigurationSaveResult {
   message: string;
   plugin: string;
   settings: Record<string, unknown>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isSecretField(field: PluginConfigField): boolean {
-  return field.type === 'password' || field.type === 'hidden';
-}
-
-function maskValue(field: PluginConfigField, value: unknown): unknown {
-  if (isSecretField(field)) {
-    return value === null || value === undefined || String(value).length === 0
-      ? ''
-      : PLUGIN_CONFIG_SECRET_PLACEHOLDER;
-  }
-  if (field.type !== 'repeatable' || !Array.isArray(value)) return value;
-  const itemFields = field.itemFields || {};
-  return value.map((row, index) => {
-    if (!isRecord(row)) return {};
-    const masked: Record<string, unknown> = { [PLUGIN_CONFIG_ROW_ID]: String(index) };
-    for (const [key, itemField] of Object.entries(itemFields)) {
-      masked[key] = maskValue(itemField, row[key]);
-    }
-    return masked;
-  });
-}
-
-function maskValues(
-  fields: Record<string, PluginConfigField>,
-  values: Record<string, unknown>,
-): Record<string, unknown> {
-  const masked: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    masked[key] = maskValue(field, values[key]);
-  }
-  return masked;
-}
-
-function maskFieldDefinition(field: PluginConfigField): PluginConfigField {
-  const masked: PluginConfigField = { ...field };
-  if (isSecretField(field) && field.default !== undefined) {
-    masked.default = field.default === '' ? '' : PLUGIN_CONFIG_SECRET_PLACEHOLDER;
-  }
-  if (field.itemFields) {
-    masked.itemFields = Object.fromEntries(
-      Object.entries(field.itemFields).map(([key, item]) => [key, maskFieldDefinition(item)]),
-    );
-  }
-  return masked;
-}
-
-function maskedDefinitions(fields: Record<string, PluginConfigField>): Record<string, PluginConfigField> {
-  return Object.fromEntries(
-    Object.entries(fields).map(([key, field]) => [key, maskFieldDefinition(field)]),
-  );
-}
-
-function sanitizeValue(field: PluginConfigField, value: unknown): unknown {
-  if (field.type !== 'repeatable') return value;
-  if (!Array.isArray(value)) return [];
-  const itemFields = field.itemFields || {};
-  return value.filter(isRecord).map((row) => {
-    const clean: Record<string, unknown> = {};
-    if (typeof row[PLUGIN_CONFIG_ROW_ID] === 'string' && /^\d+$/.test(row[PLUGIN_CONFIG_ROW_ID])) {
-      clean[PLUGIN_CONFIG_ROW_ID] = row[PLUGIN_CONFIG_ROW_ID];
-    }
-    for (const [key, itemField] of Object.entries(itemFields)) {
-      if (Object.hasOwn(row, key)) clean[key] = sanitizeValue(itemField, row[key]);
-      else if (itemField.default !== undefined) clean[key] = itemField.default;
-      else clean[key] = itemField.type === 'checkbox' || itemField.type === 'repeatable' ? [] : '';
-    }
-    return clean;
-  });
-}
-
-function allowlistSettings(
-  fields: Record<string, PluginConfigField>,
-  incoming: Record<string, unknown>,
-  defaults: Record<string, unknown>,
-): Record<string, unknown> {
-  const clean: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    clean[key] = sanitizeValue(field, Object.hasOwn(incoming, key) ? incoming[key] : defaults[key]);
-  }
-  return clean;
-}
-
-function restoreValue(field: PluginConfigField, incoming: unknown, previous: unknown): unknown {
-  if (isSecretField(field) && incoming === PLUGIN_CONFIG_SECRET_PLACEHOLDER) return previous ?? '';
-  if (field.type !== 'repeatable' || !Array.isArray(incoming)) return incoming;
-  const previousRows = Array.isArray(previous) ? previous : [];
-  const itemFields = field.itemFields || {};
-  return incoming.map((row, index) => {
-    if (!isRecord(row)) return {};
-    const submittedRowId = row[PLUGIN_CONFIG_ROW_ID];
-    const previousIndex = typeof submittedRowId === 'string' && /^\d+$/.test(submittedRowId)
-      ? Number(submittedRowId)
-      : index;
-    const previousRow = Number.isSafeInteger(previousIndex) && isRecord(previousRows[previousIndex])
-      ? previousRows[previousIndex]
-      : {};
-    const restored: Record<string, unknown> = {};
-    for (const [key, itemField] of Object.entries(itemFields)) {
-      restored[key] = restoreValue(itemField, row[key], previousRow[key]);
-    }
-    return restored;
-  });
-}
-
-function restoreSecrets(
-  fields: Record<string, PluginConfigField>,
-  incoming: Record<string, unknown>,
-  previous: Record<string, unknown>,
-): Record<string, unknown> {
-  const restored: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    restored[key] = restoreValue(field, incoming[key], previous[key]);
-  }
-  return restored;
 }
 
 function getDefinition(pluginId: string) {

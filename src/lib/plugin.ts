@@ -14,36 +14,23 @@
  *     index.ts/js        - Plugin entry point (required)
  */
 
+import {
+  getConfigDefaults,
+  loadConfig,
+  parseConfigFormData,
+  type ConfigField,
+} from '@/lib/config';
+
 // ==================== Types ====================
 
 /** Internal form metadata used to preserve repeatable rows across reordering. */
-export const PLUGIN_CONFIG_ROW_ID = '__typechoConfigRowId';
+export { CONFIG_ROW_ID as PLUGIN_CONFIG_ROW_ID } from '@/lib/config';
 
 /**
  * Plugin configuration field definition.
- * Mirrors PHP Typecho's Form Element types (Text, Textarea, Select, Radio, Checkbox, Password, Hidden).
+ * Mirrors PHP Typecho's Form Element types; shared with theme config.
  */
-export interface PluginConfigField {
-  /** Field type */
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'password' | 'hidden' | 'repeatable';
-  /** Display label */
-  label: string;
-  /** Help text / description shown below the field */
-  description?: string;
-  /** Default value */
-  default?: unknown;
-  /** Options for select / radio / checkbox: { value: label } */
-  options?: Record<string, string>;
-  /** Dynamic option source for select fields */
-  optionsSource?: 'r2Bindings';
-  /** Conditional visibility inside repeatable config groups */
-  showWhen?: {
-    field: string;
-    value: string | string[];
-  };
-  /** Nested fields for repeatable config groups */
-  itemFields?: Record<string, PluginConfigField>;
-}
+export type PluginConfigField = ConfigField;
 
 export interface PluginManifest {
   /** Unique plugin identifier */
@@ -700,22 +687,7 @@ export function pluginHasConfig(pluginId: string): boolean {
  * Returns a flat object { fieldName: defaultValue }.
  */
 export function getPluginConfigDefaults(pluginId: string): Record<string, any> {
-  const info = pluginRegistry.get(pluginId);
-  if (!info?.manifest.config) return {};
-
-  const defaults: Record<string, any> = {};
-  for (const [key, field] of Object.entries(info.manifest.config)) {
-    if (field.default !== undefined) {
-      defaults[key] = field.default;
-    } else if (field.type === 'checkbox') {
-      defaults[key] = [];
-    } else if (field.type === 'repeatable') {
-      defaults[key] = [];
-    } else {
-      defaults[key] = '';
-    }
-  }
-  return defaults;
+  return getConfigDefaults(pluginRegistry.get(pluginId)?.manifest.config);
 }
 
 /**
@@ -725,90 +697,7 @@ export function parsePluginConfigFormData(
   configDef: Record<string, PluginConfigField>,
   formData: FormData,
 ): Record<string, any> {
-  const settings: Record<string, any> = {};
-  for (const [key, field] of Object.entries(configDef)) {
-    if (field.type === 'checkbox') {
-      if (field.options) {
-        settings[key] = formData.getAll(key).map(v => v.toString());
-      } else {
-        // Boolean toggle: "1" when checked, "0" when unchecked
-        settings[key] = formData.has(key) ? '1' : '0';
-      }
-    } else if (field.type === 'repeatable') {
-      settings[key] = parseRepeatableField(key, field, formData);
-    } else {
-      settings[key] = formData.get(key)?.toString() ?? '';
-    }
-  }
-  return settings;
-}
-
-function parseRepeatableField(
-  key: string,
-  field: PluginConfigField,
-  formData: FormData,
-): Record<string, any>[] {
-  const itemFields = field.itemFields || {};
-  const rows = new Map<number, Record<string, any>>();
-  const pattern = new RegExp(`^${escapeRegExp(key)}\\[(\\d+)\\]\\[([^\\]]+)\\]$`);
-
-  for (const [name, value] of formData.entries()) {
-    const match = name.match(pattern);
-    if (!match) continue;
-
-    const index = Number(match[1]);
-    const itemKey = match[2];
-    if (!Number.isInteger(index) || (itemKey !== PLUGIN_CONFIG_ROW_ID && !itemFields[itemKey])) continue;
-
-    const row = rows.get(index) || {};
-    if (itemKey === PLUGIN_CONFIG_ROW_ID) {
-      row[itemKey] = value.toString();
-      rows.set(index, row);
-      continue;
-    }
-    const itemField = itemFields[itemKey];
-    if (itemField.type === 'checkbox') {
-      row[itemKey] = formData.getAll(name).map(v => v.toString());
-    } else {
-      row[itemKey] = value.toString();
-    }
-    rows.set(index, row);
-  }
-
-  return [...rows.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([, row]) => applyRepeatableDefaults(row, itemFields))
-    .filter(row => Object.entries(row).some(([itemKey, value]) => {
-      if (itemKey === PLUGIN_CONFIG_ROW_ID) return false;
-      if (Array.isArray(value)) return value.length > 0;
-      return String(value ?? '').trim() !== '';
-    }));
-}
-
-function applyRepeatableDefaults(
-  row: Record<string, any>,
-  itemFields: Record<string, PluginConfigField>,
-): Record<string, any> {
-  const result: Record<string, any> = {};
-  if (typeof row[PLUGIN_CONFIG_ROW_ID] === 'string' && /^\d+$/.test(row[PLUGIN_CONFIG_ROW_ID])) {
-    result[PLUGIN_CONFIG_ROW_ID] = row[PLUGIN_CONFIG_ROW_ID];
-  }
-  for (const [key, field] of Object.entries(itemFields)) {
-    if (row[key] !== undefined) {
-      result[key] = row[key];
-    } else if (field.default !== undefined) {
-      result[key] = field.default;
-    } else if (field.type === 'checkbox') {
-      result[key] = [];
-    } else {
-      result[key] = '';
-    }
-  }
-  return result;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return parseConfigFormData(configDef, formData);
 }
 
 /**
@@ -824,17 +713,7 @@ export function loadPluginConfig(
   options: Record<string, any>,
   pluginId: string,
 ): Record<string, any> {
-  const defaults = getPluginConfigDefaults(pluginId);
-  const raw = options?.[`plugin:${pluginId}`];
-
-  if (!raw) return { ...defaults };
-
-  try {
-    const saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return { ...defaults, ...saved };
-  } catch {
-    return { ...defaults };
-  }
+  return loadConfig(options, `plugin:${pluginId}`, pluginRegistry.get(pluginId)?.manifest.config);
 }
 
 // ==================== Shared Plugin Utilities ====================

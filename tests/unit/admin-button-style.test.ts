@@ -22,7 +22,7 @@ describe('admin button sizing styles', () => {
 
   it('uses the shared small button style for repeatable remove buttons', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      join(process.cwd(), 'src/components/admin/ConfigForm.astro'),
       'utf-8',
     );
 

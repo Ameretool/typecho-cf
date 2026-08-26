@@ -31,6 +31,11 @@ export interface ThemeBaseProps {
   currentPath: string;
   /** Plugin context for hook execution in theme layouts */
   pluginCtx: HookContext;
+  /**
+   * Active theme's custom configuration (fields declared in the theme
+   * manifest `config`). Empty object when the theme declares no config.
+   */
+  themeConfig: Record<string, unknown>;
 }
 
 // ─── Post list item (used by Index & Archive) ───────────────────────────

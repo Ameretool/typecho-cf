@@ -13,7 +13,7 @@ function loadWebdavManifest() {
 describe('admin plugin config page', () => {
   it('filters R2 binding choices to bucket-like bindings when possible', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      join(process.cwd(), 'src/components/admin/ConfigForm.astro'),
       'utf-8',
     );
 
@@ -26,7 +26,7 @@ describe('admin plugin config page', () => {
 
   it('renumbers repeatable legends after add or remove actions', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      join(process.cwd(), 'src/components/admin/ConfigForm.astro'),
       'utf-8',
     );
 
@@ -38,17 +38,17 @@ describe('admin plugin config page', () => {
 
   it('submits stable row metadata with existing repeatable rows', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      join(process.cwd(), 'src/components/admin/ConfigForm.astro'),
       'utf-8',
     );
 
-    expect(source).toContain('PLUGIN_CONFIG_ROW_ID');
-    expect(source).toContain('row[PLUGIN_CONFIG_ROW_ID]');
+    expect(source).toContain('CONFIG_ROW_ID');
+    expect(source).toContain('row[CONFIG_ROW_ID]');
   });
 
   it('renders normalized root repeatable paths as slash values', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      join(process.cwd(), 'src/components/admin/ConfigForm.astro'),
       'utf-8',
     );
 
@@ -59,7 +59,7 @@ describe('admin plugin config page', () => {
 
   it('renders boolean select values as manifest option strings', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/pages/admin/plugin-config.astro'),
+      join(process.cwd(), 'src/components/admin/ConfigForm.astro'),
       'utf-8',
     );
 

@@ -72,8 +72,76 @@ typecho-theme-example/
 | `name` | 否 | 显示名称；省略时使用 npm 包名 |
 | `stylesheet` | 否 | 主 CSS 源文件名，默认 `style.css`；构建产物统一为 `public/themes/{id}/style.css` |
 | `stylesheets` | 否 | 额外 CSS 文件列表（按顺序加载，在 `stylesheet` 之前） |
+| `config` | 否 | 主题自定义配置字段声明（可选）。声明后管理后台「外观」卡片出现「设置」入口，配置以 JSON 存于 `typecho_options` 的 `theme:<id>` 行 |
 
 > **配置优先级**：`theme.json` > `package.json` 中 `typecho.theme` 字段 > 从 `package.json` 自动推导。无论哪种方式，主 CSS 文件必须存在。
+
+---
+
+## 自定义配置（可选）
+
+主题可以在 `theme.json` 的 `config` 字段中声明自定义参数，管理后台会自动生成设置表单（与插件配置同一套字段类型与存储机制）。**只有声明了非空 `config` 的主题才会显示「设置」入口**，未声明的主题无需任何额外工作。
+
+```json
+{
+  "id": "typecho-theme-example",
+  "name": "示例主题",
+  "config": {
+    "footerText": {
+      "type": "text",
+      "label": "页脚附加文字",
+      "description": "显示在页脚版权行末尾。",
+      "default": ""
+    },
+    "showSearch": {
+      "type": "checkbox",
+      "label": "显示搜索框",
+      "default": "1"
+    },
+    "providers": {
+      "type": "repeatable",
+      "label": "数据源",
+      "default": [],
+      "itemFields": {
+        "provider": { "type": "select", "label": "类型", "options": { "r2": "R2", "s3": "S3" } },
+        "endpoint": { "type": "text", "label": "地址", "default": "", "showWhen": { "field": "provider", "value": "s3" } },
+        "secret": { "type": "password", "label": "密钥", "default": "" }
+      }
+    }
+  }
+}
+```
+
+### 字段类型
+
+与插件配置完全一致：`text`、`textarea`、`select`、`radio`、`checkbox`、`password`、`hidden`、`repeatable`。
+
+**扩展属性**：
+- `showWhen` — 条件显示，仅适用于 `repeatable.itemFields`。格式：`{ field: "provider", value: "s3" }`，`value` 可为单值或数组
+- `optionsSource` — 动态选项源，仅适用于 `select`。当前支持 `"r2Bindings"`（自动读取运行时 R2 binding 名称）
+- `itemFields` — 嵌套字段定义，仅适用于 `repeatable`
+
+**boolean 型 select / checkbox**：`select` 的选项值按字符串原样存储（主题没有运行时 hook，不会像插件那样在 `plugin:config:beforeSave` 中把 `"true"` / `"false"` 自动转换为 boolean），模板中需要 boolean 时请自行转换；`checkbox` 未声明 `options` 时是布尔开关，存 `"1"` / `"0"`。
+
+### 读取配置
+
+所有模板组件通过公共 Props `themeConfig` 读取当前激活主题的配置（已合并 manifest 默认值）：
+
+```astro
+---
+const { options, themeConfig } = Astro.props;
+const footerText = typeof themeConfig.footerText === 'string' ? themeConfig.footerText : '';
+---
+<footer>
+  {footerText && <span> · {footerText}</span>}
+</footer>
+```
+
+未配置任何字段时 `themeConfig` 为空对象 `{}`。`password` / `hidden` 字段的值永远不会通过 API 明文返回（管理表单使用占位符，保存时原样保留）。
+
+### 存储
+
+配置保存到 `typecho_options` 表的 `theme:<themeId>` 行（JSON 字符串），保存时只保留清单中声明的字段（allowlist），并会刷新站点缓存。切换主题不会删除旧主题的配置。
 
 ---
 
@@ -105,6 +173,7 @@ interface ThemeBaseProps {
   sidebarData: SidebarData;      // 侧边栏数据（分类、标签、最近文章等）
   currentPath: string;           // 当前请求路径
   pluginCtx: HookContext;        // 当前请求已激活插件集合，传给 Base 布局执行展示 Hook
+  themeConfig: Record<string, unknown>;  // 当前激活主题的自定义配置（manifest.config 声明字段，已合并默认值）
 }
 ```
 

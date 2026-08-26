@@ -1,0 +1,55 @@
+---
+/**
+ * Theme Configuration Page
+ * Equivalent to PHP Typecho's options-theme.php
+ *
+ * Loads the theme manifest's config definition and renders the shared
+ * ConfigForm component. URL: /admin/theme-config?id=<themeId>
+ */
+import Admin from '@/layouts/Admin.astro';
+import { createContext, requireAuth } from '@/lib/context';
+import { hasPermission } from '@/lib/auth';
+import { getTheme, themeHasConfig } from '@/lib/theme';
+import { getThemeConfigurationView } from '@/lib/theme-config';
+import ConfigForm from '@/components/admin/ConfigForm.astro';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const authCheck = requireAuth(ctx);
+if (authCheck) return authCheck;
+
+if (!hasPermission(ctx.user!.group || 'visitor', 'administrator')) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const { options, urls, user, csrfToken } = ctx;
+
+// Get theme ID from query string
+const themeId = Astro.url.searchParams.get('id') || '';
+const theme = getTheme(themeId);
+
+// Validate
+if (!theme || !themeHasConfig(themeId)) {
+  return Astro.redirect('/admin/themes');
+}
+
+const manifest = theme.manifest;
+const configuration = getThemeConfigurationView(options, themeId);
+const configDef = configuration.fields;
+const configValues = configuration.values;
+const message = Astro.url.searchParams.get('saved') === '1' ? '主题设置已经保存' : '';
+
+const pageTitle = `设置主题 ${manifest.name || themeId}`;
+---
+<Admin title={pageTitle} options={options} urls={urls} user={user} activeMenu="themes" pluginCtx={ctx}>
+  <ConfigForm
+    action="/api/admin/theme-config"
+    csrfToken={csrfToken}
+    entityName="theme"
+    entityId={themeId}
+    configDef={configDef}
+    configValues={configValues}
+    message={message}
+    backHref="/admin/themes"
+    backLabel="返回主题列表"
+  />
+</Admin>

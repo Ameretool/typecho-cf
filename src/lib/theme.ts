@@ -11,6 +11,7 @@
  *     screenshot.png    - Theme preview image (optional)
  *     assets/           - Additional assets (optional)
  */
+import { getConfigDefaults, loadConfig, type ConfigField } from '@/lib/config';
 
 export interface ThemeManifest {
   /** Unique theme identifier */
@@ -37,6 +38,13 @@ export interface ThemeManifest {
   license?: string;
   /** Tags for categorization */
   tags?: string[];
+  /**
+   * Optional custom configuration fields.
+   * If present and non-empty, the admin "外观" page shows a "设置" link for
+   * this theme. Keys are field names, values are field definitions (the same
+   * schema as plugin config). Stored as JSON in options table under "theme:<id>".
+   */
+  config?: Record<string, ConfigField>;
 }
 
 export interface ThemeInfo {
@@ -150,6 +158,13 @@ export function getActiveTheme(activeThemeId: string): ThemeInfo {
 }
 
 /**
+ * Get a single theme by ID.
+ */
+export function getTheme(themeId: string): ThemeInfo | undefined {
+  return themeRegistry.get(themeId);
+}
+
+/**
  * Register an npm theme into the registry.
  * Called by the theme loader integration at build time.
  */
@@ -195,6 +210,38 @@ export function getThemeStylesheets(activeThemeId: string): string[] {
  */
 export function themeExists(themeId: string): boolean {
   return themeRegistry.has(themeId);
+}
+
+/**
+ * Check if a theme declares custom configuration fields in its manifest.
+ */
+export function themeHasConfig(themeId: string): boolean {
+  const theme = themeRegistry.get(themeId);
+  return !!theme?.manifest.config && Object.keys(theme.manifest.config).length > 0;
+}
+
+/**
+ * Get default values from a theme's config definition.
+ * Returns a flat object { fieldName: defaultValue }.
+ */
+export function getThemeConfigDefaults(themeId: string): Record<string, any> {
+  return getConfigDefaults(themeRegistry.get(themeId)?.manifest.config);
+}
+
+/**
+ * Load theme configuration from the options table.
+ * Key format: "theme:<themeId>", value is a JSON string.
+ * Falls back to defaults from the theme manifest if not yet saved.
+ *
+ * @param options - Site options object from loadOptions() (contains all option rows)
+ * @param themeId - Theme identifier
+ * @returns Merged config object (saved values + defaults for missing keys)
+ */
+export function loadThemeConfig(
+  options: Record<string, any>,
+  themeId: string,
+): Record<string, any> {
+  return loadConfig(options, `theme:${themeId}`, themeRegistry.get(themeId)?.manifest.config);
 }
 
 /**

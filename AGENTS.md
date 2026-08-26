@@ -150,6 +150,10 @@ src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上
 - 启用插件时自动写入默认配置，禁用时删除配置
 - `typecho_options.secret` 是签名密钥，跨部署必须保留，**不可重置**
 
+主题自定义配置（可选）使用同一套机制：`name = "theme:<themeId>"`，通过
+`loadThemeConfig(options, themeId)` 读取；只有 manifest 声明非空 `config` 的主题
+才会在「外观」页出现「设置」入口。
+
 ---
 
 ## 5. Cloudflare 绑定
@@ -310,6 +314,14 @@ WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含
 
 推荐主题组件使用系统 `Base.astro`；该布局会在 `<head>` 注入 `<link>` 标签（基于主题 manifest 的 `stylesheets` + `stylesheet`），并执行前台插件注入。自行输出完整 HTML 的主题必须自行处理样式和 `archive:header` / `archive:footer`。
 
+### 7.4 主题自定义配置（可选）
+
+- `theme.json`（或 `package.json` 的 `typecho.theme`）可声明 `config` 字段，字段 schema 与插件配置完全一致（见 9.4）
+- **只有声明非空 `config` 的主题才显示「设置」入口**（`src/pages/admin/themes.astro` 卡片与 `/admin/theme-config?id=<themeId>` 设置页）
+- 配置保存在 `typecho_options` 的 `theme:<themeId>` 行（JSON 字符串），保存时对清单字段做 allowlist，`password`/`hidden` 值在 API 中始终掩码、保存占位符时保留原值（`src/lib/theme-config.ts`，与插件共用 `src/lib/config.ts` 的解析/掩码/还原逻辑）
+- 模板组件通过公共 Props `themeConfig`（`ThemeBaseProps`）读取当前激活主题配置，已合并 manifest 默认值；未声明时为空对象
+- 主题无运行时入口，因此没有 `config:beforeSave` 类校验 hook；保存成功即刷新站点缓存
+
 ---
 
 ## 8. 认证系统
@@ -414,9 +426,9 @@ Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的�
 - `src/lib/isolate-boot.ts`：`state`（表检查 / 索引回填 / FTS 引导的一次性标志）
 - `src/lib/login-rate-limit.ts`：登录限流（D1 持久化） + 上传限流（`trackSlidingWindow`，内存级滑动窗口）
 
-### 9.4 插件配置表单类型
+### 9.4 配置表单类型（插件 / 主题共用）
 
-`package.json` 的 `typecho.plugin.config` 字段支持以下类型：
+`package.json` 的 `typecho.plugin.config` 与 `theme.json` 的 `config` 字段支持以下类型：
 `text`, `textarea`, `select`, `radio`, `checkbox`, `password`, `hidden`, `repeatable`
 
 **扩展属性**：
@@ -426,7 +438,7 @@ Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的�
 
 **boolean 型 select**：当选项值为 `"true"` / `"false"` 时，系统通过 `parseBoolean` 辅助函数转换为实际 boolean 存储。在 `plugin:config:beforeSave` hook 中需显式返回该字段（boolean 值），否则会被过滤丢失。
 
-声明 `config` 后，管理插件列表自动显示「设置」链接。
+声明 `config` 后，管理插件列表自动显示「设置」链接；主题则在「外观」卡片显示「设置」链接。
 
 ---
 
@@ -491,8 +503,10 @@ src/
 │   ├── index.ts                     # Drizzle DB 工厂
 │   └── schema.ts                    # 9 张表定义
 ├── lib/
+│   ├── config.ts                   # 插件/主题共用配置字段机制（解析、默认值、掩码、allowlist）
 │   ├── plugin.ts                    # 插件系统核心（Hook 总线）
 │   ├── theme.ts                     # 主题系统
+│   ├── theme-config.ts              # 主题配置视图 + 保存流程
 │   ├── context.ts                   # 请求上下文（复用中间件 bootstrap）
 │   ├── client-ip.ts                 # 统一客户端 IP 提取
 │   ├── content-visibility.ts        # 公共内容可见性规则
@@ -520,11 +534,13 @@ src/
 ├── pages/
 │   ├── contents/                  # 内容统一渲染入口 contents/[cid].astro（文章/页面/草稿，permalink 重写目标）
 │   ├── admin/                       # 管理后台页面
+│   │   ├── themes.astro             # 外观（主题列表/切换/设置入口）
+│   │   ├── theme-config.astro       # 主题自定义配置表单页
 │   │   └── plugin/
 │   │       └── [slug].astro         # 插件专属管理页面容器（admin:page hook 注入点）
 │   └── api/
 │       ├── comment.ts               # 前台评论 API
-│       └── admin/                   # 管理 API 端点
+│       └── admin/                   # 管理 API 端点（含 theme-config.ts 主题配置读写）
 ├── plugins/                         # 内置插件（工作区包）
 │   ├── README.md                    # 插件开发完整规范
 │   ├── typecho-plugin-antispam/     # 反垃圾评论（参考基础插件）

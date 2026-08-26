@@ -72,8 +72,76 @@ Themes without a `components/` directory are CSS-only themes — the system auto
 | `name` | No | Display name; defaults to the npm package name |
 | `stylesheet` | No | Main CSS source filename, default `style.css`; emitted as `public/themes/{id}/style.css` |
 | `stylesheets` | No | Additional CSS files (loaded in order, before `stylesheet`) |
+| `config` | No | Optional custom configuration field declarations. When declared, the admin "Appearance" card shows a "Settings" link; the config is stored as JSON in the `theme:<id>` row of `typecho_options` |
 
 > **Config priority**: `theme.json` > `package.json` `typecho.theme` field > values inferred from `package.json`. The main CSS file must exist in every case.
+
+---
+
+## Custom configuration (optional)
+
+Themes can declare custom parameters in the `config` field of `theme.json`; the admin panel automatically renders a settings form (same field types and storage mechanism as plugin config). **Only themes that declare a non-empty `config` get a "Settings" entry** — themes without one need no extra work.
+
+```json
+{
+  "id": "typecho-theme-example",
+  "name": "Example Theme",
+  "config": {
+    "footerText": {
+      "type": "text",
+      "label": "Footer text",
+      "description": "Appended to the copyright line in the footer.",
+      "default": ""
+    },
+    "showSearch": {
+      "type": "checkbox",
+      "label": "Show search box",
+      "default": "1"
+    },
+    "providers": {
+      "type": "repeatable",
+      "label": "Providers",
+      "default": [],
+      "itemFields": {
+        "provider": { "type": "select", "label": "Type", "options": { "r2": "R2", "s3": "S3" } },
+        "endpoint": { "type": "text", "label": "Endpoint", "default": "", "showWhen": { "field": "provider", "value": "s3" } },
+        "secret": { "type": "password", "label": "Secret", "default": "" }
+      }
+    }
+  }
+}
+```
+
+### Field types
+
+Identical to plugin config: `text`, `textarea`, `select`, `radio`, `checkbox`, `password`, `hidden`, `repeatable`.
+
+**Extended attributes**:
+- `showWhen` — conditional visibility, only valid inside `repeatable.itemFields`. Format: `{ field: "provider", value: "s3" }`; `value` can be a single value or an array
+- `optionsSource` — dynamic option source, only valid for `select`. Currently supports `"r2Bindings"` (reads runtime R2 binding names)
+- `itemFields` — nested field definitions, only valid for `repeatable`
+
+**Boolean select / checkbox**: `select` option values are stored as raw strings (themes have no runtime hook, so there is no `plugin:config:beforeSave`-style `parseBoolean` conversion — convert in your template when needed); a `checkbox` without `options` is a boolean toggle stored as `"1"` / `"0"`.
+
+### Reading the config
+
+All template components receive the active theme's config through the shared prop `themeConfig` (merged with manifest defaults):
+
+```astro
+---
+const { options, themeConfig } = Astro.props;
+const footerText = typeof themeConfig.footerText === 'string' ? themeConfig.footerText : '';
+---
+<footer>
+  {footerText && <span> · {footerText}</span>}
+</footer>
+```
+
+`themeConfig` is `{}` when no fields are declared. `password` / `hidden` values are never returned in plaintext through the API (the admin form uses a placeholder and preserves the stored value on save).
+
+### Storage
+
+Config is saved to the `theme:<themeId>` row of `typecho_options` (JSON string). Only fields declared in the manifest are kept (allowlist), and the site cache is purged on save. Switching themes does not delete the old theme's config.
 
 ---
 
@@ -105,6 +173,7 @@ interface ThemeBaseProps {
   sidebarData: SidebarData;      // Sidebar widget data (categories, tags, recent posts, etc.)
   currentPath: string;           // Current request path
   pluginCtx: HookContext;        // Active plugins for display hooks executed by the Base layout
+  themeConfig: Record<string, unknown>;  // Active theme's custom config (manifest.config fields, merged with defaults)
 }
 ```
 

@@ -2,7 +2,7 @@
 import Admin from '@/layouts/Admin.astro';
 import { createContext, requireAuth } from '@/lib/context';
 import { hasPermission, requireAdminCSRF } from '@/lib/auth';
-import { getAvailableThemes } from '@/lib/theme';
+import { getAvailableThemes, themeHasConfig } from '@/lib/theme';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const authCheck = requireAuth(ctx);
@@ -138,6 +138,12 @@ const themes = getAvailableThemes(options.theme || 'typecho-theme-minimal');
                     <input type="hidden" name="theme" value={theme.id} />
                     <button type="submit" class="btn primary">启用</button>
                   </form>
+                )}
+
+                {themeHasConfig(theme.id) && (
+                  <a href={`/admin/theme-config?id=${theme.id}`} class="btn" style="text-decoration: none;">
+                    设置
+                  </a>
                 )}
 
                 {theme.manifest.homepage && (

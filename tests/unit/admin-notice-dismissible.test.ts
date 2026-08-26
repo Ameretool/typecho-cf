@@ -26,7 +26,6 @@ describe('admin dismissible notices', () => {
     for (const page of [
       'src/pages/admin/plugins.astro',
       'src/pages/admin/themes.astro',
-      'src/pages/admin/plugin-config.astro',
     ]) {
       const source = readProjectFile(page);
 
@@ -34,6 +33,12 @@ describe('admin dismissible notices', () => {
       expect(source, page).toContain('class="typecho-notice-close"');
       expect(source, page).toContain('aria-label="关闭提示"');
     }
+
+    // Both config pages (plugin + theme) render the banner through the shared form.
+    const form = readProjectFile('src/components/admin/ConfigForm.astro');
+    expect(form).toContain('notice typecho-dismissible');
+    expect(form).toContain('class="typecho-notice-close"');
+    expect(form).toContain('aria-label="关闭提示"');
   });
 
   it('keeps login flash errors dismissible outside the admin layout', () => {

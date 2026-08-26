@@ -9,6 +9,7 @@ import { eq, and, desc, asc, lt, gt, or, sql } from 'drizzle-orm';
 import { schema, type Database } from '@/db';
 import type { SiteOptions } from '@/lib/options';
 import { loadSidebarData, loadNavPages, type SidebarData } from '@/lib/sidebar';
+import { loadThemeConfig } from '@/lib/theme';
 import { buildFtsMatchExpression, contentsFtsTableRef, FTS_MIN_CHARS, isFtsAvailable } from '@/lib/fulltext';
 import {
   buildPermalink, buildAuthorLink,
@@ -63,7 +64,17 @@ async function loadCommon(ctx: RequestContext, requestUrl: string, withSidebar =
     loadNavPages(db, urls.siteUrl, options.pagePattern as string | undefined, options.cacheVersion),
   ]);
   const currentPath = new URL(requestUrl).pathname;
-  return { options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx: ctx };
+  return {
+    options,
+    urls,
+    user,
+    isLoggedIn,
+    pages,
+    sidebarData,
+    currentPath,
+    pluginCtx: ctx,
+    themeConfig: loadThemeConfig(options, options.theme),
+  };
 }
 
 function getPage(locals: Record<string, unknown>, url: URL): number {
