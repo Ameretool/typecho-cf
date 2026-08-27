@@ -53,7 +53,8 @@
     "typecho-plugin-turnstile": "file:src/plugins/typecho-plugin-turnstile",
     "typecho-plugin-webdav": "file:src/plugins/typecho-plugin-webdav",
     "typecho-plugin-wechat-publisher": "file:src/plugins/typecho-plugin-wechat-publisher",
-    "typecho-theme-minimal": "file:src/themes/typecho-theme-minimal"
+    "typecho-theme-minimal": "file:src/themes/typecho-theme-minimal",
+    "typecho-theme-paperline": "file:src/themes/typecho-theme-paperline"
   },
   "devDependencies": {
     "@libsql/client": "^0.17.4",

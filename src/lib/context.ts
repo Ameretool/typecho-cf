@@ -7,6 +7,7 @@ import { getDb, type Database } from '@/db';
 import { loadOptions, type SiteOptions, computeUrls } from '@/lib/options';
 import { getAuthCookies, validateAuthToken, hasPermission, generateSecurityToken } from '@/lib/auth';
 import { setActivatedPlugins, parseActivatedPlugins, doHook, type HookContext } from '@/lib/plugin';
+import { getThemePreviewId, THEME_PREVIEW_OPTION } from '@/lib/theme-preview';
 import { schema } from '@/db';
 import { env } from 'cloudflare:workers';
 export { getClientIp } from '@/lib/client-ip';
@@ -119,6 +120,15 @@ async function buildContext(locals: InternalLocals, request: Request): Promise<R
       ctx.user = result.user;
       ctx.isLoggedIn = true;
     }
+  }
+
+  const previewThemeId = getThemePreviewId(
+    request,
+    !!ctx.user && hasPermission(ctx.user.group || 'visitor', 'administrator'),
+  );
+  if (previewThemeId) {
+    ctx.options = { ...ctx.options, theme: previewThemeId, [THEME_PREVIEW_OPTION]: previewThemeId };
+    ctx.urls = computeUrls(ctx.options);
   }
 
   ctx.csrfToken = (ctx.user && options.secret)

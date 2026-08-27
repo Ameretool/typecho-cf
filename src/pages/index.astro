@@ -5,6 +5,7 @@ import { prepareIndexData } from '@/lib/page-data';
 import { buildPermalink, getRedirectPathIfDifferent } from '@/lib/content';
 import { schema } from '@/db';
 import { and, eq } from 'drizzle-orm';
+import { THEME_PREVIEW_QUERY_PARAM, THEME_PREVIEW_OPTION } from '@/lib/theme-preview';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const { db, options, urls } = ctx;
@@ -18,7 +19,11 @@ if (!searchQuery && Astro.request.method === 'POST') {
   } catch {}
 }
 if (searchQuery) {
-  return Astro.redirect(`/search/${encodeURIComponent(searchQuery)}/`);
+  const previewTheme = options[THEME_PREVIEW_OPTION];
+  const previewQuery = typeof previewTheme === 'string'
+    ? `?${THEME_PREVIEW_QUERY_PARAM}=${encodeURIComponent(previewTheme)}`
+    : '';
+  return Astro.redirect(`/search/${encodeURIComponent(searchQuery)}/${previewQuery}`);
 }
 
 // Custom front page

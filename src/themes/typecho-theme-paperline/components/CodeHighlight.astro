@@ -1,0 +1,208 @@
+<script>
+  const aliases = {
+    sh: 'shell', zsh: 'shell', yml: 'yaml', md: 'text', markdown: 'text',
+    js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
+    ts: 'typescript', tsx: 'typescript', py: 'python', rb: 'ruby', rs: 'rust',
+    golang: 'go', cs: 'csharp', 'c++': 'cpp', 'c#': 'csharp', htm: 'html',
+    dockerfile: 'bash',
+  };
+
+  const commonKeywords = new Set(
+    'as async await break case catch class const continue default do else extends finally for from function if import in interface let new of private protected public return static switch this throw try typeof var while with yield'.split(' '),
+  );
+  const keywords = {
+    javascript: commonKeywords,
+    typescript: new Set([...commonKeywords, 'declare', 'enum', 'implements', 'namespace', 'readonly', 'type']),
+    python: new Set('and as assert async await break class continue def del elif else except finally for from global if import in is lambda not or pass raise return try while with yield'.split(' ')),
+    java: new Set([...commonKeywords, 'boolean', 'byte', 'double', 'final', 'float', 'int', 'long', 'package', 'short', 'void']),
+    go: new Set('break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var'.split(' ')),
+    rust: new Set('as async await const crate else enum fn for if impl in let loop match mod move mut pub ref return self static struct trait type use where while'.split(' ')),
+    bash: new Set('case do done elif else esac fi for function if in select then until while'.split(' ')),
+    shell: new Set('case do done elif else esac fi for function if in select then until while'.split(' ')),
+    sql: new Set('alter and as asc begin by case create delete desc drop else end from group having insert into join left limit not null on or order right select set table then union update values when where with'.split(' ')),
+  };
+  const literals = new Set(['false', 'nil', 'none', 'null', 'true', 'undefined']);
+  const hashCommentLanguages = new Set(['bash', 'python', 'ruby', 'shell', 'toml', 'yaml']);
+  const slashCommentLanguages = new Set(['c', 'cpp', 'csharp', 'css', 'go', 'java', 'javascript', 'kotlin', 'php', 'rust', 'swift', 'typescript']);
+
+  const escapeHtml = (value) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  function normalizeLanguage(language) {
+    const raw = String(language || 'text').trim().toLowerCase().split(/[\s,]+/, 1)[0];
+    return aliases[raw] || raw || 'text';
+  }
+
+  function readQuoted(source, start, quote) {
+    let escaped = false;
+    for (let index = start + 1; index < source.length; index += 1) {
+      const current = source[index];
+      if (escaped) escaped = false;
+      else if (current === '\\') escaped = true;
+      else if (current === quote) return index + 1;
+    }
+    return source.length;
+  }
+
+  function readLineEnd(source, start) {
+    const end = source.indexOf('\n', start);
+    return end === -1 ? source.length : end;
+  }
+
+  function highlight(source, language) {
+    const normalized = normalizeLanguage(language);
+    const languageKeywords = keywords[normalized] || commonKeywords;
+    const isMarkup = normalized === 'html' || normalized === 'xml';
+    const lines = [];
+    let line = '';
+    let index = 0;
+
+    function append(value) {
+      const parts = value.split('\n');
+      line += parts.shift() || '';
+      for (const part of parts) {
+        lines.push(line);
+        line = part;
+      }
+    }
+
+    function appendToken(kind, value) {
+      const parts = value.split('\n');
+      const wrap = (part) => `<span class="tok-${kind}">${escapeHtml(part)}</span>`;
+      line += wrap(parts.shift() || '');
+      for (const part of parts) {
+        lines.push(line);
+        line = wrap(part);
+      }
+    }
+
+    while (index < source.length) {
+      const current = source[index];
+      if (current === '\n') {
+        append('\n');
+        index += 1;
+        continue;
+      }
+
+      if (isMarkup && source.startsWith('<!--', index)) {
+        const end = source.indexOf('-->', index + 4);
+        const next = end === -1 ? source.length : end + 3;
+        appendToken('comment', source.slice(index, next));
+        index = next;
+        continue;
+      }
+
+      if (source.startsWith('/*', index)) {
+        const end = source.indexOf('*/', index + 2);
+        const next = end === -1 ? source.length : end + 2;
+        appendToken('comment', source.slice(index, next));
+        index = next;
+        continue;
+      }
+
+      if (slashCommentLanguages.has(normalized) && source.startsWith('//', index)) {
+        const next = readLineEnd(source, index);
+        appendToken('comment', source.slice(index, next));
+        index = next;
+        continue;
+      }
+
+      if (normalized === 'sql' && source.startsWith('--', index)) {
+        const next = readLineEnd(source, index);
+        appendToken('comment', source.slice(index, next));
+        index = next;
+        continue;
+      }
+
+      if (hashCommentLanguages.has(normalized) && current === '#') {
+        const next = readLineEnd(source, index);
+        appendToken('comment', source.slice(index, next));
+        index = next;
+        continue;
+      }
+
+      if (isMarkup && current === '<') {
+        const end = source.indexOf('>', index + 1);
+        if (end !== -1) {
+          appendToken('tag', source.slice(index, end + 1));
+          index = end + 1;
+          continue;
+        }
+      }
+
+      if (current === '"' || current === "'" || (current === '`' && (normalized === 'javascript' || normalized === 'typescript'))) {
+        const next = readQuoted(source, index, current);
+        const value = source.slice(index, next);
+        const followsColon = /^\s*:/.test(source.slice(next));
+        appendToken(normalized === 'json' && followsColon ? 'property' : 'string', value);
+        index = next;
+        continue;
+      }
+
+      if (/\d/.test(current) && (index === 0 || !/[A-Za-z0-9_$]/.test(source[index - 1]))) {
+        const match = source.slice(index).match(/^(?:0[xob][0-9a-f]+|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:e[+-]?\d+)?n?)/i);
+        if (match) {
+          appendToken('number', match[0]);
+          index += match[0].length;
+          continue;
+        }
+      }
+
+      if (/[A-Za-z_$]/.test(current)) {
+        let next = index + 1;
+        while (/[A-Za-z0-9_$]/.test(source[next] || '')) next += 1;
+        const word = source.slice(index, next);
+        const following = source.slice(next).match(/^\s*(.)/)?.[1];
+        const kind = literals.has(word)
+          ? 'literal'
+          : languageKeywords.has(word)
+            ? 'keyword'
+            : normalized === 'json' && following === ':'
+              ? 'property'
+              : following === '('
+                ? 'function'
+                : '';
+        if (kind) appendToken(kind, word);
+        else append(escapeHtml(word));
+        index = next;
+        continue;
+      }
+
+      if (/[=+\-*/%!<>?&|^~]/.test(current)) {
+        const match = source.slice(index).match(/^(?:[=+\-*/%!<>?&|^~]|\.{2,3})+/)?.[0];
+        if (match) {
+          appendToken('operator', match);
+          index += match.length;
+          continue;
+        }
+      }
+
+      append(escapeHtml(current));
+      index += 1;
+    }
+    lines.push(line);
+    return lines.map((value) => `<span class="code-line">${value || ' '}</span>`).join('\n');
+  }
+
+  function highlightCodeBlocks() {
+    document.querySelectorAll('pre > code').forEach((code) => {
+      if (code.dataset.themeHighlighted === '1') return;
+      const language = [...code.classList].find((name) => name.startsWith('language-'))?.slice(9) || 'text';
+      const pre = code.parentElement;
+      const source = (code.textContent || '').replace(/\n$/, '');
+      if (pre) pre.dataset.language = normalizeLanguage(language);
+      code.innerHTML = highlight(source, language);
+      code.dataset.themeHighlighted = '1';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', highlightCodeBlocks, { once: true });
+  } else {
+    highlightCodeBlocks();
+  }
+</script>

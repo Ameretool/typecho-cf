@@ -41,6 +41,9 @@ importers:
       typecho-theme-minimal:
         specifier: file:src/themes/typecho-theme-minimal
         version: file:src/themes/typecho-theme-minimal
+      typecho-theme-paperline:
+        specifier: file:src/themes/typecho-theme-paperline
+        version: file:src/themes/typecho-theme-paperline
     devDependencies:
       '@libsql/client':
         specifier: ^0.17.4
@@ -2937,6 +2940,9 @@ packages:
   typecho-theme-minimal@file:src/themes/typecho-theme-minimal:
     resolution: {directory: src/themes/typecho-theme-minimal, type: directory}
 
+  typecho-theme-paperline@file:src/themes/typecho-theme-paperline:
+    resolution: {directory: src/themes/typecho-theme-paperline, type: directory}
+
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
@@ -5731,6 +5737,8 @@ snapshots:
   typecho-plugin-wechat-publisher@file:src/plugins/typecho-plugin-wechat-publisher: {}
 
   typecho-theme-minimal@file:src/themes/typecho-theme-minimal: {}
+
+  typecho-theme-paperline@file:src/themes/typecho-theme-paperline: {}
 
   typescript@6.0.3: {}
 

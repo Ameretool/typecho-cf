@@ -153,7 +153,7 @@ const themes = getAvailableThemes(options.theme || 'typecho-theme-minimal');
                   </a>
                 )}
 
-                <a href={`${urls.siteUrl}/`} target="_blank" rel="noopener noreferrer"
+                <a href={`${urls.adminUrl}theme-preview?theme=${encodeURIComponent(theme.id)}`} target="_blank" rel="noopener noreferrer"
                   class="btn" style="text-decoration: none;">
                   预览
                 </a>

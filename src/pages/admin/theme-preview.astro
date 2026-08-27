@@ -1,0 +1,78 @@
+---
+/**
+ * Read-only live theme preview.
+ *
+ * The selected theme is applied to a request-local copy of the site options;
+ * the active theme in the database is never changed.
+ */
+import { themeTemplates } from 'virtual:theme-templates';
+import { createContext, requireAuth } from '@/lib/context';
+import { hasPermission } from '@/lib/auth';
+import { getTheme } from '@/lib/theme';
+import { prepareIndexData, preparePageData } from '@/lib/page-data';
+import type { ThemePageProps } from '@/lib/theme-props';
+import { computeUrls } from '@/lib/options';
+import { THEME_PREVIEW_OPTION } from '@/lib/theme-preview';
+import { and, eq } from 'drizzle-orm';
+import { schema } from '@/db';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const authCheck = requireAuth(ctx);
+if (authCheck) return authCheck;
+
+if (!hasPermission(ctx.user!.group || 'visitor', 'administrator')) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const themeId = Astro.url.searchParams.get('theme')?.trim() || '';
+const theme = getTheme(themeId);
+if (!theme) {
+  return new Response('Theme not found', { status: 404 });
+}
+
+// Use a request-local option copy so Base.astro loads the selected theme's
+// stylesheets while the persisted site option remains unchanged.
+const previewCtx = {
+  ...ctx,
+  options: { ...ctx.options, theme: theme.id, [THEME_PREVIEW_OPTION]: theme.id },
+  urls: computeUrls({ ...ctx.options, theme: theme.id, [THEME_PREVIEW_OPTION]: theme.id }),
+};
+const previewUrl = new URL('/', Astro.request.url);
+const templates = themeTemplates[theme.id] ?? {};
+const defaultTemplates = themeTemplates['typecho-theme-minimal']!;
+const IndexComponent = templates.Index ?? defaultTemplates.Index!;
+const PageComponent = templates.Page ?? defaultTemplates.Page!;
+
+let previewPageData: ThemePageProps | null = null;
+const frontPage = previewCtx.options.frontPage as string | undefined;
+if (frontPage?.startsWith('page:')) {
+  const pageCid = parseInt(frontPage.split(':')[1] || '0', 10);
+  if (pageCid > 0) {
+    const pageRow = await previewCtx.db.query.contents.findFirst({
+      where: and(
+        eq(schema.contents.cid, pageCid),
+        eq(schema.contents.type, 'page'),
+      ),
+    });
+    if (pageRow && (pageRow.status === 'publish' || pageRow.status === 'hidden')) {
+      const pageData = await preparePageData(
+        previewCtx,
+        pageRow.slug || String(pageRow.cid),
+        previewUrl.toString(),
+        null,
+        pageRow,
+      );
+      if (!(pageData instanceof Response)) previewPageData = pageData;
+    }
+  }
+}
+
+const indexData = previewPageData
+  ? null
+  : await prepareIndexData(previewCtx, previewUrl.toString(), Astro.locals, previewUrl);
+---
+{previewPageData ? (
+  <PageComponent {...previewPageData} />
+) : (
+  <IndexComponent {...indexData!} />
+)}

@@ -4,6 +4,7 @@ import type { computeUrls } from '@/lib/options';
 import type { UserRow } from '@/lib/context';
 import { getThemeStylesheets } from '@/lib/theme';
 import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
+import { THEME_PREVIEW_OPTION, THEME_PREVIEW_QUERY_PARAM } from '@/lib/theme-preview';
 
 interface Props {
   title?: string;
@@ -33,6 +34,9 @@ const {
 
 const pageTitle = title ? `${title} - ${options.title}` : options.title;
 const themeStylesheets = getThemeStylesheets(options.theme || 'typecho-theme-minimal');
+const previewTheme = typeof options[THEME_PREVIEW_OPTION] === 'string'
+  ? options[THEME_PREVIEW_OPTION]
+  : '';
 
 // Collect client-side snippets from all activated plugins
 const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: new Set<string>() }, options as Record<string, any>, pageContext);
@@ -56,5 +60,42 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <body class={bodyClass}>
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
+  {previewTheme && (
+    <script is:inline data-preview-theme={previewTheme} data-preview-query={THEME_PREVIEW_QUERY_PARAM}>
+      {`(() => {
+        const script = document.currentScript;
+        const theme = script?.dataset.previewTheme;
+        const query = script?.dataset.previewQuery;
+        if (!theme || !query) return;
+
+        const decorate = (raw) => {
+          if (!raw || raw.startsWith('#')) return raw;
+          let url;
+          try { url = new URL(raw, window.location.href); } catch { return raw; }
+          if (url.origin !== window.location.origin || !/^https?:$/.test(url.protocol)) return raw;
+          url.searchParams.set(query, theme);
+          return url.toString();
+        };
+
+        const applyPreviewNavigation = () => {
+          document.querySelectorAll('a[href]').forEach((link) => {
+            const next = decorate(link.getAttribute('href'));
+            if (next) link.setAttribute('href', next);
+          });
+          document.querySelectorAll('form[action]').forEach((form) => {
+            if (!form.querySelector('input[name="s"]')) return;
+            const next = decorate(form.getAttribute('action'));
+            if (next) form.setAttribute('action', next);
+          });
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', applyPreviewNavigation, { once: true });
+        } else {
+          applyPreviewNavigation();
+        }
+      })();`}
+    </script>
+  )}
 </body>
 </html>

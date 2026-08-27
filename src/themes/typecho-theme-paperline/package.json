@@ -1,0 +1,19 @@
+{
+  "name": "typecho-theme-paperline",
+  "version": "1.0.0",
+  "description": "Typecho 白底蓝链的紧凑博客主题，适合技术文章与知识整理",
+  "author": "Typecho-CF",
+  "license": "GPL-2.0",
+  "keywords": [
+    "typecho",
+    "theme",
+    "paperline"
+  ],
+  "files": [
+    "theme.json",
+    "normalize.css",
+    "grid.css",
+    "style.css",
+    "components/"
+  ]
+}
