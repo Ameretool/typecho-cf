@@ -185,7 +185,7 @@
       index += 1;
     }
     lines.push(line);
-    return lines.map((value) => `<span class="code-line">${value || ' '}</span>`).join('\n');
+    return lines.map((value) => `<span class="code-line">${value || ' '}</span>`).join('');
   }
 
   function highlightCodeBlocks() {

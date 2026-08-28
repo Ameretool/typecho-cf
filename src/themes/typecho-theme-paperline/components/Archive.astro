@@ -38,7 +38,13 @@ const isIndex = currentPath === '/';
           <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
             <label for="s" class="sr-only">搜索关键字</label>
             <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
+            <button type="submit" class="submit" aria-label="搜索">
+              搜索
+              <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <circle cx="7" cy="7" r="4.5" />
+                <path d="m10.5 10.5 4 4" />
+              </svg>
+            </button>
           </form>
         </div>
         <div class="col-mb-12">
