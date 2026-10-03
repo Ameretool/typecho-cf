@@ -19,15 +19,18 @@ const { comments, commentOptions, gravatarMap, permalink } = Astro.props;
 {comments.map((node) => (
   <li class="comment-body" id={`comment-${node.coid}`}>
     <div class="comment-author">
-      {commentOptions.showAvatar && (
-        <img
-          class="avatar"
-          src={gravatarMap[node.coid] || `https://gravatar.com/avatar/?d=identicon&s=40`}
-          alt={node.author}
-          width="40"
-          height="40"
-        />
-      )}
+
+{commentOptions.showAvatar && (
+  <img
+    class="avatar"
+    src={gravatarMap[node.coid] || `https://gravatar.com/avatar/?d=identicon&s=40`}
+    alt={node.author}
+    width="40"
+    height="40"
+    onerror="this.onerror=null; this.src='/avatar.png';"
+  />
+)}
+
       <cite class="fn">
         {node.url && commentOptions.showUrl ? (
           <a href={node.url} rel="external nofollow">{node.author}</a>
