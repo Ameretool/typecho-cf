@@ -1,0 +1,132 @@
+import { getDb, schema, type Database } from '@/db';
+import { loadOptions, type SiteOptions } from '@/lib/options';
+import { getAuthCookies, hasPermission, requireAdminCSRF, validateAuthToken } from '@/lib/auth';
+import { parseActivatedPlugins, setActivatedPlugins, type HookContext } from '@/lib/plugin';
+import { env } from 'cloudflare:workers';
+import { getRequestCoreContext } from '@/lib/context';
+import { REQUEST_BODY_LIMITS } from '@/lib/constants';
+import { assertBoundedContentLength, InputError } from '@/lib/input';
+
+export interface AdminActionContext {
+  db: Database;
+  options: SiteOptions;
+  uid: number;
+  user: typeof schema.users.$inferSelect;
+  /** Activated plugin set for firing hooks from this request. */
+  pluginCtx: HookContext;
+}
+
+interface RequireAdminActionOptions {
+  csrf?: boolean;
+  /** Maximum declared request-body size, checked before CSRF body parsing. */
+  maxBodyBytes?: number;
+  /**
+   * Load and activate the plugin set for this request. Defaults to
+   * `csrf` (i.e. state-changing POST routes get plugins for free, read
+   * routes stay lean). Pass `true` explicitly for GET routes that need
+   * to fire hooks (e.g. plugin config listing).
+   */
+  plugins?: boolean;
+}
+
+/**
+ * Returns true when the request's Origin/Referer matches the configured
+ * site origin. Missing both headers is treated as untrusted, so naive
+ * `<form enctype=text/plain>`-style cross-site POSTs are rejected even
+ * if the attacker somehow guesses a CSRF token.
+ *
+ * If siteUrl is not yet configured (fresh install / test fixtures), we
+ * fall back to permissive — there is no trust anchor to compare against.
+ */
+export function isSameOriginRequest(request: Request, siteUrl: string): boolean {
+  if (!siteUrl) {
+    const source = request.headers.get('origin') || request.headers.get('referer');
+    if (!source) return false;
+    try {
+      return new URL(source).origin === new URL(request.url).origin;
+    } catch {
+      return false;
+    }
+  }
+  let expected = '';
+  try { expected = new URL(siteUrl).origin; } catch { return false; }
+  if (!expected) return false;
+
+  const headerCheck = (raw: string | null): boolean | null => {
+    if (!raw) return null;
+    try { return new URL(raw).origin === expected; } catch { return false; }
+  };
+
+  const origin = headerCheck(request.headers.get('origin'));
+  if (origin !== null) return origin;
+  const referer = headerCheck(request.headers.get('referer'));
+  if (referer !== null) return referer;
+  return false;
+}
+
+export async function requireAdminAction(
+  request: Request,
+  requiredGroup: string,
+  { csrf = true, plugins, maxBodyBytes = REQUEST_BODY_LIMITS.adminForm }: RequireAdminActionOptions = {},
+): Promise<AdminActionContext | Response> {
+  if (csrf) {
+    try {
+      assertBoundedContentLength(request, maxBodyBytes);
+    } catch (error) {
+      if (error instanceof InputError) return new Response(error.message, { status: error.status });
+      throw error;
+    }
+  }
+  const requestCore = getRequestCoreContext(request);
+  const db = requestCore?.db ?? getDb(env.DB);
+  const options = requestCore?.options ?? await loadOptions(db);
+
+  const { token } = getAuthCookies(request.headers.get('cookie'));
+  if (!token || !options.secret) return new Response('Unauthorized', { status: 401 });
+
+  const auth = await validateAuthToken(token, options.secret, db);
+  if (!auth) return new Response('Unauthorized', { status: 401 });
+  if (!hasPermission(auth.user.group || 'visitor', requiredGroup)) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  if (csrf) {
+    // Belt-and-braces: enforce same-origin Origin/Referer in addition to
+    // the CSRF token. Even if a token is leaked, cross-site POSTs are
+    // rejected at the request boundary.
+    if (!isSameOriginRequest(request, options.siteUrl || '')) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    const csrfError = await requireAdminCSRF(request, options.secret as string, auth.user.authCode!, auth.uid);
+    if (csrfError) return csrfError;
+  }
+
+  // Activate the plugin set only when the route actually fires hooks —
+  // reads (csrf=false) that don't ask for plugins skip the parse and
+  // pluginInits loop entirely. Callers that DO need hooks on a GET can
+  // opt in with `plugins: true`.
+  const wantsPlugins = plugins ?? csrf;
+  const pluginCtx: HookContext = requestCore?.pluginCtx ?? { activatedPlugins: new Set<string>() };
+  if (wantsPlugins && !requestCore) {
+    await setActivatedPlugins(pluginCtx, parseActivatedPlugins(options.activatedPlugins as string | undefined));
+  }
+
+  return { db, options, uid: auth.uid, user: auth.user, pluginCtx };
+}
+
+export function isAdminActionResponse(value: AdminActionContext | Response): value is Response {
+  return value instanceof Response;
+}
+
+export function safeAdminRedirectUrl(referer: string | null, siteUrl: string, fallback: string): string {
+  if (!referer) return fallback;
+  try {
+    const refUrl = new URL(referer);
+    const siteOrigin = new URL(siteUrl).origin;
+    if (refUrl.origin !== siteOrigin) return fallback;
+    if (refUrl.pathname !== '/admin' && !refUrl.pathname.startsWith('/admin/')) return fallback;
+    return `${refUrl.pathname}${refUrl.search}`;
+  } catch {
+    return fallback;
+  }
+}

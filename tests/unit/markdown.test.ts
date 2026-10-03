@@ -1,0 +1,340 @@
+/**
+ * Unit tests for src/lib/markdown.ts
+ *
+ * Key concern: <!--more--> must NOT be split on before rendering.
+ * The full markdown source (both sides of the marker) must be parsed in
+ * a single pass so that reference-style links, footnotes, and other
+ * constructs that span the boundary are resolved correctly.
+ */
+import { describe, it, expect } from 'vitest';
+import { autop, escapeHtml, generateExcerpt, renderCommentText, renderContentExcerpt, renderMarkdown, stripHtmlTags, stripTypechoMarkers } from '@/lib/markdown';
+
+// ---------------------------------------------------------------------------
+// renderMarkdown
+// ---------------------------------------------------------------------------
+
+describe('renderMarkdown', () => {
+  it('renders basic markdown to HTML', () => {
+    expect(renderMarkdown('**bold**')).toContain('<strong>bold</strong>');
+  });
+
+  it('strips <!--markdown--> prefix', () => {
+    const html = renderMarkdown('<!--markdown-->*em*');
+    expect(html).toContain('<em>em</em>');
+    expect(html).not.toContain('<!--markdown-->');
+  });
+
+  it('removes <!--more--> from output', () => {
+    const html = renderMarkdown('before<!--more-->after');
+    expect(html).not.toContain('more');
+    expect(html).toContain('before');
+    expect(html).toContain('after');
+  });
+
+  it('resolves reference-style links defined after <!--more-->', () => {
+    // The link definition [foo]: ... sits after <!--more-->.
+    // renderMarkdown must render the whole document, so [link][foo] should resolve.
+    const src = 'See [link][foo]<!--more-->\n\n[foo]: https://example.com';
+    const html = renderMarkdown(src);
+    expect(html).toContain('href="https://example.com"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renderContentExcerpt
+// ---------------------------------------------------------------------------
+
+describe('renderContentExcerpt', () => {
+  it('returns full rendered HTML when no <!--more--> present', () => {
+    const html = renderContentExcerpt('hello **world**');
+    expect(html).toContain('<strong>world</strong>');
+    expect(html).not.toContain('more');
+  });
+
+  it('truncates at <!--more--> and appends read-more link', () => {
+    const html = renderContentExcerpt('intro<!--more-->rest', '继续阅读', '/post/1/');
+    expect(html).toContain('intro');
+    expect(html).not.toContain('rest');
+    expect(html).toContain('继续阅读');
+    expect(html).toContain('href="/post/1/"');
+  });
+
+  it('resolves reference-style links defined AFTER <!--more-->', () => {
+    // Critical regression test: link def is on the "rest" side of <!--more-->.
+    // The excerpt must still render [click][ref] as a proper anchor.
+    const src = '[click][ref]<!--more-->\n\n[ref]: https://example.org "Example"';
+    const html = renderContentExcerpt(src, 'more', '/p/');
+    expect(html).toContain('href="https://example.org"');
+    expect(html).toContain('click');
+    // The link definition raw text should not appear as visible content
+    expect(html).not.toContain('[ref]:');
+  });
+
+  it('resolves reference-style links defined BEFORE <!--more-->', () => {
+    const src = '[ref]: https://example.net\n\nbefore [click][ref]<!--more-->after';
+    const html = renderContentExcerpt(src, 'more', '/p/');
+    expect(html).toContain('href="https://example.net"');
+    expect(html).not.toContain('after');
+  });
+
+  it('handles multiple <!--more--> markers (only first split matters)', () => {
+    const html = renderContentExcerpt('a<!--more-->b<!--more-->c', 'more', '/p/');
+    expect(html).toContain('>a<');
+    expect(html).not.toContain('>b<');
+    expect(html).not.toContain('>c<');
+  });
+
+  it('strips <!--markdown--> prefix', () => {
+    const html = renderContentExcerpt('<!--markdown-->**bold**<!--more-->rest');
+    expect(html).toContain('<strong>bold</strong>');
+    expect(html).not.toContain('<!--markdown-->');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateExcerpt
+// ---------------------------------------------------------------------------
+
+describe('generateExcerpt', () => {
+  it('returns plain text without tags', () => {
+    const text = generateExcerpt('**hello** world');
+    expect(text).not.toContain('<');
+    expect(text).toContain('hello');
+  });
+
+  it('truncates at maxLength', () => {
+    const long = 'a'.repeat(300);
+    const text = generateExcerpt(long, 100);
+    expect(text.length).toBeLessThanOrEqual(103); // 100 + '...'
+    expect(text.endsWith('...')).toBe(true);
+  });
+
+  it('does not include <!--more--> marker text in output', () => {
+    const text = generateExcerpt('hello<!--more-->world');
+    expect(text).not.toContain('more');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// XSS prevention in renderContentExcerpt (security fix)
+// ---------------------------------------------------------------------------
+describe('renderContentExcerpt XSS prevention', () => {
+  it('escapes double quotes in permalink attribute', () => {
+    const html = renderContentExcerpt(
+      'intro<!--more-->rest',
+      '阅读更多',
+      '/post/" onmouseover="alert(1)',
+    );
+    // The double quotes should be escaped as &quot; preventing attribute breakout
+    expect(html).toContain('&quot;');
+    // The href value should be safely escaped, not creating a real onmouseover attribute
+    expect(html).not.toMatch(/onmouseover="alert/);
+    // The escaped version is safe: it's inside the href attribute value
+    expect(html).toContain('href="/post/&quot; onmouseover=&quot;alert(1)"');
+  });
+
+  it('escapes HTML tags in moreText', () => {
+    const html = renderContentExcerpt(
+      'intro<!--more-->rest',
+      '<script>alert("xss")</script>',
+      '/post/1/',
+    );
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('escapes & in permalink', () => {
+    const html = renderContentExcerpt(
+      'intro<!--more-->rest',
+      'more',
+      '/post?a=1&b=2',
+    );
+    expect(html).toContain('&amp;');
+  });
+
+  it('normal permalink and moreText render correctly', () => {
+    const html = renderContentExcerpt(
+      'intro<!--more-->rest',
+      '继续阅读',
+      '/archives/1/',
+    );
+    expect(html).toContain('href="/archives/1/"');
+    expect(html).toContain('继续阅读');
+    expect(html).toContain('class="more"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// iframe sanitization (domain restriction fix)
+// ---------------------------------------------------------------------------
+describe('renderMarkdown iframe filtering', () => {
+  it('allows YouTube iframes', () => {
+    const md = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>';
+    const html = renderMarkdown(md);
+    expect(html).toContain('iframe');
+    expect(html).toContain('youtube.com');
+  });
+
+  it('allows Bilibili iframes', () => {
+    const md = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1xx411c7mD"></iframe>';
+    const html = renderMarkdown(md);
+    expect(html).toContain('iframe');
+    expect(html).toContain('bilibili.com');
+  });
+
+  it('strips iframes from untrusted domains', () => {
+    const md = '<iframe src="https://evil.com/steal"></iframe>';
+    const html = renderMarkdown(md);
+    // sanitize-html strips the src attribute from untrusted domains
+    expect(html).not.toContain('evil.com');
+    expect(html).not.toContain('src=');
+  });
+
+  it('strips iframes with javascript: URLs', () => {
+    const md = '<iframe src="javascript:alert(1)"></iframe>';
+    const html = renderMarkdown(md);
+    expect(html).not.toContain('javascript:');
+  });
+});
+
+describe('renderCommentText', () => {
+  it('escapes HTML when no comment tags are allowed', () => {
+    const html = renderCommentText('<strong>bold</strong><script>alert(1)</script>');
+    expect(html).not.toContain('<strong>');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('bold');
+  });
+
+  it('allows configured comment tags and attributes', () => {
+    const html = renderCommentText('<a href="https://example.com">site</a>', {
+      htmlTagAllowed: '<a href="">',
+    });
+    expect(html).toContain('<a href="https://example.com">site</a>');
+  });
+
+  it('honors comment markdown setting', () => {
+    const plain = renderCommentText('**bold**', { markdown: false });
+    const markdown = renderCommentText('**bold**', { markdown: true });
+    expect(plain).not.toContain('<strong>');
+    expect(markdown).toContain('<strong>bold</strong>');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// escapeHtml
+// ---------------------------------------------------------------------------
+
+describe('escapeHtml', () => {
+  it('escapes all five HTML special characters', () => {
+    expect(escapeHtml('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#39;');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(escapeHtml('')).toBe('');
+  });
+
+  it('does not double-escape already escaped text', () => {
+    const once = escapeHtml('<b>');
+    expect(escapeHtml(once)).toBe('&amp;lt;b&amp;gt;');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// stripTypechoMarkers
+// ---------------------------------------------------------------------------
+
+describe('stripTypechoMarkers', () => {
+  it('removes <!--markdown--> prefix', () => {
+    expect(stripTypechoMarkers('<!--markdown-->content')).toBe('content');
+  });
+
+  it('removes <!--more--> tags anywhere', () => {
+    expect(stripTypechoMarkers('before<!--more-->after')).toBe('beforeafter');
+    expect(stripTypechoMarkers('<!--more-->start')).toBe('start');
+    expect(stripTypechoMarkers('end<!--more-->')).toBe('end');
+  });
+
+  it('leaves plain text unchanged', () => {
+    expect(stripTypechoMarkers('plain text')).toBe('plain text');
+  });
+
+  it('removes both markers together', () => {
+    expect(stripTypechoMarkers('<!--markdown-->intro<!--more-->rest')).toBe('introrest');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// stripHtmlTags
+// ---------------------------------------------------------------------------
+
+describe('stripHtmlTags', () => {
+  it('removes all HTML tags and collapses whitespace', () => {
+    expect(stripHtmlTags('<p>hello <b>world</b></p>')).toBe('hello world');
+  });
+
+  it('handles empty input', () => {
+    expect(stripHtmlTags('')).toBe('');
+  });
+
+  it('handles plain text without tags', () => {
+    expect(stripHtmlTags('just text')).toBe('just text');
+  });
+
+  it('collapses multiple whitespace into single spaces', () => {
+    expect(stripHtmlTags('<div>a</div>   <span>b</span>\n\n<p>c</p>')).toBe('a b c');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// autop
+// ---------------------------------------------------------------------------
+
+describe('autop', () => {
+  it('wraps paragraphs in <p> tags', () => {
+    const html = autop('hello\n\nworld');
+    expect(html).toBe('<p>hello</p>\n<p>world</p>');
+  });
+
+  it('inserts <br /> for single line breaks within paragraphs', () => {
+    const html = autop('line1\nline2');
+    expect(html).toBe('<p>line1<br />line2</p>');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(autop('')).toBe('');
+  });
+
+  it('normalises \\r\\n to \\n', () => {
+    const html = autop('hello\r\n\r\nworld');
+    expect(html).toBe('<p>hello</p>\n<p>world</p>');
+  });
+});
+// ---------------------------------------------------------------------------
+// LivePhoto markdown extension (moved from the plugin into core)
+// ---------------------------------------------------------------------------
+
+describe('LivePhoto markdown extension', () => {
+  it('renders [LivePhoto] into a live-photo container with default 3/4 ratio', () => {
+    const html = renderMarkdown('[LivePhoto photo="https://a.png" video="https://b.mp4"]');
+    expect(html).toContain('class="live-photo live-photo-wrapper"');
+    expect(html).toContain(`padding-top:${(4 / 3) * 100}%`); // default 3/4 ratio
+    expect(html).toContain('src="https://a.png"');
+    expect(html).toContain('<source src="https://b.mp4"');
+  });
+
+  it('honours a custom ratio', () => {
+    const html = renderMarkdown('[LivePhoto photo="https://a.png" video="https://b.mp4" ratio="4/3"]');
+    expect(html).toContain('padding-top:75%');
+  });
+
+  it('escapes photo/video URLs', () => {
+    const html = renderMarkdown('[LivePhoto photo="https://a.png?a=1&b=2" video="https://b.mp4"]');
+    expect(html).toContain('src="https://a.png?a=1&amp;b=2"');
+  });
+
+  it('leaves non-LivePhoto markdown untouched', () => {
+    const html = renderMarkdown('plain **text**');
+    expect(html).not.toContain('live-photo');
+    expect(html).toContain('<strong>text</strong>');
+  });
+});

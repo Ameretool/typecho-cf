@@ -1,0 +1,376 @@
+---
+/**
+ * Default theme — Index (home page) component
+ */
+import Base from '@/layouts/Base.astro';
+import type { ThemeIndexProps } from '@/lib/theme-props';
+import { formatDate, buildAuthorLink } from '@/lib/content';
+
+type Props = ThemeIndexProps;
+
+const {
+  options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
+  posts, pagination,
+} = Astro.props;
+
+const isIndex = currentPath === '/';
+
+const processPost = (post: any) => {
+  let excerpt = post.excerpt || '';
+  const mediaItems: { type: 'image' | 'livephoto'; html: string; src?: string; videoSrc?: string }[] = [];
+
+  // 1. 提取 LivePhoto 容器
+  const livePhotoRegex = /<div[^>]*class="[^"]*live-photo[^"]*"[^>]*>[\s\S]*?<\/div>/g;
+  let match;
+  while ((match = livePhotoRegex.exec(excerpt)) !== null) {
+    const html = match[0];
+    // 提取图片 src 和视频 src（用于重新构造）
+    const imgMatch = html.match(/<img[^>]*src="([^">]+)"/);
+    const videoMatch = html.match(/<video[^>]*>[\s\S]*?<source[^>]*src="([^">]+)"/) ||
+                       html.match(/<video[^>]*src="([^">]+)"/);
+    if (imgMatch) {
+      mediaItems.push({
+        type: 'livephoto',
+        html: html,                 // 原始容器（单图时使用）
+        src: imgMatch[1],
+        videoSrc: videoMatch ? videoMatch[1] : undefined,
+      });
+    }
+  }
+  excerpt = excerpt.replace(livePhotoRegex, '');
+
+  // 2. 提取普通图片
+  const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/g;
+  while ((match = imgRegex.exec(excerpt)) !== null) {
+    mediaItems.push({
+      type: 'image',
+      src: match[1],
+      html: '',
+      videoSrc: undefined,
+    });
+  }
+  excerpt = excerpt.replace(/<img[^>]+>/g, '').trim();
+
+  // 3. 头像处理
+  const avatarUrl = post.author?.avatarUrl || '/img/avatar.svg';
+
+  return { ...post, excerpt, mediaItems, avatarUrl };
+};
+
+const processedPosts = posts.map(processPost);
+
+// 辅助：生成正方形 LivePhoto 容器（多图使用）
+function buildSquareLivePhoto(src: string, videoSrc?: string): string {
+  return `<div style="position:relative; width:100%; padding-top:100%;border-radius: 0px;" class="live-photo">
+    <img class="live-photo-img" src="${src}" alt="Live Photo" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;border-radius: 0px;">
+    <video class="live-photo-video" playsinline muted preload="auto" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
+        <source src="${videoSrc || ''}" type="video/mp4">
+    </video>
+</div>`;
+}
+---
+
+<Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
+  <header id="header" class="clearfix">
+    <div class="container">
+      <div class="row">
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        <div class="site-search col-3 kit-hidden-tb">
+          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+            <label for="s" class="sr-only">搜索关键字</label>
+            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+            <button type="submit" class="submit">搜索</button>
+          </form>
+        </div>
+        <div class="col-mb-12">
+          <nav id="nav-menu" class="clearfix" role="navigation">
+            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+            {pages.map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
+          {processedPosts.length === 0 ? (
+            <article class="post">
+              <h2 class="post-title">暂时没有文章</h2>
+              <div class="post-content">
+                <p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p>
+              </div>
+            </article>
+          ) : (
+            processedPosts.map((post) => (
+              <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+                <div class="post-card" style="position: relative; padding: 16px 0;">
+                  <a href={post.permalink} class="card-overlay" style="position: absolute; inset: 0; z-index: 1; display: block; cursor: pointer;"></a>
+
+                  <div class="post-header" style="display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 2;">
+                    <div class="post-avatar" style="flex-shrink: 0; width: 36px; height: 36px;">
+                      <img
+                        src={post.avatarUrl}
+                        alt={post.author?.screenName || '用户'}
+                        style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"
+                      />
+                    </div>
+                    <div class="meta-block" style="flex: 1; min-width: 0;">
+                      <div class="post-author" style="font-weight: 600; font-size: 15px; color: #3354aa; margin-bottom: 2px;">
+                        <a
+                          itemprop="name"
+                          href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'}
+                          rel="author"
+                          style="color: inherit; text-decoration: none; position: relative; z-index: 3;"
+                        >
+                          {post.author?.screenName || post.author?.name || '未知'}
+                        </a>
+                      </div>
+                      <div class="post-meta-details" style="font-size: 14px; color: #8a8f9a; display: flex; flex-wrap: wrap; gap: 2px 6px;">
+                        <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
+                          {formatDate(post.created, 'Y.m.d H:i', options.timezone)}
+                        </time>
+                        {post.categories.length > 0 && (
+                          <>
+                            <span class="sep" style="color: #d0d4dc;">·</span>
+                            {post.categories.map((c, i) => (
+                              <span key={c.cid} style="position: relative; z-index: 3;">
+                                {i > 0 && ', '}
+                                <a href={c.permalink} style="color: #8a8f9a; text-decoration: none;">{c.name}</a>
+                              </span>
+                            ))}
+                          </>
+                        )}
+                        <span class="sep" style="color: #d0d4dc;">·</span>
+                        <a
+                          href={`${post.permalink}#comments`}
+                          itemprop="discussionUrl"
+                          style="color: #8a8f9a; text-decoration: none; position: relative; z-index: 3;"
+                        >
+                          {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
+                        </a>
+		{post.status === 'private' && (
+		<span class="meta-tags">私密</span>
+		)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="post-excerpt"
+                    itemprop="articleBody"
+                    set:html={post.excerpt}
+                    style="margin-top: 26px; padding-left: 48px; font-size: 15px; line-height: 1.7; color: #4e5969; word-break: break-word; position: relative; z-index: 0;"
+                  />
+
+                  {post.mediaItems.length > 0 && (
+                    <div
+                      class="post-images"
+                      data-count={post.mediaItems.length}
+                      style="margin-top: 12px; margin-left: 48px; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; max-width: 50%; position: relative; z-index: 2;"
+                    >
+                      {post.mediaItems.map((item) => {
+                        if (item.type === 'image') {
+                          // 普通图片
+                          return (
+                            <img
+                              src={item.src}
+                              alt="配图"
+                              loading="lazy"
+                              class="lightbox-img"
+                              style="width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;"
+                            />
+                          );
+                        } else {
+                          // LivePhoto
+                          if (post.mediaItems.length === 1) {
+                            // 单图：直接使用原始容器（保持原比例）
+                            return <div set:html={item.html} style="width: 100%;" />;
+                          } else {
+                            // 多图：使用正方形容器（padding-top:100%）
+                            const squareHtml = buildSquareLivePhoto(item.src!, item.videoSrc);
+                            return <div set:html={squareHtml} style="width: 100%; height: 100%;" />;
+                          }
+                        }
+                      })}
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))
+          )}
+
+          {pagination.totalPages > 1 && (
+            <nav class="page-navigator">
+              {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
+              {pagination.hasNext && <a class="next" href={pagination.nextUrl!}>后一页 &raquo;</a>}
+            </nav>
+          )}
+        </div>
+
+        <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+          {sidebarData && (
+            <>
+              {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">最新文章</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentPosts.map((p) => (
+                      <li><a href={p.permalink}>{p.title}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">最近回复</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentComments.map((c) => (
+                      <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.categories && sidebarData.categories.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">分类</h3>
+                  <ul class="widget-list">
+                    {sidebarData.categories.map((cat) => (
+                      <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.archives && sidebarData.archives.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">归档</h3>
+                  <ul class="widget-list">
+                    {sidebarData.archives.map((archive) => (
+                      <li><a href={archive.permalink}>{archive.date}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <section class="widget">
+                <h3 class="widget-title">其它</h3>
+                <ul class="widget-list">
+                  {isLoggedIn ? (
+                    <>
+                      <li class="last">
+                        <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
+                      </li>
+                      <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                    </>
+                  ) : (
+                    <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                  )}
+                  <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                  <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+                </ul>
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+    一起来堆雪人！
+  </footer>
+</Base>
+
+<style>
+.card-overlay {
+  z-index: 1;
+}
+.post-author a,
+.post-meta-details a,
+.post-meta-details span a {
+  position: relative;
+  z-index: 3;
+}
+
+/* 单图：普通图片自适应 */
+.post-images[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+.post-images[data-count="1"] img {
+  max-height: 300px;
+  width: auto;
+  margin: 0 auto;
+}
+/* 单图 LivePhoto：容器自适应 */
+.post-images[data-count="1"] .live-photo {
+  width: 100%;
+  height: auto;
+}
+
+/* 多图正方形网格 */
+.post-images[data-count="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+.post-images[data-count="2"] img,
+.post-images[data-count="2"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-images[data-count="3"],
+.post-images[data-count="5"],
+.post-images[data-count="6"],
+.post-images[data-count="7"],
+.post-images[data-count="8"],
+.post-images[data-count="9"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+.post-images[data-count="3"] img,
+.post-images[data-count="3"] .live-photo,
+.post-images[data-count="5"] img,
+.post-images[data-count="5"] .live-photo,
+.post-images[data-count="6"] img,
+.post-images[data-count="6"] .live-photo,
+.post-images[data-count="7"] img,
+.post-images[data-count="7"] .live-photo,
+.post-images[data-count="8"] img,
+.post-images[data-count="8"] .live-photo,
+.post-images[data-count="9"] img,
+.post-images[data-count="9"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-images[data-count="4"] {
+  grid-template-columns: 1fr 1fr;
+}
+.post-images[data-count="4"] img,
+.post-images[data-count="4"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .post-images {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+  .post-excerpt {
+    padding: 0 16px 0 16px !important;
+  }
+  .post-header {
+    flex-wrap: wrap;
+  }
+}
+</style>

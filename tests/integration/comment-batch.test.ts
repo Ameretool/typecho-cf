@@ -1,0 +1,376 @@
+/**
+ * Integration tests for /api/admin/comment-batch
+ *
+ * Covers: approve, waiting, spam, delete (batch POST), and delete-spam (POST).
+ * Verifies auth guards, commentsNum adjustments, and redirect behaviour.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as schema from '@/db/schema';
+import { createTestDb, seedAdmin, makeAuthCookie, type TestDatabase } from '../helpers';
+
+// ---- shared DB ref (mutated in beforeEach) -----------------------------------
+
+let testDb: TestDatabase;
+
+vi.mock('@/db', async () => {
+  const actual = await vi.importActual<typeof import('@/db')>('@/db');
+  return { ...actual, getDb: (_d1: any) => testDb, schema: actual.schema };
+});
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  return { ...actual, requireAdminCSRF: async () => null };
+});
+
+import { GET, POST } from '@/pages/api/admin/comment-batch';
+
+const TEST_SECRET = 'test-secret-batch';
+const TEST_AUTH_CODE = 'batchauthcode';
+
+async function seedPost(db: TestDatabase, commentsNum = 0) {
+  await db.insert(schema.contents).values({
+    title: 'Test Post',
+    slug: 'test-post',
+    created: Math.floor(Date.now() / 1000),
+    type: 'post',
+    status: 'publish',
+    allowComment: '1',
+    commentsNum,
+  });
+  return (await db.query.contents.findFirst())!;
+}
+
+async function seedComment(
+  db: TestDatabase,
+  postCid: number,
+  status: 'approved' | 'waiting' | 'spam' = 'approved',
+) {
+  await db.insert(schema.comments).values({
+    cid: postCid,
+    author: 'Tester',
+    text: 'Test comment',
+    status,
+    type: 'comment',
+    created: Math.floor(Date.now() / 1000),
+  });
+  return (await db.query.comments.findFirst({
+    where: (t, { eq }) => eq(t.status, status),
+  }))!;
+}
+
+function makeBatchRequest(
+  method: 'GET' | 'POST',
+  action: string,
+  coids: number[] = [],
+  cookieHeader = '',
+  referer = 'https://example.com/admin/manage-comments',
+): Request {
+  const urlStr = `https://example.com/api/admin/comment-batch?do=${action}`;
+  if (method === 'GET') {
+    return new Request(urlStr, {
+      method: 'GET',
+      headers: { cookie: cookieHeader, referer },
+    });
+  }
+  const body = new URLSearchParams();
+  for (const coid of coids) body.append('coid[]', String(coid));
+  return new Request(urlStr, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      cookie: cookieHeader,
+      referer,
+    },
+    body: body.toString(),
+  });
+}
+
+// ---- tests -------------------------------------------------------------------
+
+describe('POST /api/admin/comment-batch', () => {
+  beforeEach(async () => {
+    testDb = await createTestDb();
+  });
+
+  // -- Auth guards --
+
+  it('returns 401 when no cookie', async () => {
+    await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const req = makeBatchRequest('POST', 'delete', [1]);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 when user is not contributor', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE, group: 'visitor' });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const req = makeBatchRequest('POST', 'delete', [1], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(403);
+  });
+
+  it('redirects to referer when no coids are submitted', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const req = makeBatchRequest('POST', 'delete', [], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(302);
+  });
+
+  // -- delete action --
+
+  it('deletes selected comments', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 2);
+    const c1 = await seedComment(testDb, post.cid!, 'approved');
+    const c2 = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'delete', [c1.coid, c2.coid], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(302);
+
+    const remaining = await testDb.select().from(schema.comments);
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('decrements commentsNum when deleting approved comment', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 1);
+    const comment = await seedComment(testDb, post.cid!, 'approved');
+
+    const req = makeBatchRequest('POST', 'delete', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(0);
+  });
+
+  it('does NOT decrement commentsNum when deleting waiting comment', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 1);
+    const comment = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'delete', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(1); // untouched
+  });
+
+  // -- approved action --
+
+  it('marks waiting comments as approved and increments commentsNum', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+    const comment = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'approved', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedComment = await testDb.query.comments.findFirst();
+    expect(updatedComment?.status).toBe('approved');
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(1);
+  });
+
+  it('does NOT double-increment commentsNum if comment is already approved', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 1);
+    const comment = await seedComment(testDb, post.cid!, 'approved');
+
+    const req = makeBatchRequest('POST', 'approved', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(1); // unchanged
+  });
+
+  // -- waiting action --
+
+  it('marks approved comment as waiting and decrements commentsNum', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 1);
+    const comment = await seedComment(testDb, post.cid!, 'approved');
+
+    const req = makeBatchRequest('POST', 'waiting', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedComment = await testDb.query.comments.findFirst();
+    expect(updatedComment?.status).toBe('waiting');
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(0);
+  });
+
+  // -- spam action --
+
+  it('marks approved comment as spam and decrements commentsNum', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 1);
+    const comment = await seedComment(testDb, post.cid!, 'approved');
+
+    const req = makeBatchRequest('POST', 'spam', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedComment = await testDb.query.comments.findFirst();
+    expect(updatedComment?.status).toBe('spam');
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(0);
+  });
+
+  it('marks waiting comment as spam without changing commentsNum', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+    const comment = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'spam', [comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedComment = await testDb.query.comments.findFirst();
+    expect(updatedComment?.status).toBe('spam');
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(0); // unchanged
+  });
+
+  // -- multiple selection --
+
+  it('processes multiple coids in a single request', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+
+    // Seed 3 waiting comments
+    await testDb.insert(schema.comments).values([
+      { cid: post.cid!, author: 'A', text: 'c1', status: 'waiting', type: 'comment', created: 1 },
+      { cid: post.cid!, author: 'B', text: 'c2', status: 'waiting', type: 'comment', created: 2 },
+      { cid: post.cid!, author: 'C', text: 'c3', status: 'waiting', type: 'comment', created: 3 },
+    ]);
+    const allComments = await testDb.select().from(schema.comments);
+    const coids = allComments.map(c => c.coid);
+
+    const req = makeBatchRequest('POST', 'approved', coids, cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(3);
+  });
+
+  it('deduplicates repeated coids before applying counter changes', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+    const comment = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'approved', [comment.coid, comment.coid], cookie);
+    await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+
+    const updatedPost = await testDb.query.contents.findFirst();
+    expect(updatedPost?.commentsNum).toBe(1);
+  });
+
+  it('returns 403 when contributor tries to moderate another author owner comment', async () => {
+    const contributor = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE, group: 'contributor' });
+    const cookie = await makeAuthCookie(testDb, contributor.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 1);
+    await testDb.insert(schema.comments).values({
+      cid: post.cid!,
+      author: 'Other',
+      text: 'No access',
+      status: 'approved',
+      type: 'comment',
+      created: 1,
+      ownerId: contributor.uid + 1,
+    });
+    const comment = await testDb.query.comments.findFirst();
+
+    const req = makeBatchRequest('POST', 'spam', [comment!.coid], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(403);
+
+    const unchanged = await testDb.query.comments.findFirst();
+    expect(unchanged?.status).toBe('approved');
+  });
+
+  it('returns 400 for invalid action', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+    const comment = await seedComment(testDb, post.cid!, 'waiting');
+
+    const req = makeBatchRequest('POST', 'bogus', [comment.coid], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/admin/comment-batch (delete-spam)', () => {
+  beforeEach(async () => {
+    testDb = await createTestDb();
+  });
+
+  it('rejects GET state changes', async () => {
+    await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const req = makeBatchRequest('GET', 'delete-spam');
+    const res = await GET({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(405);
+  });
+
+  it('deletes all spam comments via POST delete-spam', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+
+    // Seed spam and non-spam
+    await testDb.insert(schema.comments).values([
+      { cid: post.cid!, author: 'Spammer', text: 'spam1', status: 'spam', type: 'comment', created: 1 },
+      { cid: post.cid!, author: 'Spammer', text: 'spam2', status: 'spam', type: 'comment', created: 2 },
+      { cid: post.cid!, author: 'Good', text: 'legit', status: 'approved', type: 'comment', created: 3 },
+    ]);
+
+    const req = makeBatchRequest('POST', 'delete-spam', [], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(302);
+
+    const remaining = await testDb.select().from(schema.comments);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].status).toBe('approved');
+  });
+
+  it('delete-spam via POST also works', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const post = await seedPost(testDb, 0);
+
+    await testDb.insert(schema.comments).values([
+      { cid: post.cid!, author: 'Spammer', text: 'spam', status: 'spam', type: 'comment', created: 1 },
+    ]);
+
+    const req = makeBatchRequest('POST', 'delete-spam', [], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(302);
+
+    const remaining = await testDb.select().from(schema.comments);
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('delete-spam redirects to manage-comments?status=spam', async () => {
+    const admin = await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    const cookie = await makeAuthCookie(testDb, admin.uid, TEST_AUTH_CODE, TEST_SECRET);
+    await seedPost(testDb);
+
+    const req = makeBatchRequest('POST', 'delete-spam', [], cookie);
+    const res = await POST({ request: req, locals: {}, url: new URL(req.url) } as any);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toContain('manage-comments');
+  });
+});

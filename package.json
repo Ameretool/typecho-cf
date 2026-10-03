@@ -1,0 +1,67 @@
+{
+  "name": "typecho-cf",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Typecho blog rewrite with Astro + Cloudflare Workers + D1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "exports": {
+    "./plugin-sdk": "./src/lib/plugin-sdk.ts",
+    "./db": "./src/db/index.ts"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "deploy": "pnpm build && wrangler deploy",
+    "lint": "eslint \"src/**/*.ts\"",
+    "types:workers": "node scripts/generate-worker-types.mjs",
+    "typecheck": "pnpm run types:workers && astro sync && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate:local": "tsx scripts/migrate.ts --target local",
+    "db:migrate:cloudflare": "tsx scripts/migrate.ts --target cloudflare",
+    "db:migrate:dry-run": "tsx scripts/migrate.ts --dry-run",
+    "reset-password": "tsx scripts/reset-password.ts --target local",
+    "reset-password:cloudflare": "tsx scripts/reset-password.ts --target cloudflare"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.2.1",
+    "@swup/astro": "^1.8.0",
+    "astro": "^7.2.2",
+    "drizzle-orm": "^0.45.2",
+    "marked": "^18.0.9",
+    "@workermailer/smtp": "^0.2.1",
+    "sanitize-html": "^2.17.7",
+    "swup": "^4.9.2",
+    "typecho-plugin-antispam": "file:src/plugins/typecho-plugin-antispam",
+    "typecho-plugin-smtp-mailer": "file:src/plugins/typecho-plugin-smtp-mailer",
+    "typecho-plugin-livephoto": "file:src/plugins/typecho-plugin-livephoto",
+    "typecho-plugin-scribe": "file:src/plugins/typecho-plugin-scribe",
+    "typecho-plugin-turnstile": "file:src/plugins/typecho-plugin-turnstile",
+    "typecho-plugin-webdav": "file:src/plugins/typecho-plugin-webdav",
+    "typecho-plugin-wechat-publisher": "file:src/plugins/typecho-plugin-wechat-publisher",
+    "typecho-theme-minimal": "file:src/themes/typecho-theme-minimal",
+    "typecho-theme-note": "file:src/themes/typecho-theme-note"
+  },
+  "devDependencies": {
+    "@libsql/client": "^0.17.4",
+    "@types/node": "^26.2.0",
+    "@types/sanitize-html": "^2.16.1",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.8.1",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "typescript-eslint-typescript": "npm:typescript@6.0.3",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.123.0"
+  }
+}

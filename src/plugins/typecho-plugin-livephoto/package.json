@@ -1,0 +1,51 @@
+{
+  "name": "typecho-plugin-livephoto",
+  "version": "1.0.0",
+  "description": "LivePhoto 和 Lightbox 插件",
+  "keywords": ["typecho", "plugin"],
+  "type": "module",
+  "main": "index.ts",
+  "typecho": {
+    "plugin": {
+      "id": "typecho-plugin-livephoto",
+      "name": "LivePhoto & Lightbox",
+      "description": "为网站添加 LivePhoto 和 Lightbox 功能",
+      "author": "Link",
+      "authorUrl": "https://atlinker.cn",
+      "homepage": "https://github.com/link9596/WebLivePhoto",
+      "version": "1.0.0",
+      "config": {
+        "lightboxSelector": {
+          "type": "text",
+          "label": "Lightbox 图片选择器",
+          "default": ".lightbox-img, .post-content img",
+          "description": "用于触发 Lightbox 的图片 CSS 选择器，支持多选"
+        },
+        "livePhotoSelector": {
+          "type": "text",
+          "label": "LivePhoto 容器选择器",
+          "default": ".live-photo",
+          "description": "多个选择器请用英文逗号分隔，如：.live-photo, .live-img"
+        },
+        "enableLightbox": {
+          "type": "radio",
+          "label": "启用 Lightbox",
+          "default": "1",
+          "options": {
+            "0": "禁用",
+            "1": "启用"
+          }
+        },
+        "enableLivePhoto": {
+          "type": "radio",
+          "label": "启用 LivePhoto",
+          "default": "1",
+          "options": {
+            "0": "禁用",
+            "1": "启用"
+          }
+        }
+      }
+    }
+  }
+}

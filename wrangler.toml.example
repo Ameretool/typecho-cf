@@ -1,0 +1,30 @@
+name = "typecho-cf"
+main = "@astrojs/cloudflare/entrypoints/server"
+compatibility_date = "2026-08-02"
+compatibility_flags = [ "nodejs_compat" ]
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "typecho-cf-db"
+migrations_dir = "drizzle"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "typecho-cf-uploads"
+
+[observability]
+enabled = true
+[observability.logs]
+enabled = true
+invocation_logs = false
+head_sampling_rate = 0.1
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true

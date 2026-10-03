@@ -1,0 +1,593 @@
+/**
+ * Unit tests for src/lib/auth.ts
+ *
+ * Tests password hashing/verification, permission checks, cookie helpers,
+ * and auth token generation/validation.
+ */
+import { describe, it, expect, vi } from 'vitest';
+import {
+  hasPermission,
+  hashPassword,
+  verifyPassword,
+  generateAuthToken,
+  validateAuthToken,
+  generateSecurityToken,
+  validateSecurityToken,
+  generateCommentToken,
+  validateCommentToken,
+  generateRandomString,
+  getAuthCookies,
+  setAuthCookieHeaders,
+  clearAuthCookieHeaders,
+  hasAuthCookies,
+  shouldUseSecureCookie,
+  passwordHashNeedsRehash,
+  PBKDF2_ITERATIONS,
+  generateResetToken,
+} from '@/lib/auth';
+
+// ---------------------------------------------------------------------------
+// hasPermission
+// ---------------------------------------------------------------------------
+describe('hasPermission()', () => {
+  it('administrator passes administrator check', () => {
+    expect(hasPermission('administrator', 'administrator')).toBe(true);
+  });
+
+  it('administrator passes editor check (higher privilege)', () => {
+    expect(hasPermission('administrator', 'editor')).toBe(true);
+  });
+
+  it('administrator passes subscriber check', () => {
+    expect(hasPermission('administrator', 'subscriber')).toBe(true);
+  });
+
+  it('editor fails administrator check (lower privilege)', () => {
+    expect(hasPermission('editor', 'administrator')).toBe(false);
+  });
+
+  it('visitor fails administrator check', () => {
+    expect(hasPermission('visitor', 'administrator')).toBe(false);
+  });
+
+  it('visitor passes visitor check', () => {
+    expect(hasPermission('visitor', 'visitor')).toBe(true);
+  });
+
+  it('strict mode: administrator fails editor check (different level)', () => {
+    expect(hasPermission('administrator', 'editor', true)).toBe(false);
+  });
+
+  it('strict mode: editor passes editor check (same level)', () => {
+    expect(hasPermission('editor', 'editor', true)).toBe(true);
+  });
+
+  it('unknown group treated as visitor (level 4)', () => {
+    expect(hasPermission('unknown', 'visitor')).toBe(true);
+    expect(hasPermission('unknown', 'administrator')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hashPassword / verifyPassword
+// ---------------------------------------------------------------------------
+describe('hashPassword() / verifyPassword()', () => {
+  it('hashes password in $PBKDF2$iterations$salt$hash format', async () => {
+    const hash = await hashPassword('mypassword');
+    expect(hash).toMatch(/^\$PBKDF2\$\d+\$[a-fA-F0-9]+\$[a-f0-9]{64}$/);
+  });
+
+  it('verifies correct password', async () => {
+    const hash = await hashPassword('correct-horse-battery-staple');
+    expect(await verifyPassword('correct-horse-battery-staple', hash)).toBe(true);
+  });
+
+  it('rejects wrong password', async () => {
+    const hash = await hashPassword('correct-horse-battery-staple');
+    expect(await verifyPassword('wrong-password', hash)).toBe('wrong_password');
+  });
+
+  it('produces different hashes for same password (random salt)', async () => {
+    const h1 = await hashPassword('same');
+    const h2 = await hashPassword('same');
+    expect(h1).not.toBe(h2);
+  });
+
+  it('returns wrong_password for unrecognized hash format', async () => {
+    expect(await verifyPassword('password', 'unknownhash')).toBe('wrong_password');
+  });
+
+  it('returns needs_reset for legacy $SHA256$ hash', async () => {
+    expect(await verifyPassword('password', '$SHA256$onlytwoparts')).toBe('needs_reset');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateRandomString
+// ---------------------------------------------------------------------------
+describe('generateRandomString()', () => {
+  it('generates string of correct length', () => {
+    expect(generateRandomString(16)).toHaveLength(16);
+    expect(generateRandomString(32)).toHaveLength(32);
+  });
+
+  it('generates different strings on each call', () => {
+    const a = generateRandomString(16);
+    const b = generateRandomString(16);
+    expect(a).not.toBe(b);
+  });
+
+  it('only contains alphanumeric characters', () => {
+    const s = generateRandomString(100);
+    expect(s).toMatch(/^[a-zA-Z0-9]+$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateAuthToken / validateAuthToken
+// ---------------------------------------------------------------------------
+describe('generateAuthToken() / validateAuthToken()', () => {
+  const secret = 'test-secret-key';
+  const mockUser = {
+    uid: 42,
+    name: 'testuser',
+    password: 'hash',
+    mail: 'test@example.com',
+    url: null,
+    screenName: 'Test User',
+    created: 0,
+    activated: 0,
+    logged: 0,
+    group: 'administrator',
+    authCode: 'myauthcode',
+  };
+
+  it('generates a valid token and validateAuthToken returns user', async () => {
+    const token = await generateAuthToken(42, 'myauthcode', secret);
+    expect(token).toMatch(/^42:[a-f0-9]{64}$/);
+
+    const mockDb = {
+      query: {
+        users: {
+          findFirst: vi.fn().mockResolvedValue(mockUser),
+        },
+      },
+    } as any;
+
+    const result = await validateAuthToken(token, secret, mockDb);
+    expect(result).not.toBeNull();
+    expect(result!.uid).toBe(42);
+    expect(result!.user.name).toBe('testuser');
+  });
+
+  it('returns null for token with wrong hash', async () => {
+    const mockDb = {
+      query: {
+        users: {
+          findFirst: vi.fn().mockResolvedValue(mockUser),
+        },
+      },
+    } as any;
+
+    const result = await validateAuthToken('42:wronghash', secret, mockDb);
+    expect(result).toBeNull();
+  });
+
+  it('returns null for token with invalid format', async () => {
+    const mockDb = { query: { users: { findFirst: vi.fn() } } } as any;
+    expect(await validateAuthToken('invalid', secret, mockDb)).toBeNull();
+    expect(await validateAuthToken('abc:hash', secret, mockDb)).toBeNull();
+  });
+
+  it('returns null when user is not found in DB', async () => {
+    const token = await generateAuthToken(99, 'code', secret);
+    const mockDb = {
+      query: {
+        users: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      },
+    } as any;
+    expect(await validateAuthToken(token, secret, mockDb)).toBeNull();
+  });
+
+  it('returns null when user has no authCode', async () => {
+    const token = await generateAuthToken(42, 'code', secret);
+    const mockDb = {
+      query: {
+        users: {
+          findFirst: vi.fn().mockResolvedValue({ ...mockUser, authCode: null }),
+        },
+      },
+    } as any;
+    expect(await validateAuthToken(token, secret, mockDb)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cookie helpers
+// ---------------------------------------------------------------------------
+describe('getAuthCookies()', () => {
+  it('returns token when both cookies are present', () => {
+    const header = '__typecho_uid=42; __typecho_authCode=abc123def';
+    const { token } = getAuthCookies(header);
+    expect(token).toBe('42:abc123def');
+  });
+
+  it('returns null token when cookie header is null', () => {
+    expect(getAuthCookies(null).token).toBeNull();
+  });
+
+  it('returns null when only uid cookie is present', () => {
+    expect(getAuthCookies('__typecho_uid=42').token).toBeNull();
+  });
+
+  it('returns null when only authCode cookie is present', () => {
+    expect(getAuthCookies('__typecho_authCode=abc').token).toBeNull();
+  });
+
+  it('handles cookies with = in value', () => {
+    const header = '__typecho_uid=42; __typecho_authCode=abc=def==';
+    const { token } = getAuthCookies(header);
+    expect(token).toBe('42:abc=def==');
+  });
+});
+
+describe('setAuthCookieHeaders()', () => {
+  it('returns two cookie headers', () => {
+    const headers = setAuthCookieHeaders(1, 'hashvalue');
+    expect(headers).toHaveLength(2);
+    expect(headers[0]).toContain('__typecho_uid=1');
+    expect(headers[1]).toContain('__typecho_authCode=hashvalue');
+  });
+
+  it('sets Max-Age when maxAge > 0', () => {
+    const headers = setAuthCookieHeaders(1, 'hash', 3600);
+    expect(headers[0]).toContain('Max-Age=3600');
+  });
+
+  it('does not set Max-Age when maxAge is 0 (session cookie)', () => {
+    const headers = setAuthCookieHeaders(1, 'hash', 0);
+    expect(headers[0]).not.toContain('Max-Age');
+  });
+});
+
+describe('clearAuthCookieHeaders()', () => {
+  it('returns two cookie headers with Max-Age=0', () => {
+    const headers = clearAuthCookieHeaders();
+    expect(headers).toHaveLength(2);
+    expect(headers[0]).toContain('Max-Age=0');
+    expect(headers[1]).toContain('Max-Age=0');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PBKDF2 password hashing (security fix)
+// ---------------------------------------------------------------------------
+describe('PBKDF2 password hashing', () => {
+  it('uses $PBKDF2$ format with iterations, salt, and hash', async () => {
+    const hash = await hashPassword('test');
+    const parts = hash.split('$');
+    // ['', 'PBKDF2', iterations, salt, hash]
+    expect(parts).toHaveLength(5);
+    expect(parts[1]).toBe('PBKDF2');
+    expect(parseInt(parts[2], 10)).toBe(PBKDF2_ITERATIONS);
+    expect(parts[3].length).toBeGreaterThan(0); // hex salt
+    expect(parts[4]).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hash = 64 hex chars
+  });
+
+  it('verifies legacy lower-iteration hashes against the current default', async () => {
+    // Legacy hashes embed their iteration count, so verify still works
+    // even after the default was raised (G1-6 forward compatibility).
+    const password = 'legacy-pw';
+    // Fixed legacy hash format with 100000 iterations.
+    const legacyIter = 50000; // below the current default — exercises the embedded-count path
+    // Recreate via the same crypto.subtle call shape: pretend we have a
+    // pre-existing $PBKDF2$100000$... hash. Easiest reliable way is to
+    // emit one ourselves with a small helper; here we instead just
+    // verify the round-trip behaviour by hashing then patching the iter.
+    const fresh = await hashPassword(password);
+    const parts = fresh.split('$');
+    parts[2] = String(legacyIter);
+    // Recompute the actual hash for legacy iteration count.
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+    const derived = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: enc.encode(parts[3]), iterations: legacyIter, hash: 'SHA-256' },
+      keyMaterial,
+      256,
+    );
+    parts[4] = Array.from(new Uint8Array(derived)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const legacyHash = parts.join('$');
+
+    expect(await verifyPassword(password, legacyHash)).toBe(true);
+    expect(await verifyPassword('wrong', legacyHash)).toBe('wrong_password');
+  });
+
+  it('legacy $SHA256$ hashes are rejected (force password reset)', async () => {
+    const legacyHash = '$SHA256$abcdef1234$' + 'a'.repeat(64);
+    expect(await verifyPassword('anything', legacyHash)).toBe('needs_reset');
+  });
+
+  it('malformed $PBKDF2$ hashes with wrong part count return wrong_password', async () => {
+    expect(await verifyPassword('test', '$PBKDF2$tooFewParts')).toBe('wrong_password');
+  });
+
+  it('$PBKDF2$ hash with non-numeric iterations returns wrong_password', async () => {
+    expect(await verifyPassword('test', '$PBKDF2$abc$salt$hash')).toBe('wrong_password');
+  });
+
+  it('returns needs_reset for $PHPASS$ legacy hashes', async () => {
+    expect(await verifyPassword('anything', '$PHPASS$$P$Babcdef')).toBe('needs_reset');
+  });
+
+  it('returns needs_reset for $MD5$ legacy hashes', async () => {
+    expect(await verifyPassword('anything', '$MD5$d41d8cd98f00b204e9800998ecf8427e')).toBe('needs_reset');
+  });
+
+  it('returns needs_reset for $LEGACY$ hashes', async () => {
+    expect(await verifyPassword('anything', '$LEGACY$someoldhash')).toBe('needs_reset');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cookie Secure flag (security fix)
+// ---------------------------------------------------------------------------
+describe('Cookie Secure flag', () => {
+  it('setAuthCookieHeaders includes Secure flag', () => {
+    const headers = setAuthCookieHeaders(1, 'hash', 3600);
+    expect(headers[0]).toContain('Secure');
+    expect(headers[1]).toContain('Secure');
+  });
+
+  it('clearAuthCookieHeaders includes Secure flag', () => {
+    const headers = clearAuthCookieHeaders();
+    expect(headers[0]).toContain('Secure');
+    expect(headers[1]).toContain('Secure');
+  });
+
+  it('session cookies (maxAge=0) also include Secure flag', () => {
+    const headers = setAuthCookieHeaders(1, 'hash', 0);
+    expect(headers[0]).toContain('Secure');
+    expect(headers[1]).toContain('Secure');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CSRF security tokens
+// ---------------------------------------------------------------------------
+describe('generateSecurityToken() / validateSecurityToken()', () => {
+  it('generates a hex hash string', async () => {
+    const token = await generateSecurityToken('secret', 'authcode', 1);
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('validates a correct token', async () => {
+    const token = await generateSecurityToken('secret', 'authcode', 1);
+    expect(await validateSecurityToken(token, 'secret', 'authcode', 1)).toBe(true);
+  });
+
+  it('rejects token with wrong secret', async () => {
+    const token = await generateSecurityToken('secret', 'authcode', 1);
+    expect(await validateSecurityToken(token, 'wrong-secret', 'authcode', 1)).toBe(false);
+  });
+
+  it('rejects token with wrong authCode', async () => {
+    const token = await generateSecurityToken('secret', 'authcode', 1);
+    expect(await validateSecurityToken(token, 'secret', 'wrong-authcode', 1)).toBe(false);
+  });
+
+  it('rejects token with wrong uid', async () => {
+    const token = await generateSecurityToken('secret', 'authcode', 1);
+    expect(await validateSecurityToken(token, 'secret', 'authcode', 999)).toBe(false);
+  });
+
+  it('rejects completely invalid token string', async () => {
+    expect(await validateSecurityToken('not-a-valid-token', 'secret', 'authcode', 1)).toBe(false);
+  });
+
+  it('different inputs produce different tokens', async () => {
+    const t1 = await generateSecurityToken('secret', 'auth1', 1);
+    const t2 = await generateSecurityToken('secret', 'auth2', 1);
+    expect(t1).not.toBe(t2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateRandomString — rejection sampling (modulo bias fix)
+// ---------------------------------------------------------------------------
+describe('generateRandomString() rejection sampling', () => {
+  it('always produces strings of the exact requested length', () => {
+    for (const len of [1, 5, 16, 32, 64, 128]) {
+      expect(generateRandomString(len)).toHaveLength(len);
+    }
+  });
+
+  it('produces only alphanumeric characters', () => {
+    // Generate a large string to increase confidence
+    const s = generateRandomString(1000);
+    expect(s).toMatch(/^[a-zA-Z0-9]+$/);
+  });
+
+  it('has reasonable character distribution (no extreme bias)', () => {
+    // Generate a large sample and check that all char groups appear
+    const s = generateRandomString(10000);
+    expect(s).toMatch(/[a-z]/);
+    expect(s).toMatch(/[A-Z]/);
+    expect(s).toMatch(/[0-9]/);
+  });
+});
+
+describe('password reset token format', () => {
+  it('generates an opaque hexadecimal token accepted by the reset parser', () => {
+    expect(generateResetToken()).toMatch(/^reset:[a-f0-9]{64}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Comment CSRF token (anti-spam) — bound to cid, with legacy referer fallback
+// ---------------------------------------------------------------------------
+describe('generateCommentToken() / validateCommentToken()', () => {
+  it('generates a 64-char hex string for cid binding', async () => {
+    const token = await generateCommentToken('mysecret', 42);
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('validates a cid-bound token', async () => {
+    const token = await generateCommentToken('mysecret', 42);
+    expect(await validateCommentToken(token, 'mysecret', 42)).toBe(true);
+  });
+
+  it('rejects cid-bound token under a different cid', async () => {
+    const token = await generateCommentToken('mysecret', 42);
+    expect(await validateCommentToken(token, 'mysecret', 43)).toBe(false);
+  });
+
+  it('rejects token with wrong secret', async () => {
+    const token = await generateCommentToken('mysecret', 42);
+    expect(await validateCommentToken(token, 'wrong-secret', 42)).toBe(false);
+  });
+
+  it('rejects an empty token', async () => {
+    expect(await validateCommentToken('', 'mysecret', 42)).toBe(false);
+  });
+
+  it('rejects a completely invalid token string', async () => {
+    expect(await validateCommentToken('not-a-token', 'mysecret', 42)).toBe(false);
+  });
+
+  it('rejects a token issued for another cid (no referer fallback)', async () => {
+    const foreignToken = await generateCommentToken('mysecret', 41);
+    expect(await validateCommentToken(foreignToken, 'mysecret', 42)).toBe(false);
+  });
+
+  it('different cids produce different tokens', async () => {
+    const t1 = await generateCommentToken('secret', 1);
+    const t2 = await generateCommentToken('secret', 2);
+    expect(t1).not.toBe(t2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G1-2 hasAuthCookies — middleware cache gate
+// ---------------------------------------------------------------------------
+describe('hasAuthCookies()', () => {
+  it('returns true when both cookies are present and valid', () => {
+    expect(hasAuthCookies('__typecho_uid=42; __typecho_authCode=abc')).toBe(true);
+  });
+
+  it('returns false when only uid is set', () => {
+    expect(hasAuthCookies('__typecho_uid=42')).toBe(false);
+  });
+
+  it('returns false when uid is non-numeric (substring poisoning)', () => {
+    // "lookalike__typecho_uid_x=1" should not match.
+    expect(hasAuthCookies('lookalike__typecho_uid_x=1; foo=bar')).toBe(false);
+  });
+
+  it('returns false when authCode is empty', () => {
+    expect(hasAuthCookies('__typecho_uid=42; __typecho_authCode=')).toBe(false);
+  });
+
+  it('returns false for null cookie header', () => {
+    expect(hasAuthCookies(null)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G1-7 CSRF token bucket rotation
+// ---------------------------------------------------------------------------
+describe('CSRF token bucket rotation', () => {
+  it('current bucket validates immediately', async () => {
+    const token = await generateSecurityToken('s', 'a', 1);
+    expect(await validateSecurityToken(token, 's', 'a', 1)).toBe(true);
+  });
+
+  it('previous bucket still validates within 1-2 hours', async () => {
+    // Generate a token in the previous bucket explicitly.
+    const prevBucket = Math.floor(Date.now() / 1000 / 3600) - 1;
+    const token = await generateSecurityToken('s', 'a', 1, prevBucket);
+    expect(await validateSecurityToken(token, 's', 'a', 1)).toBe(true);
+  });
+
+  it('older buckets are rejected', async () => {
+    const old = Math.floor(Date.now() / 1000 / 3600) - 5;
+    const token = await generateSecurityToken('s', 'a', 1, old);
+    expect(await validateSecurityToken(token, 's', 'a', 1)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G1-8 shouldUseSecureCookie — protocol-based Secure flag
+// ---------------------------------------------------------------------------
+describe('shouldUseSecureCookie()', () => {
+  it('returns true when no request is supplied (production-safe default)', () => {
+    expect(shouldUseSecureCookie()).toBe(true);
+  });
+
+  it('returns true for https requests', () => {
+    expect(shouldUseSecureCookie(new Request('https://example.com/'))).toBe(true);
+  });
+
+  it('returns false for plain http (dev mode)', () => {
+    expect(shouldUseSecureCookie(new Request('http://localhost:4321/'))).toBe(false);
+  });
+
+  it('treats x-forwarded-proto: https as secure behind a TLS terminator', () => {
+    const req = new Request('http://localhost:4321/', {
+      headers: { 'x-forwarded-proto': 'https' },
+    });
+    expect(shouldUseSecureCookie(req)).toBe(true);
+  });
+
+  it('ignores non-https x-forwarded-proto on http URLs', () => {
+    const req = new Request('http://localhost:4321/', {
+      headers: { 'x-forwarded-proto': 'http' },
+    });
+    expect(shouldUseSecureCookie(req)).toBe(false);
+  });
+
+  it('omits Secure on dev cookies', () => {
+    const headers = setAuthCookieHeaders(1, 'hash', 3600, new Request('http://localhost:4321/'));
+    expect(headers[0]).not.toContain('Secure');
+    expect(headers[1]).not.toContain('Secure');
+  });
+
+  it('emits Secure on https cookies', () => {
+    const headers = setAuthCookieHeaders(1, 'hash', 3600, new Request('https://example.com/'));
+    expect(headers[0]).toContain('Secure');
+    expect(headers[1]).toContain('Secure');
+  });
+
+  it('clearAuthCookieHeaders honours protocol', () => {
+    const httpHeaders = clearAuthCookieHeaders(new Request('http://localhost/'));
+    expect(httpHeaders[0]).not.toContain('Secure');
+    const httpsHeaders = clearAuthCookieHeaders(new Request('https://example.com/'));
+    expect(httpsHeaders[0]).toContain('Secure');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G1-6 PBKDF2 100k + opportunistic upgrade
+// ---------------------------------------------------------------------------
+describe('passwordHashNeedsRehash()', () => {
+  it('flags hashes with iterations below current default', () => {
+    const legacy = `$PBKDF2$50000$salt$${'a'.repeat(64)}`; // below the 100k default
+    expect(passwordHashNeedsRehash(legacy)).toBe(true);
+  });
+
+  it('does not flag hashes at the current default', () => {
+    const current = `$PBKDF2$${PBKDF2_ITERATIONS}$salt$${'a'.repeat(64)}`;
+    expect(passwordHashNeedsRehash(current)).toBe(false);
+  });
+
+  it('does not flag malformed hashes', () => {
+    expect(passwordHashNeedsRehash('$PBKDF2$bogus')).toBe(false);
+    expect(passwordHashNeedsRehash('not-a-hash')).toBe(false);
+  });
+
+  it('does not flag legacy formats (those force a reset instead)', () => {
+    expect(passwordHashNeedsRehash('$SHA256$abc$def')).toBe(false);
+    expect(passwordHashNeedsRehash('$LEGACY$xyz')).toBe(false);
+  });
+});

@@ -1,0 +1,143 @@
+/**
+ * Integration tests for POST /api/admin/content.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as schema from '@/db/schema';
+import { createTestDb, seedAdmin, makeAuthCookie, type TestDatabase } from '../helpers';
+import { eq } from 'drizzle-orm';
+
+let testDb: TestDatabase;
+const { mockApplyFilter } = vi.hoisted(() => ({
+  mockApplyFilter: vi.fn(async (_ctx: any, _hook: string, data: any) => data),
+}));
+
+vi.mock('@/db', async () => {
+  const actual = await vi.importActual<typeof import('@/db')>('@/db');
+  return { ...actual, getDb: (_d1: any) => testDb, schema: actual.schema };
+});
+vi.mock('@/lib/auth', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
+  return { ...actual, requireAdminCSRF: async () => null };
+});
+
+vi.mock('@/lib/plugin', () => ({
+  parseActivatedPlugins: () => [],
+  setActivatedPlugins: () => {},
+  applyFilter: mockApplyFilter,
+  doHook: async () => {},
+}));
+
+import { POST } from '@/pages/api/admin/content';
+
+const TEST_SECRET = 'content-secret';
+const TEST_AUTH_CODE = 'content-auth-code';
+
+async function makeContentRequest(fields: Record<string, string>, cookie: string) {
+  const body = new URLSearchParams(fields);
+  return new Request('https://example.com/api/admin/content', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      cookie,
+      // G2-1: requireAdminAction enforces same-origin via Origin/Referer.
+      origin: 'https://example.com',
+    },
+    body: body.toString(),
+  });
+}
+
+describe('POST /api/admin/content', () => {
+  beforeEach(async () => {
+    testDb = await createTestDb();
+    await seedAdmin(testDb, { secret: TEST_SECRET, authCode: TEST_AUTH_CODE });
+    await testDb.insert(schema.options).values({ name: 'siteUrl', user: 0, value: 'https://example.com' });
+    mockApplyFilter.mockImplementation(async (_ctx: any, _hook: string, data: any) => data);
+  });
+
+  it('counts duplicate tag names once when creating content', async () => {
+    const admin = await testDb.query.users.findFirst();
+    const cookie = await makeAuthCookie(testDb, admin!.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const req = await makeContentRequest({
+      do: 'create',
+      type: 'post',
+      title: 'Tagged post',
+      text: 'Body',
+      status: 'publish',
+      visibility: 'publish',
+      tags: 'astro, astro, Astro',
+      allowFeed: '1',
+    }, cookie);
+
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+
+    const tags = await testDb.select().from(schema.metas).where(eq(schema.metas.type, 'tag'));
+    const rels = await testDb.select().from(schema.relationships);
+    expect(tags).toHaveLength(1);
+    expect(tags[0].count).toBe(1);
+    expect(rels).toHaveLength(1);
+  });
+
+  it('deduplicates slug when updating to another content slug', async () => {
+    await testDb.insert(schema.contents).values({
+      title: 'First',
+      slug: 'shared-slug',
+      type: 'post',
+      status: 'publish',
+      authorId: 1,
+    });
+    await testDb.insert(schema.contents).values({
+      title: 'Second',
+      slug: 'second',
+      type: 'post',
+      status: 'publish',
+      authorId: 1,
+    });
+    const second = await testDb.query.contents.findFirst({
+      where: eq(schema.contents.slug, 'second'),
+    });
+
+    const admin = await testDb.query.users.findFirst();
+    const cookie = await makeAuthCookie(testDb, admin!.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const req = await makeContentRequest({
+      do: 'update',
+      cid: String(second!.cid),
+      type: 'post',
+      title: 'Second updated',
+      slug: 'shared-slug',
+      text: 'Body',
+      status: 'publish',
+      visibility: 'publish',
+    }, cookie);
+
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+
+    const updated = await testDb.query.contents.findFirst({
+      where: eq(schema.contents.cid, second!.cid),
+    });
+    expect(updated?.slug).toBe(`shared-slug-${second!.cid}`);
+  });
+
+  it('restores protected author and type fields after a malicious write filter', async () => {
+    mockApplyFilter.mockImplementationOnce(async (_ctx: any, _hook: string, data: any) => ({
+      ...data,
+      title: 'Filtered title',
+      authorId: 999,
+      type: 'attachment',
+      cid: 999,
+    }));
+    const admin = await testDb.query.users.findFirst();
+    const cookie = await makeAuthCookie(testDb, admin!.uid, TEST_AUTH_CODE, TEST_SECRET);
+    const req = await makeContentRequest({
+      do: 'create', type: 'post', title: 'Original', text: 'Body',
+      status: 'publish', visibility: 'publish', allowFeed: '1',
+    }, cookie);
+
+    const res = await POST({ request: req, locals: {} } as any);
+    expect(res.status).toBe(302);
+    const saved = await testDb.query.contents.findFirst();
+    expect(saved).toMatchObject({ title: 'Filtered title', authorId: admin!.uid, type: 'post' });
+    expect(saved?.cid).not.toBe(999);
+  });
+});

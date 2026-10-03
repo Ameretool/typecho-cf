@@ -1,0 +1,221 @@
+---
+import Admin from '@/layouts/Admin.astro';
+import { createContext, requireAuth } from '@/lib/context';
+import { hasPermission, requireAdminCSRF } from '@/lib/auth';
+import { getAvailablePlugins, getPluginCount, getPluginInitFailures, isPluginActive, pluginHasConfig, parseActivatedPlugins } from '@/lib/plugin';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const authCheck = requireAuth(ctx);
+if (authCheck) return authCheck;
+
+if (!hasPermission(ctx.user!.group || 'visitor', 'administrator')) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const { options, urls, user, db, csrfToken } = ctx;
+
+// Handle plugin activation/deactivation via POST
+let message = '';
+let messageType = '';
+
+if (Astro.request.method === 'POST') {
+  const csrfError = await requireAdminCSRF(Astro.request, options.secret as string, user!.authCode!, user!.uid);
+  if (csrfError) return csrfError;
+  try {
+    const formData = await Astro.request.formData();
+    const action = formData.get('action') as string;
+    const pluginId = formData.get('plugin') as string;
+
+    if (pluginId && (action === 'activate' || action === 'deactivate')) {
+      const { pluginExists, serializeActivatedPlugins, setActivatedPlugins, getPluginConfigDefaults } = await import('@/lib/plugin');
+      const { setOption, deleteOption } = await import('@/lib/options');
+
+      if (!pluginExists(pluginId)) {
+        message = `插件 "${pluginId}" 不存在`;
+        messageType = 'error';
+      } else {
+        // Get current activated list
+        const currentIds = parseActivatedPlugins(options.activatedPlugins as string | undefined);
+        const idSet = new Set(currentIds);
+
+        if (action === 'activate') {
+          idSet.add(pluginId);
+
+          // Save default config values on activation (like PHP Typecho's Edit::activate)
+          if (pluginHasConfig(pluginId)) {
+            const defaults = getPluginConfigDefaults(pluginId);
+            if (Object.keys(defaults).length > 0) {
+              // Only save defaults if no config exists yet
+              const existing = options[`plugin:${pluginId}`];
+              if (!existing) {
+                await setOption(db, `plugin:${pluginId}`, JSON.stringify(defaults));
+                (options as any)[`plugin:${pluginId}`] = JSON.stringify(defaults);
+              }
+            }
+          }
+
+          message = `插件 "${pluginId}" 已启用`;
+          messageType = 'success';
+        } else {
+          idSet.delete(pluginId);
+
+          // Delete plugin config on deactivation (like PHP Typecho's Edit::deactivate)
+          await deleteOption(db, `plugin:${pluginId}`);
+          delete (options as any)[`plugin:${pluginId}`];
+
+          message = `插件 "${pluginId}" 已禁用`;
+          messageType = 'success';
+        }
+
+        // Save to DB
+        const newIds = Array.from(idSet);
+        await setActivatedPlugins(ctx, newIds);
+        const serialized = JSON.stringify(newIds);
+        await setOption(db, 'activatedPlugins', serialized);
+        (options as any).activatedPlugins = serialized;
+
+        // Bump cache version so public pages and other isolates see plugin changes.
+        const { bumpCacheVersion, purgeSiteCache } = await import('@/lib/cache');
+        await bumpCacheVersion(db);
+        await purgeSiteCache(options.siteUrl || '');
+      }
+    }
+  } catch (e) {
+    message = '操作失败';
+    messageType = 'error';
+  }
+}
+
+const plugins = getAvailablePlugins(ctx);
+const pluginCount = getPluginCount();
+const initFailures = getPluginInitFailures();
+---
+<Admin title="插件管理" options={options} urls={urls} user={user} activeMenu="plugins" pluginCtx={ctx}>
+  <div class="col-mb-12" role="main">
+    {message && (
+      <div class={`typecho-option-tabs notice typecho-dismissible ${messageType === 'error' ? 'notice-error' : 'notice-success'}`}
+        style={`padding: 10px 15px; margin-bottom: 20px; border-radius: 3px; ${messageType === 'error' ? 'background: #ffeaea; color: #c33;' : 'background: #e7f5e7; color: #3a3;'}`}>
+        <p>{message}</p>
+        <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
+      </div>
+    )}
+    {Object.keys(initFailures).length > 0 && (
+      <div class="typecho-option-tabs notice notice-error typecho-dismissible"
+        style="padding: 10px 15px; margin-bottom: 20px; border-radius: 3px; background: #ffeaea; color: #c33;">
+        <p>以下已启用插件初始化失败（将按退避策略重试）：</p>
+        <ul>
+          {Object.entries(initFailures).map(([id, failure]) => (
+            <li><code>{id}</code>：{failure.error}（attempts={failure.attempts}）</li>
+          ))}
+        </ul>
+        <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
+      </div>
+    )}
+
+    {pluginCount === 0 ? (
+      <div class="typecho-mini-panel" style="text-align: center; padding: 40px 20px;">
+        <h3>暂无插件</h3>
+      </div>
+    ) : (
+      <>
+
+        <div class="typecho-list-operate clearfix">
+          <div class="operate">
+            <span>已发现 {pluginCount} 个插件</span>
+          </div>
+        </div>
+
+        <div class="typecho-table-wrap">
+          <table class="typecho-list-table">
+            <colgroup>
+              <col width="30%" />
+              <col width="35%" />
+              <col width="15%" />
+              <col width="20%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>插件</th>
+                <th>描述</th>
+                <th>版本</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plugins.map((plugin) => (
+                <tr id={`plugin-${plugin.id}`}>
+                  <td>
+                    <strong>
+                      {plugin.manifest.homepage ? (
+                        <a href={plugin.manifest.homepage} target="_blank" rel="noopener noreferrer">
+                          {plugin.manifest.name || plugin.id}
+                        </a>
+                      ) : (
+                        plugin.manifest.name || plugin.id
+                      )}
+                    </strong>
+                    {plugin.isActive && (
+                      <span style="margin-left: 8px; background: #467B96; color: white; padding: 1px 8px; border-radius: 3px; font-size: 11px;">
+                        已启用
+                      </span>
+                    )}
+                    <br />
+                    <small style="color: #999;">
+                      {plugin.manifest.author && (
+                        <span>
+                          作者: {plugin.manifest.authorUrl ? (
+                            <a href={plugin.manifest.authorUrl} target="_blank" rel="noopener noreferrer">{plugin.manifest.author}</a>
+                          ) : (
+                            plugin.manifest.author
+                          )}
+                        </span>
+                      )}
+                      {' · '}npm: {plugin.packageName}
+                    </small>
+                  </td>
+                  <td>
+                    <span class="description">
+                      {plugin.manifest.description || '暂无描述'}
+                    </span>
+                  </td>
+                  <td>
+                    {plugin.manifest.version || '-'}
+                  </td>
+                  <td>
+                    <form method="post" action="/admin/plugins" style="display: inline;">
+                      <input type="hidden" name="_" value={csrfToken} />
+                      <input type="hidden" name="plugin" value={plugin.id} />
+                      {plugin.isActive ? (
+                        <>
+                          {pluginHasConfig(plugin.id) && (
+                            <>
+                              <a href={`/admin/plugin-config?id=${plugin.id}`}>设置</a>
+                              {' · '}
+                            </>
+                          )}
+                          <input type="hidden" name="action" value="deactivate" />
+                          <button type="submit" class="btn btn-s">禁用</button>
+                        </>
+                      ) : (
+                        <>
+                          <input type="hidden" name="action" value="activate" />
+                          <button type="submit" class="btn btn-s primary">启用</button>
+                        </>
+                      )}
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <details class="typecho-mini-panel" style="margin-top: 20px; padding: 12px 16px;">
+          <summary><strong>写入 Hook 安全约定</strong></summary>
+          <p><code>post:write</code> / <code>page:write</code> 仅可修改标题、slug、时间、正文、排序、模板、状态、密码与三个 allow 开关；作者、内容类型、标识和分类/标签关系不可修改。</p>
+          <p><code>feedback:comment</code> 仅可修改作者显示信息、正文和审核状态，或设置 <code>_rejected</code>；文章、账号、归属、来源、类型与父评论字段不可修改。所有返回值在写库前都会重新校验。</p>
+        </details>
+      </>
+    )}
+
+  </div>
+</Admin>

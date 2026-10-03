@@ -1,0 +1,108 @@
+{
+  "name": "typecho-plugin-smtp-mailer",
+  "version": "1.0.0",
+  "description": "SMTP 邮件发送适配器（基于 @workermailer/smtp）：实现 mail:send Hook，为评论通知、回复提醒和密码重置邮件提供投递能力，支持一键发送测试邮件",
+  "type": "module",
+  "keywords": [
+    "typecho",
+    "plugin",
+    "mail",
+    "smtp",
+    "notification",
+    "adapter"
+  ],
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./index.ts": "./index.ts"
+  },
+  "author": "eslizn",
+  "license": "MIT",
+  "dependencies": {
+    "@workermailer/smtp": "^0.2.1"
+  },
+  "typecho": {
+    "plugin": {
+      "id": "typecho-plugin-smtp-mailer",
+      "name": "SMTP Mailer",
+      "description": "SMTP 邮件发送适配器：基于 @workermailer/smtp 实现 mail:send，为评论通知、回复提醒和密码重置邮件提供投递能力，并支持在设置页一键发送测试邮件",
+      "author": "eslizn",
+      "authorUrl": "https://eslizn.com",
+      "version": "1.0.0",
+      "homepage": "https://github.com/eslizn/typecho-cf/tree/master/src/plugins/typecho-plugin-smtp-mailer",
+      "license": "MIT",
+      "tags": [
+        "mail",
+        "smtp",
+        "notification",
+        "adapter"
+      ],
+      "config": {
+        "host": {
+          "type": "text",
+          "label": "SMTP 服务器",
+          "default": "",
+          "description": "例如 smtp.qq.com / smtp.163.com / smtp.gmail.com。Cloudflare Workers 不支持 25 端口，请使用 465 或 587"
+        },
+        "port": {
+          "type": "text",
+          "label": "端口",
+          "default": "465",
+          "description": "465（SSL/TLS）或 587（STARTTLS）"
+        },
+        "secure": {
+          "type": "select",
+          "label": "SSL/TLS 加密",
+          "default": "1",
+          "options": {
+            "0": "不启用",
+            "1": "启用（465 端口直连 TLS）"
+          }
+        },
+        "startTls": {
+          "type": "select",
+          "label": "STARTTLS 升级",
+          "default": "0",
+          "options": {
+            "0": "不启用",
+            "1": "启用（587 端口先明文后升级 TLS）"
+          }
+        },
+        "username": {
+          "type": "text",
+          "label": "用户名",
+          "default": "",
+          "description": "一般为完整邮箱地址"
+        },
+        "password": {
+          "type": "password",
+          "label": "密码 / 授权码",
+          "default": "",
+          "description": "QQ / 163 等邮箱需使用授权码（SMTP 专用密码），而非登录密码"
+        },
+        "authType": {
+          "type": "select",
+          "label": "认证方式",
+          "default": "plain",
+          "options": {
+            "plain": "PLAIN",
+            "login": "LOGIN",
+            "cram-md5": "CRAM-MD5"
+          }
+        },
+        "socketTimeoutMs": {
+          "type": "text",
+          "label": "连接超时（毫秒）",
+          "default": "30000",
+          "description": "可选，默认 30000"
+        },
+        "responseTimeoutMs": {
+          "type": "text",
+          "label": "响应超时（毫秒）",
+          "default": "30000",
+          "description": "可选，默认 30000"
+        }
+      }
+    }
+  }
+}

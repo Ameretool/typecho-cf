@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="200">
+  <!-- 灰色圆形背景 -->
+  <circle cx="50" cy="50" r="48" fill="#D1D5DB" />
+  
+  <!-- 白色人物头部剪影 -->
+  <circle cx="50" cy="34" r="14" fill="#FFFFFF" />
+  
+  <!-- 白色人物身体（肩膀）剪影 -->
+  <path d="M 23 86 C 23 62, 36 54, 50 54 C 64 54, 77 62, 77 86 Z" fill="#FFFFFF" />
+</svg>

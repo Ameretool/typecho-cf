@@ -1,0 +1,262 @@
+---
+import Admin from '@/layouts/Admin.astro';
+import { createContext, requirePermission } from '@/lib/context';
+import { hasPermission } from '@/lib/auth';
+import { buildGravatarUrl } from '@/lib/gravatar';
+import { eq, and, desc, sql } from 'drizzle-orm';
+import { schema } from '@/db';
+import { formatDate } from '@/lib/content';
+import { parsePageNumber, parsePositiveInteger, withQueryParams } from '@/lib/input';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+// Comment moderation page exposes commenter mail + IP — gate behind
+// contributor or above so that subscribers/visitors who somehow have
+// session cookies cannot harvest reader PII (G2-3).
+const authCheck = requirePermission(ctx, 'contributor');
+if (authCheck) return authCheck;
+
+const { db, options, urls, user, csrfToken } = ctx;
+const isAdmin = hasPermission(user!.group || 'visitor', 'administrator');
+
+const avatarRating = options.commentsAvatarRating || 'G';
+
+const page = parsePageNumber(Astro.url.searchParams.get('page'));
+const status = Astro.url.searchParams.get('status') || 'approved';
+const keywords = (Astro.url.searchParams.get('keywords') || '').trim().slice(0, 50);
+const cid = Astro.url.searchParams.get('cid') || '';
+const cidFilter = parsePositiveInteger(cid);
+const pageSize = 20;
+
+const conditions: any[] = [eq(schema.comments.status, status)];
+if (!isAdmin) {
+  conditions.push(eq(schema.contents.authorId, user!.uid));
+}
+if (keywords) {
+  conditions.push(sql`${schema.comments.text} LIKE ${'%' + keywords + '%'}`);
+}
+if (cidFilter) {
+  conditions.push(eq(schema.comments.cid, cidFilter));
+}
+
+const where = and(...conditions);
+
+const [countResult, commentsList, statusCounts] = await db.batch([
+  db.select({ count: sql<number>`count(*)` }).from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(where),
+  // G4-4: only fetch a 500-char preview of comment.text — the table only
+  // renders the first 200 chars and full bodies make every page render
+  // pull megabytes of payload from D1 on busy sites.
+  db.select({
+    coid: schema.comments.coid,
+    cid: schema.comments.cid,
+    author: schema.comments.author,
+    authorId: schema.comments.authorId,
+    ownerId: schema.comments.ownerId,
+    mail: schema.comments.mail,
+    url: schema.comments.url,
+    ip: schema.comments.ip,
+    agent: schema.comments.agent,
+    text: sql<string>`substr(${schema.comments.text}, 1, 500)`,
+    type: schema.comments.type,
+    status: schema.comments.status,
+    parent: schema.comments.parent,
+    created: schema.comments.created,
+    contentTitle: schema.contents.title,
+  }).from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(where)
+    .orderBy(desc(schema.comments.created))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize),
+  // One grouped scan instead of three per-status count(*) queries. The tab
+  // counts intentionally ignore the keyword/cid filters (matching the old
+  // behaviour) so the moderation queues always show real sizes.
+  db.select({ status: schema.comments.status, count: sql<number>`count(*)` })
+    .from(schema.comments)
+    .leftJoin(schema.contents, eq(schema.comments.cid, schema.contents.cid))
+    .where(and(...(!isAdmin ? [eq(schema.contents.authorId, user!.uid)] : [])))
+    .groupBy(schema.comments.status),
+]);
+const totalComments = Number(countResult?.[0]?.count ?? 0);
+const totalPages = Math.max(1, Math.ceil(totalComments / pageSize));
+// Keep the legacy row-array shape so the tab balloons render unchanged.
+const approvedCount = statusCounts.filter(row => row.status === 'approved');
+const waitingCount = statusCounts.filter(row => row.status === 'waiting');
+const spamCount = statusCounts.filter(row => row.status === 'spam');
+
+const titleMap = new Map(commentsList.map(c => [c.cid, c.contentTitle]));
+
+// Pre-compute Gravatar URLs for all comments
+const avatarMap = new Map<number, string>();
+const avatarEntries = await Promise.all(commentsList.map(async c => [
+  c.coid,
+  await buildGravatarUrl(c.mail, {
+    defaultImage: 'identicon',
+    size: 40,
+    rating: avatarRating,
+  }),
+] as const));
+for (const [coid, avatar] of avatarEntries) avatarMap.set(coid, avatar);
+---
+<Admin title="管理评论" options={options} urls={urls} user={user} activeMenu="manage-comments" pluginCtx={ctx}>
+  <div class="col-mb-12 typecho-list">
+    <div class="clearfix">
+      <ul class="typecho-option-tabs">
+        <li class:list={[{ current: status === 'approved' }]}>
+          <a href={`/admin/manage-comments${cid ? '?cid=' + cid : ''}`}>已通过</a>
+        </li>
+        <li class:list={[{ current: status === 'waiting' }]}>
+          <a href={`/admin/manage-comments?status=waiting${cid ? '&cid=' + cid : ''}`}>待审核
+            {(waitingCount[0]?.count || 0) > 0 && <span class="balloon">{waitingCount[0]?.count}</span>}
+          </a>
+        </li>
+        <li class:list={[{ current: status === 'spam' }]}>
+          <a href={`/admin/manage-comments?status=spam${cid ? '&cid=' + cid : ''}`}>垃圾
+            {(spamCount[0]?.count || 0) > 0 && <span class="balloon">{spamCount[0]?.count}</span>}
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="typecho-list-operate clearfix">
+      <form method="get">
+        <div class="operate">
+          <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
+          <div class="btn-group btn-drop">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="comment-actions-top"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="comment-actions-top" role="menu">
+              <li><a href="/api/admin/comment-batch?do=approved">通过</a></li>
+              <li><a href="/api/admin/comment-batch?do=waiting">待审核</a></li>
+              <li><a href="/api/admin/comment-batch?do=spam">标记垃圾</a></li>
+              <li><a href="/api/admin/comment-batch?do=delete">删除</a></li>
+            </ul>
+            {status === 'spam' && (
+              <button class="btn btn-s btn-warn btn-operate" type="submit"
+                formaction="/api/admin/comment-batch?do=delete-spam" formmethod="post"
+                name="_" value={csrfToken}
+                onclick="return confirm('你确认要删除所有垃圾评论吗?')">删除所有垃圾评论</button>
+            )}
+          </div>
+        </div>
+        <div class="search" role="search">
+          {keywords && (
+            <a href={`/admin/manage-comments${status !== 'approved' ? '?status=' + status : ''}${cid ? (status !== 'approved' ? '&' : '?') + 'cid=' + cid : ''}`}>&laquo; 取消筛选</a>
+          )}
+          <input type="text" class="text-s" placeholder="请输入关键字" value={keywords} name="keywords" />
+          {status !== 'approved' && <input type="hidden" value={status} name="status" />}
+          {cid && <input type="hidden" value={cid} name="cid" />}
+          <button type="submit" class="btn btn-s">筛选</button>
+        </div>
+      </form>
+    </div>
+
+    <form method="post" name="manage_comments" class="operate-form">
+      <input type="hidden" name="_" value={csrfToken} />
+      <div class="typecho-table-wrap">
+        <table class="typecho-list-table">
+          <colgroup>
+            <col width="3%" class="kit-hidden-mb" />
+            <col width="6%" class="kit-hidden-mb" />
+            <col width="20%" />
+            <col width="71%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="kit-hidden-mb"> </th>
+              <th>作者</th>
+              <th class="kit-hidden-mb"> </th>
+              <th>内容</th>
+            </tr>
+          </thead>
+          <tbody>
+            {commentsList.length === 0 ? (
+              <tr>
+                <td colspan="4"><h6 class="typecho-list-table-title">没有评论</h6></td>
+              </tr>
+            ) : (
+              commentsList.map((comment) => (
+                <tr id={`comment-${comment.coid}`}>
+                  <td valign="top" class="kit-hidden-mb">
+                    <input type="checkbox" value={String(comment.coid)} name="coid[]" />
+                  </td>
+                  <td valign="top" class="kit-hidden-mb">
+                    <div class="comment-avatar">
+                      <img src={avatarMap.get(comment.coid) || ''} alt="" width="40" height="40" style="border-radius:50%;" />
+                    </div>
+                  </td>
+                  <td valign="top" class="comment-head">
+                    <div class="comment-meta">
+                      <strong class="comment-author">
+                        {comment.url
+                          ? <a href={comment.url} target="_blank" rel="noopener noreferrer">{comment.author || '匿名'}</a>
+                          : (comment.author || '匿名')
+                        }
+                      </strong>
+                      {comment.mail && <><br /><span><a href={`mailto:${comment.mail}`}>{comment.mail}</a></span></>}
+                      {comment.ip && <><br /><span>{comment.ip}</span></>}
+                    </div>
+                  </td>
+                  <td valign="top" class="comment-body">
+                    <div class="comment-date">
+                      {formatDate(comment.created || 0, 'Y-m-d H:i', options.timezone)} 于
+                      <a href={`/archives/${comment.cid}/`}>{titleMap.get(comment.cid) || `文章 #${comment.cid}`}</a>
+                    </div>
+                    <div class="comment-content">
+                      {(comment.text || '').substring(0, 200)}
+                    </div>
+                    <div class="comment-action hidden-by-mouse">
+                      {status === 'approved'
+                        ? <span class="weak">通过</span>
+                        : <button type="submit" formaction={`/api/admin/comment-action?action=approve&coid=${comment.coid}`} formmethod="post" class="operate-approved">通过</button>
+                      }
+
+                      {status === 'waiting'
+                        ? <span class="weak">待审核</span>
+                        : <button type="submit" formaction={`/api/admin/comment-action?action=waiting&coid=${comment.coid}`} formmethod="post" class="operate-waiting">待审核</button>
+                      }
+
+                      {status === 'spam'
+                        ? <span class="weak">垃圾</span>
+                        : <button type="submit" formaction={`/api/admin/comment-action?action=spam&coid=${comment.coid}`} formmethod="post" class="operate-spam">垃圾</button>
+                      }
+
+                      <button type="submit" formaction={`/api/admin/comment-action?action=delete&coid=${comment.coid}`} formmethod="post"
+                        class="operate-delete"
+                        onclick={`return confirm('你确认要删除${(comment.author || '匿名').replace(/'/g, "\\'")}的评论吗?')`}>删除</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </form>
+
+    <div class="typecho-list-operate clearfix">
+      <div class="operate-toolbar">
+        <div class="operate">
+          <label><i class="sr-only">全选</i><input type="checkbox" class="typecho-table-select-all" /></label>
+          <div class="btn-group btn-drop">
+            <button class="btn dropdown-toggle btn-s" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="comment-actions-bottom"><i class="sr-only">操作</i>选中项 <i class="i-caret-down"></i></button>
+            <ul class="dropdown-menu" id="comment-actions-bottom" role="menu">
+              <li><a href="/api/admin/comment-batch?do=approved">通过</a></li>
+              <li><a href="/api/admin/comment-batch?do=waiting">待审核</a></li>
+              <li><a href="/api/admin/comment-batch?do=spam">标记垃圾</a></li>
+              <li><a href="/api/admin/comment-batch?do=delete">删除</a></li>
+            </ul>
+          </div>
+        </div>
+
+        {totalPages > 1 && (
+          <ul class="typecho-pager">
+            {page > 1 && <li><a href={withQueryParams('/admin/manage-comments', { page: page - 1, status, keywords, cid: cidFilter })}>&laquo;</a></li>}
+            <li class="current"><a href="#">{page} / {totalPages}</a></li>
+            {page < totalPages && <li><a href={withQueryParams('/admin/manage-comments', { page: page + 1, status, keywords, cid: cidFilter })}>&raquo;</a></li>}
+          </ul>
+        )}
+      </div>
+    </div>
+  </div>
+</Admin>

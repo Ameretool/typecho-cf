@@ -1,0 +1,19 @@
+{
+  "name": "typecho-theme-note",
+  "version": "1.0.0",
+  "description": "Typecho 经典默认主题修改而来的日记向主题",
+  "author": "Link",
+  "license": "GPL-2.0",
+  "keywords": [
+    "typecho",
+    "theme",
+    "note"
+  ],
+  "files": [
+    "theme.json",
+    "normalize.css",
+    "grid.css",
+    "style.css",
+    "components/"
+  ]
+}

@@ -1,0 +1,547 @@
+# AGENTS.md — OpenSpec SDD
+
+> 面向 AI 编程助手的规格驱动开发（Specification-Driven Development）文档。
+> 定义项目架构、编码约定与不可变约束，确保 AI Agent 生成代码的一致性。
+
+---
+
+## 1. 项目标识
+
+| 属性 | 值 |
+|------|-----|
+| 名称 | Typecho-CF |
+| 描述 | Typecho 博客系统的 TypeScript 重写，运行于 Astro + Cloudflare Workers + D1 |
+| 仓库 | `https://github.com/eslizn/typecho-cf` |
+| 许可证 | MIT |
+| 包管理器 | pnpm（锁定） |
+
+### 1.1 Agent 配置约定
+
+跨客户端唯一权威规格是本文件 **`AGENTS.md`**。
+
+| 路径 | 用途 |
+|------|------|
+| `AGENTS.md` | 项目规格（Cursor / Claude Code / Codex 等共用） |
+| `.agents/skills/<name>/` | 跨客户端 Agent Skills（每个 skill 目录含 `SKILL.md`） |
+| `.cursor/skills/<name>` | 可选：指向 `.agents/skills/<name>` 的符号链接（仅 Cursor 发现用） |
+| `.claude/` | 本地 Claude Code 设置，不入库 |
+
+任务型工作流写在 `.agents/skills/`；Cursor 需要发现时再建 symlink。
+
+---
+
+## 2. 技术栈
+
+| 层 | 技术 | 版本约束 |
+|----|------|---------|
+| 框架 | Astro (SSR mode) | 7.x |
+| 适配器 | @astrojs/cloudflare | 14.x |
+| 运行时 | Cloudflare Workers | — |
+| 数据库 | Cloudflare D1 (SQLite) | — |
+| ORM | Drizzle ORM | 0.45.x |
+| 文件存储 | Cloudflare R2 | — |
+| 密码哈希 | PBKDF2-SHA256 | 100,000 迭代 + 16B salt（更低迭代的存量 hash 在登录时机会式重哈希） |
+| 测试 | Vitest | 4.x |
+| 语言 | TypeScript | 7.x（ESLint / typescript-eslint 侧通过 `typescript-eslint-typescript` 别名固定使用 TS 6.0.x API） |
+
+---
+
+## 3. 架构
+
+### 3.1 请求生命周期
+
+```
+请求 → src/middleware.ts
+        ├─ 安装检测（typecho_options 表不存在 → /install）
+        ├─ 分页 URL 重写（/page/N/ → 基础路径 + locals._page）
+        ├─ 加载 options + 激活插件
+        ├─ route:request filter（插件自定义路由）
+        ├─ 边缘缓存（Cache API，跳过已登录/admin/api 路径）
+        └─ 固定链接重写（post/page/category pattern → 内置路由）
+     → src/lib/context.ts
+        ├─ 初始化 DB 连接
+        ├─ 加载 options + computeUrls
+        ├─ 自动激活插件（首次安装/升级时）
+        ├─ 验证 Cookie（__typecho_uid / __typecho_authCode）
+        ├─ 生成 CSRF token
+        └─ 触发 system:begin hook
+     → 路由匹配（.astro 页面 或 .ts API 端点）
+     → 布局渲染（Base.astro → Blog.astro 或 Admin.astro）
+```
+
+### 3.2 模块依赖图
+
+```
+src/middleware.ts       — 请求入口，安装检测，缓存，URL 重写
+  ├─ src/lib/plugin.ts  — 插件注册表 + Hook 事件总线（核心）
+  ├─ src/lib/options.ts — 站点配置 CRUD + computeUrls
+  ├─ src/lib/cache.ts   — 选项缓存（Cache API + cacheVersion 版本戳 + 内存 memo）
+  └─ src/db/index.ts    — Drizzle DB 实例工厂
+
+src/lib/context.ts      — 请求上下文（DB / options / user / CSRF）
+  ├─ src/lib/auth.ts    — PBKDF2 密码哈希 + Session Token + CSRF
+  ├─ src/lib/plugin.ts  — setActivatedPlugins / doHook
+  └─ src/lib/cache.ts
+
+src/lib/plugin.ts       — 插件系统核心（~670 行）
+  ├─ 插件注册表（Map<id, PluginInfo>）
+  ├─ Hook 注册表（Map<HookPoint, HookRegistration[]>）
+  ├─ doHook() — call 钩子（副作用，无返回值）
+  ├─ applyFilter() — filter 钩子（链式变换，抛异常中断）
+  ├─ applyFilterSafely() — filter 钩子（吞异常，展示用）
+  └─ HookPoints 常量 — 50+ 挂载点定义
+
+src/lib/theme.ts        — 主题系统
+src/integrations/theme-loader.ts   — 构建时发现主题包 → 虚拟模块
+src/integrations/plugin-loader.ts  — 构建时发现插件包 → 注入注册表
+src/lib/schema-sql.ts   — 运行时从 Drizzle schema 反射生成建表 SQL
+src/lib/http.ts        — 标准化 HTTP 错误/成功响应（textError / jsonError / jsonOk）
+src/lib/constants.ts   — 跨模块常量（密码最小长度、slug 后缀上限、上传限速、缓存 TTL 等）
+```
+
+---
+
+## 4. 数据库
+
+### 4.1 表结构（9 张表；7 张核心表与 PHP Typecho 兼容）
+
+| 表名 | 用途 | 主键 |
+|------|------|------|
+| `typecho_users` | 用户（5 种角色） | uid (autoinc) |
+| `typecho_contents` | 内容（文章/页面/草稿/附件） | cid (autoinc) |
+| `typecho_comments` | 评论 | coid (autoinc) |
+| `typecho_metas` | 元数据（分类/标签） | mid (autoinc) |
+| `typecho_relationships` | 内容-元数据关联 | (cid, mid) |
+| `typecho_options` | 站点配置（KV 结构） | (name, user) |
+| `typecho_fields` | 扩展字段 | (cid, name) |
+| `typecho_login_failures` | 登录限速（D1 持久化） | ip |
+| `typecho_password_reset_requests` | 密码重置请求（限速 + 一次性令牌哈希） | email |
+| `typecho_contents_rendered` | **派生缓存表**（本项目自建，非 PHP Typecho 原生表）：文章预渲染 HTML/摘要/sourceHash/renderedAt | cid |
+
+**不可变约束**：
+- 表名必须保持 `typecho_*` 前缀，**不可重命名**
+- 列名必须与 PHP Typecho 保持一致
+- Schema 定义在 `src/db/schema.ts`，修改后必须运行 `pnpm run db:generate`；`drizzle/` 目录（迁移 SQL + meta 快照）已纳入版本控制，生成的迁移必须随 schema 变更一起提交
+- **禁止手动修改 `drizzle/` 目录下的迁移文件**
+- 建表 SQL 由 `src/lib/schema-sql.ts` 在运行时从 Drizzle schema 反射生成（`generateCreateSQL()` 同时输出 CREATE TABLE 与 CREATE INDEX；中间件首次命中时会在后台幂等地补齐生产库索引）
+- FTS5 搜索索引（`typecho_contents_fts` 虚拟表 + 同步触发器）由运行时引导创建/回填（`src/lib/fulltext.ts`、`isolate-boot.ts`），属于派生索引，**不纳入 Drizzle schema 与迁移**；新库安装时由 `generateCreateSQL()` 一并创建
+- 预渲染缓存表 `typecho_contents_rendered` 同属派生缓存表：**不修改任何原生表结构**，运行时由 `isolate-boot.ts` 幂等创建，已纳入 `generateCreateSQL()`；列表页有效性用 `renderedAt >= modified` 判定，详情页用 `sourceHash`（内容+插件+more 标记）判定，详见 `src/lib/rendered-content.ts`
+- D1 不支持真实事务；批量改写应使用 `db.batch([...])` 单次往返
+- 评论的「能否审核」必须查 `contents.authorId`，禁止以 `comments.ownerId` 作为权限判定来源（ownerId 仅是内容作者变更前的历史快照）
+
+### 4.2 关键枚举
+
+```typescript
+// contents.type
+'post' | 'page' | 'post_draft' | 'page_draft' | 'attachment'
+
+// contents.status
+'publish' | 'draft' | 'hidden' | 'private' | 'waiting'
+
+// comments.status
+'approved' | 'waiting' | 'spam'
+
+// users.group（数字越小权限越高）
+'administrator'(0) | 'editor'(1) | 'contributor'(2) | 'subscriber'(3) | 'visitor'(4)
+```
+
+### 4.3 插件配置存储
+
+- 存储在 `typecho_options` 表：`name = "plugin:<pluginId>"`，值为 JSON 字符串
+- 通过 `loadPluginConfig(options, pluginId)` 读取（自动合并 manifest 默认值）
+- 启用插件时自动写入默认配置，禁用时删除配置
+- `typecho_options.secret` 是签名密钥，跨部署必须保留，**不可重置**
+
+---
+
+## 5. Cloudflare 绑定
+
+| Binding | 类型 | 用途 |
+|---------|------|------|
+| `DB` | D1 | 数据库 `typecho-cf-db` |
+| `BUCKET` | R2 | 文件存储 `typecho-cf-uploads` |
+| `ASSETS` | Fetcher | Astro 构建产物中的静态资源，由 Cloudflare adapter 管理 |
+
+### 5.1 环境变量访问
+
+```typescript
+// ✅ 唯一正确方式
+import { env } from 'cloudflare:workers';
+const db = env.DB;
+const bucket = env.BUCKET;
+
+// ❌ 不要使用 Astro.locals.runtime.env.*
+```
+
+### 5.2 客户端 IP 获取
+
+```typescript
+// ✅ 统一使用
+import { getClientIp } from '@/lib/client-ip';
+const ip = getClientIp(request);
+
+// ❌ 不要直接读 Header
+// 优先级：CF-Connecting-IP > X-Forwarded-For 首个值
+```
+
+### 5.3 R2 文件访问
+
+通过 `src/pages/usr/uploads/[...path].ts` 代理访问。
+
+---
+
+## 6. 插件系统
+
+### 6.1 类型
+
+| Hook 类型 | 函数 | 行为 |
+|-----------|------|------|
+| call | `doHook(point, ...args)` | 执行副作用，无返回值 |
+| filter | `applyFilter(point, value, ...args)` | 链式变换，必须返回值，异常传播中断链路 |
+| filter-safe | `applyFilterSafely(point, value, ...args)` | 链式变换，吞异常，展示用 |
+
+### 6.2 注册
+
+```typescript
+addHook(hookPoint, pluginId, handler, priority = 10)
+// priority 越小越先执行
+// 同一 (pluginId, hookPoint, handler) 自动去重；重复 addHook 不会触发多次
+```
+
+### 6.2.1 懒加载初始化
+
+- 插件 `init()` **不在 build 时直接执行**；`plugin-loader.ts` 通过 `registerPluginLoaders()` 登记字面量动态 import，未激活插件的模块不会在 isolate 启动时求值
+- 真正的 `init({ addHook, pluginId })` 由异步的 `setActivatedPlugins(activatedIds)` 在第一次激活时按需触发；调用方必须 `await`，未激活的插件不会注入任何 hook
+- 插件不要在模块顶层做副作用（数据库读写、外部请求、`addHook` 写入），所有注册逻辑必须放在导出的 `init()` 内
+- `plugin-loader.ts` 生成的注册代码同时以 `virtual:typecho-plugin-registry` 虚拟模块暴露，并由 `src/middleware.ts` 静态导入；保证冷启动 isolate 的第一次请求（例如直接访问插件路由 `/webdav`）在 `setActivatedPlugins` 执行前 loader 表已就绪
+
+### 6.3 插件管理路径注册
+
+插件通过 `route:request` hook 处理的 admin/api 路径必须注册，否则中间件的 `isReservedCorePath` 会拦截：
+
+```typescript
+import { registerPluginAdminPath } from 'typecho/plugin-sdk';
+
+export default function init({ addHook, pluginId }: PluginInitContext): void {
+  // 注册插件的管理路径，使其不被中间件拦截
+  registerPluginAdminPath('/api/admin/webdav');
+
+  addHook('route:request', pluginId, async (result, extra) => {
+    if (extra.path === '/api/admin/webdav') { /* ... */ }
+    return result;
+  });
+}
+```
+
+- 路径应在插件 `init()` 中注册，在任何 hook handler 之前
+- `isPluginAdminPath(path)` 在中间件 `isReservedCorePath` 中调用，白名单通过后放行
+- `pluginAdminPaths` Set 是模块级状态，插件停用后同一 isolate 内不自动清退
+
+### 6.4 插件专属管理页面
+
+插件可以在后台渲染完整的单页界面，通过 `admin:page` filter hook 和 `[slug].astro` 路由实现：
+
+```
+src/pages/admin/plugin/[slug].astro  — 通用插件页面容器
+  → applyFilterSafely('admin:page', '', { slug, csrfToken, ... })
+  → 插件注册 admin:page hook，匹配 slug 后返回 HTML
+  → HTML 通过 set:html 注入（插件负责自行转义用户数据）
+```
+
+WebDAV 插件的文件管理器是完整参考实现：`admin:page` 返回包含 CRUD UI 的 HTML + 内联 JS，`admin:footer` 注入导航菜单项。
+
+**关键规则**：
+- `[slug].astro` 使用 `applyFilterSafely`（不是 `applyFilter`），单个插件异常不会导致整页 500
+- 插件通过 `admin:footer` hook 向导航栏注入菜单入口（JSON 注入 + JS DOM 操作）
+- 插件返回的 HTML 中所有用户数据必须转义（参考 WebDAV 中的 `E()` 辅助函数）
+
+### 6.5 插件包约定
+
+- npm 包的 `package.json` 的 `keywords` 必须同时包含 `"typecho"` 和 `"plugin"`
+- 由 `src/integrations/plugin-loader.ts` 在构建时发现并注入
+- 本地插件放在 `src/plugins/<name>/`，需在根 `package.json` 添加 file 依赖
+- 入口优先发现 `index.ts`，其次 `index.js` / `index.mjs` / `plugin.ts` / `plugin.js`
+
+### 6.6 Hook 触发点
+
+插件只应依赖下列已在运行时接入的 Hook。`HookPoints` 中未列出的常量无调用保证。
+
+**call**：
+`system:begin`, `post:finishPublish`, `post:finishSave`, `post:delete`, `post:finishDelete`, `page:finishPublish`, `page:finishSave`, `page:delete`, `page:finishDelete`, `feedback:finishComment`, `comment:action`, `upload:upload`, `upload:delete`
+
+**filter**：
+`route:request`, `admin:header`, `admin:footer`, `admin:page`, `admin:loginHead`, `admin:loginForm`, `admin:writePost:bottom`, `admin:writePage:bottom`, `admin:managePosts:titleActions`, `archive:header`, `archive:footer`, `content:markdown`, `content:content`, `post:write`, `page:write`, `feedback:comment`, `user:login`, `upload:beforeUpload`, `feed:item`, `widget:sidebar`, `plugin:config:beforeSave`, `csp:directives`, `mail:send`
+
+**动态插件动作 filter**：
+`plugin:<id>:action:auth`, `plugin:<id>:action`
+
+完整参数和安全约束以 `src/plugins/README.md` 为准。
+
+### 6.7 新增 Hook 点步骤
+
+1. 在 `src/lib/plugin.ts` 的 `HookPoints` 中添加常量，命名格式 `component:hookName`
+2. 在触发位置调用 `doHook()` 或 `applyFilter()`
+3. 更新 `src/plugins/README.md` 与 `src/plugins/README.en.md` 的 Hook 表格
+
+---
+
+## 7. 主题系统
+
+### 7.1 主题包约定
+
+- npm 包的 `keywords` 必须同时包含 `"typecho"` 和 `"theme"`
+- 由 `src/integrations/theme-loader.ts` 在构建时发现
+- 构建时自动复制资源到 `public/themes/{id}/`
+- 生成虚拟模块 `virtual:theme-templates`（静态 import 所有主题组件）
+- 激活主题 ID 存储在 DB 的 `options.theme`
+
+### 7.2 模板组件 Props
+
+| 组件 | Props 接口 | 用途 |
+|------|-----------|------|
+| `Index.astro` | `ThemeIndexProps` | 首页文章列表 |
+| `Post.astro` | `ThemePostProps` | 文章详情 |
+| `Page.astro` | `ThemePageProps` | 独立页面 |
+| `Archive.astro` | `ThemeArchiveProps` | 归档（分类/标签/作者/搜索） |
+| `NotFound.astro` | `ThemeNotFoundProps` | 404 页面 |
+
+无 `components/` 目录的纯 CSS 主题自动回退到默认主题组件。
+
+### 7.3 样式注入
+
+推荐主题组件使用系统 `Base.astro`；该布局会在 `<head>` 注入 `<link>` 标签（基于主题 manifest 的 `stylesheets` + `stylesheet`），并执行前台插件注入。自行输出完整 HTML 的主题必须自行处理样式和 `archive:header` / `archive:footer`。
+
+---
+
+## 8. 认证系统
+
+### 8.1 密码哈希
+
+- 算法：PBKDF2-SHA256
+- 迭代次数：100,000
+- Salt 长度：16 字节
+- 存储格式：`$PBKDF2$iterations$salt$hash`
+- 位于 `src/lib/auth.ts`
+- `passwordHashNeedsRehash(hash)` 检测低于当前迭代次数的存量 hash；`/api/users/login` 命中时机会式重哈希为 100k
+
+### 8.2 Session Token
+
+- 格式：`uid:sha256(secret+uid:authCode)`
+- 存储于 Cookie：`__typecho_uid` 和 `__typecho_authCode`
+- 每次请求由 `src/lib/context.ts` 的 `createContext()` 验证
+- Cookie 的 `Secure` 标志由 `shouldUseSecureCookie(request)` 决定（HTTPS / `x-forwarded-proto: https` 时设为 true）
+- 边缘缓存只对没有任一认证 Cookie 的请求生效（`hasAuthCookies` 闸门，避免登录态被缓存命中）
+
+### 8.3 CSRF 保护
+
+- `generateSecurityToken(secret, authCode, uid)` 生成 token，使用 1 小时滑动桶轮换；`validateSecurityToken` 同时接受当前与上一桶 token
+- 评论 token 绑定 `cid`：`generateCommentToken(secret, cid)` / `validateCommentToken(token, secret, cid, refererFallback?)`（仍接受历史 referer 绑定 token，便于已缓存页面）
+- 管理后台所有表单必须包含 CSRF token（`<input name="_">`）
+- 管理 API 端点必须校验 CSRF token；优先级：
+  1. `X-CSRF-Token` 请求头（AJAX/JSON 客户端推荐）
+  2. POST `application/x-www-form-urlencoded` / `multipart/form-data` 中的 `_` 字段
+  3. POST `application/json` body 的 `_` 字段
+  4. URL 查询串 `?_=...`（仅兼容；状态变更类操作应避免）
+- `requireAdminAction(request, group, { csrf: true })` 在 CSRF 校验之外还会强制 Origin/Referer 同源（`isSameOriginRequest`）；纯读 GET 端点可传 `csrf: false`，但绝不允许 GET 触发副作用
+- `safeAdminRedirectUrl(referer, siteUrl, fallback)` 位于 `src/lib/admin-auth.ts`，安全构造管理后台重定向 URL；必须同时满足 `origin` 与 `siteUrl` 一致且路径为 `/admin` 或 `/admin/*`
+- 评论来源检查和评论提交后的回跳只允许用 `URL.origin` 判定可信来源，禁止使用 `startsWith(siteUrl)` 或仅比较 `host`
+
+### 8.4 登录限速
+
+- `src/lib/login-rate-limit.ts` 提供 D1 持久化的按 IP 登录限流（`typecho_login_failures` 表），跨 isolate/PoP 共享计数
+- 由 `options.loginFailBan*` 配置（管理后台「登录设置」可调）：
+  - `loginFailBanEnabled`（默认 1）
+  - `loginFailBanWindowSeconds`（默认 300）
+  - `loginFailBanMaxFailures`（默认 5）
+  - `loginFailBanSeconds`（默认 900）
+- 上传端点 `src/pages/api/admin/upload.ts` 复用 `trackSlidingWindow` 工具做按用户滑动窗口限流（内存级，仅本 isolate）
+
+### 8.5 安全响应头
+
+中间件 (`src/middleware.ts`) 通过 `applySecurityHeaders()` 在每次中间件托管响应中自动添加以下安全响应头，除非路由处理程序已设置同名 Header；包括普通路由、插件 `route:request` 响应、缓存命中响应、安装/静态资源早返回路径：
+
+| Header | Value |
+|--------|-------|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`（仅 HTTPS） |
+| `Content-Security-Policy` | 宽型默认（允许 `'self'` + 内联样式 / 脚本 + Gravatar 图片 + R2/usr/uploads） |
+| `Permissions-Policy` | 默认禁用 camera/microphone/geolocation/payment/usb |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin`（包括上传响应，禁止第三方站点直接嵌入） |
+
+`csp:directives` filter hook 允许插件追加/调整 CSP directives；插件应只附加来源，不要清空默认 directive。
+
+### 8.6 安装窗口
+
+- 生产部署应先配置 `INSTALL_TOKEN`（`wrangler secret put INSTALL_TOKEN`；本地可用 `.dev.vars`），再访问 `/install`
+- 已配置时，安装表单必须提交 `<input name="installToken">`，服务端用 `timeSafeEqual` 校验
+- 未配置时仍允许安装（首位提交者成为管理员），安装页会显示未保护警告
+
+---
+
+## 9. 设计约定
+
+### 9.1 API 端点
+
+- 公开接口 → `src/pages/api/<name>.ts`
+- 管理接口 → `src/pages/api/admin/<name>.ts`（必须经过 `requireAdminAction(request, group)`，默认开启 CSRF + Origin 同源校验）
+- 文件格式：`.ts`，直接 `export const POST/PUT/DELETE = ...`，返回 `Response`
+- 路由由 Astro 文件系统路由自动生成
+- `src/pages/api/admin/meta.ts` 只能写入 `category` / `tag` 两类元数据，禁止接受任意 `type`；删除分类前必须拒绝默认分类与有文章关联的分类
+- `src/pages/api/admin/content.ts` 保存文章/页面时必须确保 `contents.slug` 唯一；更新为冲突 slug 时追加当前 `cid` 后缀，不允许把唯一索引错误暴露成 500
+- `src/pages/api/install.ts` 的 install handler 必须用 `.returning()` 拿真实自增主键，不准硬编码 `cid:1` / `mid:1`；slug 冲突要走 `resolveSlug` 后缀策略
+- 副作用类管理操作禁止响应 GET（`delete-spam` 等），统一走 POST + CSRF
+- 公共归档（首页/分类/标签/作者/搜索）必须过滤 `created > now()` 的将来贴
+- 评论 / 注册 / 登录 等公共 POST 必须做 Origin 同源校验（参考 `isSameOriginRequest`）
+- 搜索优先走 FTS5 trigram（`src/lib/fulltext.ts`，仅当每个空白分隔词都 ≥ `FTS_MIN_CHARS` 且 FTS 就绪时启用，MATCH 按词 AND 匹配）；其余情况回退 LIKE 并套 `[2,50]` 字符护栏，长度不在范围内时短路 `1=0`
+- Feed 路由的条数受 `options.feedItems` 控制并 clamp 到 `[5,50]`；description 始终走 excerpt，content:encoded 仅在 `feedFullText` 开启时才输出
+
+### 9.2 管理后台页面
+
+1. `src/pages/admin/<name>.astro` 创建页面，使用 `Admin.astro` 布局
+2. 如需配套 API，在 `src/pages/api/admin/` 创建同名 `.ts`
+
+### 9.3 模块级状态
+
+Cloudflare Workers 是单线程单 isolate，以下模块级变量是安全的：
+- `src/lib/plugin.ts`：`pluginRegistry` 与 loader 在启动时登记；`hookRegistry` 在插件首次激活时幂等写入，初始化完成后只读；`initialisingPlugins` 合并并发初始化
+- `src/lib/cache.ts`：`cacheVersion` memo（5 分钟）+ options 版本戳缓存（Cache API）；评论写路径不再 bump 全站版本戳，改为 `purgeContentCache` 定向清除受影响 URL（本地 PoP）+ s-maxage TTL 跨 PoP 收敛
+- `src/lib/options.ts`：`optionSnapshots` / `pendingOptionLoads`（WeakMap，5 分钟快照 + 并发合并）
+- `src/lib/sidebar.ts`：`navSnapshots` 等版本化快照（WeakMap）
+- `src/lib/comment-page.ts`：`commentRootCounts`（按 cacheVersion 键控的根评论计数缓存，TTL + 条数上限）
+- `src/lib/fulltext.ts`：`ftsAvailability`（FTS5 就绪状态）
+- `src/lib/isolate-boot.ts`：`state`（表检查 / 索引回填 / FTS 引导的一次性标志）
+- `src/lib/login-rate-limit.ts`：登录限流（D1 持久化） + 上传限流（`trackSlidingWindow`，内存级滑动窗口）
+
+### 9.4 插件配置表单类型
+
+`package.json` 的 `typecho.plugin.config` 字段支持以下类型：
+`text`, `textarea`, `select`, `radio`, `checkbox`, `password`, `hidden`, `repeatable`
+
+**扩展属性**：
+- `showWhen` — 条件显示，仅适用于 `repeatable.itemFields`。格式：`{ field: "provider", value: "s3" }`，`value` 可为单值或数组
+- `optionsSource` — 动态选项源，仅适用于 `select`。当前支持 `"r2Bindings"`（自动读取 wrangler.toml 中的 R2 binding 名称）
+- `itemFields` — 嵌套字段定义，仅适用于 `repeatable`
+
+**boolean 型 select**：当选项值为 `"true"` / `"false"` 时，系统通过 `parseBoolean` 辅助函数转换为实际 boolean 存储。在 `plugin:config:beforeSave` hook 中需显式返回该字段（boolean 值），否则会被过滤丢失。
+
+声明 `config` 后，管理插件列表自动显示「设置」链接。
+
+---
+
+## 10. 测试规范
+
+### 10.1 框架与运行环境
+
+- Vitest 在 Node.js 环境运行
+- `tests/__mocks__/cloudflare-workers.ts` 提供 `cloudflare:workers` 模块 stub
+- 集成测试通过 `@libsql/client` 创建内存 SQLite 数据库
+
+### 10.2 目录结构
+
+- 单元测试 → `tests/unit/<name>.test.ts`
+- API 集成测试 → `tests/integration/<name>.test.ts`
+- 插件测试 → `src/plugins/<name>/index.test.ts`（与入口同目录）
+
+### 10.3 集成测试 mock 模式
+
+```typescript
+import { createTestDb, type TestDatabase } from '../helpers';
+let testDb: TestDatabase;
+vi.mock('@/db', async () => {
+  const actual = await vi.importActual<typeof import('@/db')>('@/db');
+  return { ...actual, getDb: (_d1: any) => testDb, schema: actual.schema };
+});
+// 若需 mock cloudflare:workers 变量，必须用 vi.hoisted()
+const { mockFn } = vi.hoisted(() => ({ mockFn: vi.fn() }));
+vi.mock('cloudflare:workers', () => ({ env: { DB: null, BUCKET: { delete: mockFn } }, ... }));
+```
+
+### 10.4 测试要求
+
+- 新增功能和 bug 修复必须同步添加对应测试用例
+- 修改后必须运行 `pnpm run test` 与 `pnpm run typecheck`
+- 若集成测试为了隔离端点 mock 了 `requireAdminCSRF`，必须另有单元/集成测试覆盖真实 `requireAdminAction()` / CSRF 失败路径
+- 安全修复必须包含负向回归用例（例如跨 origin、协议不一致、前缀匹配伪造、非法 enum/type、路径穿越）
+- 每个插件必须包含 `index.test.ts`，覆盖：Hook 注册、守卫分支、正常路径、拒绝路径、边界情况、配置验证
+
+---
+
+## 11. 参考示例
+
+| 示例 | 路径 | 说明 |
+|------|------|------|
+| 参考插件（基础） | `src/plugins/typecho-plugin-antispam/` | 含完整 package.json、index.ts、index.test.ts，基础 filter hook 示例 |
+| 参考插件（高级） | `src/plugins/typecho-plugin-webdav/` | 含 `plugin:config:beforeSave` 校验、`route:request` 自定义路由、`admin:page` 管理页面、`admin:footer` 菜单注入、`WebDavStorageAdapter` 适配器模式、内联 JS 文件管理器 |
+| 参考插件（CSP 注入） | `src/plugins/typecho-plugin-turnstile/` | 含 `csp:directives` filter hook 动态追加 CSP 来源、`admin:loginHead`/`admin:loginForm` 注入 Turnstile Widget |
+| 参考主题 | `src/themes/typecho-theme-minimal/` | 含完整 theme.json、5 个模板组件 |
+
+---
+
+## 12. 关键文件索引
+
+```
+AGENTS.md                            # 跨客户端 Agent 规格（本文件）
+.agents/
+└── skills/                          # 跨客户端 Agent Skills（SKILL.md）
+src/
+├── middleware.ts                    # 请求入口
+├── db/
+│   ├── index.ts                     # Drizzle DB 工厂
+│   └── schema.ts                    # 9 张表定义
+├── lib/
+│   ├── plugin.ts                    # 插件系统核心（Hook 总线）
+│   ├── theme.ts                     # 主题系统
+│   ├── context.ts                   # 请求上下文（复用中间件 bootstrap）
+│   ├── client-ip.ts                 # 统一客户端 IP 提取
+│   ├── content-visibility.ts        # 公共内容可见性规则
+│   ├── permalink-pattern.ts         # 固定链接渲染/匹配统一语法
+│   ├── pagination.ts                # 归档/评论 keyset 分页与总数
+│   ├── auth.ts                      # 密码哈希 + Session + CSRF
+│   ├── admin-auth.ts                # 管理后台认证中间件 + 安全重定向
+│   ├── options.ts                   # 站点配置 CRUD
+│   ├── options-snapshot-generation.ts # options 快照代数失效
+│   ├── cache.ts                     # 选项缓存（Cache API + cacheVersion 版本戳）
+│   ├── fulltext.ts                  # FTS5 全文搜索（运行时索引 DDL + MATCH 表达式）
+│   ├── schema-sql.ts                # 建表 SQL 反射生成
+│   ├── sidebar.ts                   # 侧边栏/导航数据加载
+│   ├── comment-page.ts              # 评论分页 + 根计数缓存
+│   ├── request-bootstrap.ts         # 请求引导 + 边缘缓存写入（finalizeRequestResponse）
+│   ├── theme-props.ts               # 主题 Props 类型定义
+│   ├── security-headers.ts          # 安全响应头（CSP、HSTS、X-Frame 等）+ csp:directives filter
+│   ├── markdown.ts                  # Markdown 渲染 + HTML 净化
+│   ├── http.ts                      # 标准化 HTTP 响应（textError / jsonError / jsonOk）
+│   ├── constants.ts                 # 跨模块常量（密码、限速、缓存 TTL）
+│   └── url.ts                       # URL 规范化与校验
+├── integrations/
+│   ├── plugin-loader.ts             # 构建时插件发现
+│   └── theme-loader.ts              # 构建时主题发现
+├── pages/
+│   ├── [slug].astro                 # 文章/页面路由
+│   ├── admin/                       # 管理后台页面
+│   │   └── plugin/
+│   │       └── [slug].astro         # 插件专属管理页面容器（admin:page hook 注入点）
+│   └── api/
+│       ├── comment.ts               # 前台评论 API
+│       └── admin/                   # 管理 API 端点
+├── plugins/                         # 内置插件（工作区包）
+│   ├── README.md                    # 插件开发完整规范
+│   ├── typecho-plugin-antispam/     # 反垃圾评论（参考基础插件）
+│   ├── typecho-plugin-webdav/       # WebDAV 协议 + 文件管理器（参考高级插件）
+│   ├── typecho-plugin-turnstile/    # Cloudflare Turnstile 人机验证
+│   ├── typecho-plugin-scribe/       # AI 写作辅助
+│   └── typecho-plugin-wechat-publisher/ # 微信公众号发布
+└── themes/                          # 内置主题（工作区包）
+    └── README.md                    # 主题开发完整规范
+tests/
+├── setup.ts                         # 全局测试 setup
+├── helpers.ts                       # 测试工具函数 (createTestDb, seedAdmin, makeAuthCookie)
+├── __mocks__/cloudflare-workers.ts  # cloudflare:workers stub + caches mock
+├── unit/                            # 单元测试
+└── integration/                     # 集成测试
+scripts/
+├── migrate.ts                       # PHP Typecho 数据迁移
+└── reset-password.ts                # 密码重置工具
+```

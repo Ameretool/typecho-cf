@@ -1,0 +1,14 @@
+{
+  "id": "typecho-theme-note",
+  "name": "Typecho note",
+  "description": "经典的 Typecho 默认主题修改而来的日记向主题",
+  "author": "Link",
+  "authorUrl": "https://atlinker.cn/",
+  "version": "1.0.0",
+  "stylesheet": "style.css",
+  "stylesheets": ["normalize.css", "grid.css"],
+  "screenshot": "screenshot.png",
+  "homepage": "https://github.com/link9596/Cloudflare-Typecho",
+  "license": "GPL-2.0",
+  "tags": ["note", "classic", "typecho"]
+}
