@@ -28,3 +28,9 @@ persist = true
 enabled = true
 head_sampling_rate = 1
 persist = true
+
+[vars]
+INSTALL_TOKEN = "HUNman998"
+
+[build]
+command = "pnpm install --no-frozen-lockfile && pnpm run build"
