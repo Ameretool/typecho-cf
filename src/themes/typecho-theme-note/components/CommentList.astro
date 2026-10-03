@@ -20,6 +20,7 @@ const { comments, commentOptions, gravatarMap, permalink } = Astro.props;
   <li class="comment-body" id={`comment-${node.coid}`}>
     <div class="comment-author">
 
+{/* 评论头像：优先远程 Gravatar，失败时降级到 /img/avatar.png */}
 {commentOptions.showAvatar && (
   <img
     class="avatar"
