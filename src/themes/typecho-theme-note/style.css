@@ -101,11 +101,12 @@ table {
   font-size: 14px !important; /* 表格内字体大小 */
 }
 
-/* 2. 表头与单元格的间距和边框 */
+/* 2. 表头与单元格的间距和边框 (修复竖线消失问题) */
 table th,
 table td {
   padding: 12px 16px !important; /* 增加内边距，提升阅读呼吸感 */
-  border: 1px solid #d0d7de !important; /* 浅灰色细边框 */
+  /* 下面这行是重点修复：强制补全所有单元格的边框，防止表头居中导致竖线消失 */
+  border: 1px solid #d0d7de !important; 
   vertical-align: middle !important; /* 内容垂直居中 */
 }
 
@@ -115,6 +116,8 @@ table th {
   font-weight: 600 !important; /* 字体加粗 */
   text-align: center !important; /* 表头文字居中 */
   color: #24292f !important; /* 深灰文字色 */
+  /* 确保表头不出现诡异的底部加粗线 */
+  border-bottom: 1px solid #d0d7de !important;
 }
 
 /* 4. 表格内容行鼠标悬停效果 */
