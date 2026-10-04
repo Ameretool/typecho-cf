@@ -17,8 +17,10 @@ const {
   page, comments, commentOptions, commentPagination, gravatarMap,
 } = Astro.props;
 
+// 是否为首页
 const isIndex = currentPath === '/';
 
+// 评论总数
 const totalComments = commentPagination.totalComments;
 ---
 <Base
@@ -30,13 +32,17 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'page' }}
 >
+  <!-- 页头 -->
   <header id="header" class="clearfix">
     <div class="container">
       <div class="row">
+        <!-- 站点名称与描述 -->
         <div class="site-name col-mb-12 col-9">
           <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
           <p class="description">{options.description}</p>
         </div>
+
+        <!-- 搜索框 -->
         <div class="site-search col-3 kit-hidden-tb">
           <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
             <label for="s" class="sr-only">搜索关键字</label>
@@ -44,6 +50,8 @@ const totalComments = commentPagination.totalComments;
             <button type="submit" class="submit">搜索</button>
           </form>
         </div>
+
+        <!-- 导航菜单 -->
         <div class="col-mb-12">
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
@@ -62,16 +70,20 @@ const totalComments = commentPagination.totalComments;
     </div>
   </header>
 
+  <!-- 主体内容 -->
   <div id="body">
     <div class="container">
       <div class="row">
+        <!-- 主内容区 -->
         <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+            <!-- 页面标题 -->
             <h1 class="post-title" itemprop="name headline">
               <a itemprop="url" href={page.permalink}>{page.title}</a>
             </h1>
 
             {page.hasPassword && !page.passwordVerified ? (
+              /* 需要密码且未验证：显示密码输入表单 */
               <div class="post-content">
                 <form method="get" action={page.permalink}>
                   <p>请输入密码访问此内容：</p>
@@ -80,16 +92,49 @@ const totalComments = commentPagination.totalComments;
                 </form>
               </div>
             ) : (
+              /* 正常显示页面正文内容 */
               <div class="post-content" itemprop="articleBody" set:html={page.content} />
             )}
           </article>
+
+          <!-- ============================================================
+               外部链接新窗口打开脚本
+               作用：仅对 .post-content 内的外部链接添加 target="_blank"
+               站内链接、锚点链接保持原样
+               ============================================================ -->
+          <script>
+            document.addEventListener('DOMContentLoaded', () => {
+              // 获取页面正文容器
+              const container = document.querySelector('.post-content');
+              if (!container) return;
+
+              // 遍历容器内所有带 href 的链接
+              container.querySelectorAll('a[href]').forEach((a) => {
+                const href = a.getAttribute('href');
+                // 跳过空链接和锚点链接（如 #respond）
+                if (!href || href.startsWith('#')) return;
+
+                // 判断是否为外部链接（域名与当前站点不同）
+                const isExternal = a.hostname && a.hostname !== window.location.hostname;
+                if (!isExternal) return;
+
+                // 为外部链接添加新窗口打开属性
+                a.setAttribute('target', '_blank');
+                // 添加 rel 属性，防止新页面通过 window.opener 操控原页面
+                a.setAttribute('rel', 'noopener noreferrer');
+              });
+            });
+          </script>
 
           {/* Comments */}
           {(!page.hasPassword || page.passwordVerified) && commentOptions.allowComment && (
             <div id="comments">
               {totalComments > 0 && (
                 <>
+                  <!-- 评论数量标题 -->
                   <h3>{totalComments === 1 ? '仅有一条评论' : `已有 ${totalComments} 条评论`}</h3>
+
+                  <!-- 评论列表 -->
                   <ol class="comment-list">
                     <CommentList
                       comments={comments}
@@ -98,6 +143,8 @@ const totalComments = commentPagination.totalComments;
                       permalink={page.permalink}
                     />
                   </ol>
+
+                  <!-- 评论分页导航 -->
                   {commentPagination.enabled && commentPagination.totalPages > 1 && (
                     <nav class="page-navigator comment-page-navigator" aria-label="评论分页">
                       {commentPagination.prevUrl && <a class="prev" href={commentPagination.prevUrl} rel="prev">上一页</a>}
@@ -112,24 +159,36 @@ const totalComments = commentPagination.totalComments;
                 </>
               )}
 
+              <!-- 评论回复表单 -->
               <div id="respond" class="respond">
                 <h3 id="response">添加新评论</h3>
+
+                <!-- 取消回复按钮（回复某条评论时显示） -->
                 <div class="cancel-comment-reply" style="display:none">
                   <a id="cancel-comment-reply-link" href={`${page.permalink}#respond`} rel="nofollow"
                     onclick="return TypechoComment.cancelReply()">取消回复</a>
                 </div>
+
+                <!-- 评论提交表单 -->
                 <form method="post" action="/api/comment" id="comment-form" role="form">
+                  <!-- 文章 ID -->
                   <input type="hidden" name="cid" value={String(page.cid)} />
+                  <!-- 父评论 ID（回复某条评论时使用） -->
                   <input type="hidden" name="parent" id="comment-parent" value="0" />
+                  <!-- 密码验证通过时传递密码 -->
                   {page.hasPassword && page.passwordVerified && (
                     <input type="hidden" name="password" value={Astro.url.searchParams.get('password') || ''} />
                   )}
+                  <!-- 安全令牌 -->
                   {commentOptions.securityToken && (
                     <input type="hidden" name="_" value={commentOptions.securityToken} />
                   )}
+
                   {isLoggedIn ? (
+                    /* 已登录用户显示身份 */
                     <p>登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a></p>
                   ) : (
+                    /* 未登录用户填写称呼和邮箱 */
                     <>
                       <p>
                         <label for="author" class="required">称呼</label>
@@ -141,16 +200,23 @@ const totalComments = commentPagination.totalComments;
                       </p>
                     </>
                   )}
+
+                  <!-- 评论内容 -->
                   <p>
                     <label for="textarea" class="required">内容</label>
                     <textarea rows="8" cols="50" name="text" id="textarea" class="textarea" required></textarea>
                   </p>
+
+                  <!-- 提交按钮 -->
                   <p><button type="submit" class="submit">提交评论</button></p>
                 </form>
               </div>
+
+              <!-- 评论回复相关的前端逻辑（回复、取消回复） -->
               <script is:inline>
                 var TypechoComment = {
                   dom: function (id) { return document.getElementById(id); },
+                  // 回复某条评论：把评论表单移动到该评论下方
                   reply: function (commentId, coid) {
                     var comment = this.dom(commentId);
                     var respond = this.dom('respond');
@@ -163,6 +229,7 @@ const totalComments = commentPagination.totalComments;
                     try { this.dom('textarea').focus(); } catch (e) {}
                     return false;
                   },
+                  // 取消回复：把评论表单移回原位
                   cancelReply: function () {
                     var respond = this.dom('respond');
                     var cancelLink = this.dom('cancel-comment-reply-link');
@@ -180,8 +247,10 @@ const totalComments = commentPagination.totalComments;
           )}
         </div>
 
+        <!-- 侧边栏 -->
         {sidebarData && (
           <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+            <!-- 最新文章 -->
             {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">最新文章</h3>
@@ -192,6 +261,8 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
+
+            <!-- 最近回复 -->
             {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">最近回复</h3>
@@ -202,6 +273,8 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
+
+            <!-- 分类 -->
             {sidebarData.categories && sidebarData.categories.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">分类</h3>
@@ -212,6 +285,8 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
+
+            <!-- 归档 -->
             {sidebarData.archives && sidebarData.archives.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">归档</h3>
@@ -222,6 +297,8 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
+
+            <!-- 其它（后台、登录、RSS） -->
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
@@ -245,6 +322,7 @@ const totalComments = commentPagination.totalComments;
     </div>
   </div>
 
+  <!-- 页脚 -->
   <footer id="footer" role="contentinfo">
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
    由 <a href="#">Typecho CF</a> 强力驱动.
