@@ -85,47 +85,53 @@ button {
 }
 
 /* =========================================
- * GitHub 风格表格与代码块样式
+ * GitHub 风格表格与代码块样式 (终极修复版，用阴影画线)
  * (这部分是重点，已经替换了原有默认的旧样式，直接改这里就能控制表格)
  * ========================================= */
 
-/* 1. 表格整体外框与结构 (合并边框，浅灰外框) */
+/* 1. 表格整体外框 (用外阴影画出四周的灰色外框) */
 table {
-  border-collapse: collapse !important; /* 核心：合并边框，避免双线 */
+  border-collapse: separate !important; /* 改为 separate，配合阴影画线 */
   border-spacing: 0 !important;
-  width: 100% !important; /* 表格宽度撑满 */
+  width: 100% !important; 
   margin-bottom: 16px !important;
-  border: 1px solid #d0d7de !important; /* GitHub 标志性的浅灰色边框 */
-  border-radius: 6px !important; /* 整体圆角 */
-  overflow: hidden !important; /* 保证圆角能包裹住表格内部内容 */
-  font-size: 14px !important; /* 表格内字体大小 */
+  border: none !important; /* 取消原来的实体边框 */
+  /* 用阴影画出外框，完美替代边框 */
+  box-shadow: 0 0 0 2px #d0d7de !important; 
+  border-radius: 6px !important; 
+  overflow: hidden !important; 
+  font-size: 14px !important; 
 }
 
-/* 2. 表头与单元格的间距和边框 (修复竖线消失问题) */
+/* 2. 表头与单元格 (强行用右侧和底部的阴影画出竖线和横线) */
 table th,
 table td {
-  padding: 12px 16px !important; /* 增加内边距，提升阅读呼吸感 */
-  /* 下面这行是重点修复：强制补全所有单元格的边框，防止表头居中导致竖线消失 */
-  border: 1px solid #d0d7de !important; 
-  vertical-align: middle !important; /* 内容垂直居中 */
+  padding: 12px 16px !important; 
+  border: none !important; /* 取消所有实体边框 */
+  vertical-align: middle !important; 
+  /* 用 1px 灰色阴影充当右边框和下边框 */
+  box-shadow: 1px 0 0 0 #d0d7de, 0 1px 0 0 #d0d7de !important;
 }
 
-/* 3. 表头专属样式 (浅灰背景 + 文字居中加粗) */
+/* 3. 去除表格最右侧多余的阴影线 (防止双线) */
+table tr > *:last-child {
+  box-shadow: 0 1px 0 0 #d0d7de !important; /* 只保留底部阴影，去掉右侧阴影 */
+}
+
+/* 4. 表头专属样式 (浅灰背景 + 文字居中加粗) */
 table th {
   background-color: #f6f8fa !important; /* 表头浅灰背景 */
   font-weight: 600 !important; /* 字体加粗 */
   text-align: center !important; /* 表头文字居中 */
   color: #24292f !important; /* 深灰文字色 */
-  /* 确保表头不出现诡异的底部加粗线 */
-  border-bottom: 1px solid #d0d7de !important;
 }
 
-/* 4. 表格内容行鼠标悬停效果 */
+/* 5. 表格内容行鼠标悬停效果 */
 table tbody tr:hover {
   background-color: #f6f8fa !important; /* 鼠标滑过时整行变浅灰 */
 }
 
-/* 5. 表格内代码块 (比如命令列的代码) 专属样式 */
+/* 6. 表格内代码块 (比如命令列的代码) 专属样式 */
 table td code {
   background-color: rgba(175, 184, 193, 0.2) !important; /* 半透明浅灰背景 */
   color: #24292f !important; /* 深灰色字体 */
@@ -135,7 +141,7 @@ table td code {
   font-size: 85% !important; /* 代码字体稍微小一点点 */
 }
 
-/* 6. 普通代码块 (如 pre 标签) 修复红字和红底问题 */
+/* 7. 普通代码块 (如 pre 标签) 修复红字和红底问题 */
 pre {
   background-color: #f6f8fa !important;
   padding: 16px !important;
