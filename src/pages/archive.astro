@@ -1,12 +1,12 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （最终修复版）
+ *  归档页面 - /archive/ （最终稳定版）
  * ============================================================
  *  说明：
  *    1. 完全复用首页数据获取逻辑（prepareIndexData）
- *    2. 所有变量都做了空值兜底，不会再报 undefined
- *    3. 传入 pages 给 Base，避免 Base 内部 pages.map 报错
+ *    2. 导航栏不再遍历 pages，彻底避免 .map 报错
+ *    3. 文章列表所有变量都做空值兜底
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -16,7 +16,7 @@ import { formatDate } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
-const { options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
+const { options, urls, user, isLoggedIn, pluginCtx } = ctx;
 
 // 2. 复用首页数据获取逻辑
 const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
@@ -44,7 +44,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
   urls={urls}
   user={user}
   isLoggedIn={isLoggedIn}
-  pages={pages}
   pluginCtx={pluginCtx}
 >
   <header id="header" class="clearfix">
@@ -55,12 +54,10 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
           <p class="description">{options.description}</p>
         </div>
         <div class="col-mb-12">
+          {/* 导航栏只显示两个按钮，不再遍历 pages，彻底避免 .map 报错 */}
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a href={urls.siteUrl + '/'}>首页</a>
             <a href={urls.siteUrl + '/archive/'} class="current">归档</a>
-            {(pages || []).map((page) => (
-              <a href={page.permalink} title={page.title}>{page.title}</a>
-            ))}
           </nav>
         </div>
       </div>
