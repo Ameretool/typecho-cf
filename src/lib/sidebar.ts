@@ -11,6 +11,7 @@ import { applyFilterSafely, type HookContext } from '@/lib/plugin';
 import { publishedPostCondition, nowSeconds } from '@/lib/content-visibility';
 
 type SidebarDatabase = Pick<Database, 'batch' | 'select'>;
+
 // Snapshots are version-keyed, so content/options writes invalidate them by
 // changing the key. A longer TTL mainly protects logged-in/cache-bypassed page
 // views from repeatedly rebuilding identical global chrome data.
@@ -20,6 +21,17 @@ const SIDEBAR_SNAPSHOT_TTL_MS = 300_000;
 // months drop out of the sidebar widget (the posts themselves stay online),
 // which bounds the GROUP BY scan on large sites.
 const SIDEBAR_ARCHIVE_WINDOW_SECONDS = 13 * 30 * 24 * 3600;
+
+/**
+ * ============================================================
+ *  侧边栏数量配置（可在此统一调整）
+ * ============================================================
+ *  RECENT_POSTS_LIMIT    : 「最新文章」显示条数
+ *  RECENT_COMMENTS_LIMIT : 「最近回复」显示条数
+ * ============================================================
+ */
+const RECENT_POSTS_LIMIT = 5;
+const RECENT_COMMENTS_LIMIT = 3;
 
 export interface SidebarData {
   recentPosts: Array<{ title: string; permalink: string }>;
@@ -64,7 +76,8 @@ function cloneSidebarData(data: SidebarData): SidebarData {
 
 function sidebarQueries(db: SidebarDatabase) {
   return [
-    // Recent posts
+    // ─── 最新文章 ────────────────────────────────────────────
+    // 数量由 RECENT_POSTS_LIMIT 控制（当前：5）
     db
       .select({
         cid: schema.contents.cid,
@@ -76,9 +89,11 @@ function sidebarQueries(db: SidebarDatabase) {
       .from(schema.contents)
       .where(publishedPostCondition())
       .orderBy(desc(schema.contents.created))
-      .limit(10),
+      .limit(RECENT_POSTS_LIMIT),
 
-    // Recent comments — only need a short preview, not the whole body.
+    // ─── 最近回复 ────────────────────────────────────────────
+    // 数量由 RECENT_COMMENTS_LIMIT 控制（当前：3）
+    // 只取评论前 200 字，避免读取全文
     db
       .select({
         coid: schema.comments.coid,
@@ -89,9 +104,9 @@ function sidebarQueries(db: SidebarDatabase) {
       .from(schema.comments)
       .where(eq(schema.comments.status, 'approved'))
       .orderBy(desc(schema.comments.created))
-      .limit(10),
+      .limit(RECENT_COMMENTS_LIMIT),
 
-    // Categories
+    // ─── 分类 ────────────────────────────────────────────────
     db
       .select({
         name: schema.metas.name,
@@ -103,7 +118,7 @@ function sidebarQueries(db: SidebarDatabase) {
       .where(eq(schema.metas.type, 'category'))
       .orderBy(schema.metas.order),
 
-    // Archives (by month)
+    // ─── 归档（按月份） ──────────────────────────────────────
     // Bound the scan to the recent window — strftime() cannot use the
     // (type, status, created) index for grouping, so this would otherwise
     // read every published row on each snapshot rebuild.
