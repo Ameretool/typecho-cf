@@ -1,0 +1,133 @@
+---
+/**
+ * ============================================================
+ *  标签总览页 - /tag/
+ * ============================================================
+ *  功能：
+ *    1. 列出所有标签
+ *    2. 每个标签自动生成稳定颜色
+ *    3. 点击进入对应标签页 /tag/{slug}/
+ * ============================================================
+ */
+import Base from '@/layouts/Base.astro';
+import { createContext } from '@/lib/context';
+import { schema } from '@/db';
+import { eq } from 'drizzle-orm';
+
+// 1. 初始化上下文
+const ctx = await createContext(Astro.locals, Astro.request);
+const { db, options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
+
+// 2. 查询所有标签
+const allTags = await db
+  .select({
+    mid: schema.metas.mid,
+    name: schema.metas.name,
+    slug: schema.metas.slug,
+  })
+  .from(schema.metas)
+  .where(eq(schema.metas.type, 'tag'));
+
+// 3. 统计每个标签下的文章数
+const relationships = await db
+  .select({
+    mid: schema.relationships.mid,
+    cid: schema.relationships.cid,
+  })
+  .from(schema.relationships);
+
+const tagCountMap: Record<number, number> = {};
+relationships.forEach((r) => {
+  tagCountMap[r.mid] = (tagCountMap[r.mid] || 0) + 1;
+});
+
+// 4. 根据标签名生成稳定颜色
+const tagsWithColor = allTags.map((tag) => {
+  const count = tagCountMap[tag.mid] || 0;
+  let hash = 0;
+  const name = tag.name || '';
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return {
+    ...tag,
+    count,
+    bgColor: `hsl(${hue}, 70%, 92%)`,
+    textColor: `hsl(${hue}, 65%, 35%)`,
+  };
+});
+---
+
+<Base
+  title="标签"
+  options={options}
+  urls={urls}
+  user={user}
+  isLoggedIn={isLoggedIn}
+  pluginCtx={pluginCtx}
+>
+  <header id="header" class="clearfix">
+    <div class="container">
+      <div class="row">
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        <div class="col-mb-12">
+          <nav id="nav-menu" class="clearfix" role="navigation">
+            <a href={urls.siteUrl + '/'}>首页</a>
+            <a href={urls.siteUrl + '/archive/'}>归档</a>
+            <a href={urls.siteUrl + '/tag/'} class="current">标签</a>
+            {(pages || []).map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <div class="col-mb-12 transition-fade" id="main" role="main">
+          <h3 class="archive-title">所有标签</h3>
+
+          {tagsWithColor.length === 0 ? (
+            <article class="post">
+              <div class="post-content">
+                <p>暂时没有标签。</p>
+              </div>
+            </article>
+          ) : (
+            <div class="tag-cloud" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 20px 0;">
+              {tagsWithColor.map((tag) => (
+                <a
+                  href={`${urls.siteUrl}/tag/${tag.slug}/`}
+                  class="tag-pill"
+                  style={`display: inline-block; padding: 6px 14px; border-radius: 999px; text-decoration: none; font-size: 14px; background: ${tag.bgColor}; color: ${tag.textColor}; transition: all 0.2s;`}
+                >
+                  {tag.name}
+                  <span style="opacity: 0.6; margin-left: 4px;">({tag.count})</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+   由 <a href="#">Typecho CF</a> 强力驱动.
+  </footer>
+</Base>
+
+<style>
+.tag-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+</style>
