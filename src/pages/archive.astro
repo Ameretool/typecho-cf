@@ -1,0 +1,58 @@
+---
+import { themeTemplates } from 'virtual:theme-templates';
+import { createContext } from '@/lib/context';
+import { schema } from '@/db';
+import { and, eq, desc } from 'drizzle-orm';
+import { formatDate } from '@/lib/content';
+
+// 1. 初始化上下文
+const ctx = await createContext(Astro.locals, Astro.request);
+const { db, options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
+
+// 2. 从数据库获取所有已发布的文章 (按时间倒序)
+const allPosts = await db.query.contents.findMany({
+  where: and(
+    eq(schema.contents.type, 'post'),
+    eq(schema.contents.status, 'publish')
+  ),
+  orderBy: [desc(schema.contents.created)],
+  with: {
+    // 这里需要包含作者、分类等关联数据，根据你 index.astro 里的配置调整
+    // 如果报错，请参考 prepareIndexData 里的查询写法
+  }
+});
+
+// 3. 按年份分组
+const postsByYear = {};
+allPosts.forEach(post => {
+  const year = new Date(post.created * 1000).getFullYear();
+  if (!postsByYear[year]) postsByYear[year] = [];
+  postsByYear[year].push(post);
+});
+
+// 4. 年份倒序排列
+const sortedYears = Object.keys(postsByYear).sort((a, b) => b - a);
+
+// 5. 选择主题组件 (复用你当前的主题)
+const activeTheme = options.theme || 'typecho-theme-minimal';
+const templates = themeTemplates[activeTheme] ?? {};
+const defaultTemplates = themeTemplates['typecho-theme-minimal']!;
+
+// 注意：这里我们直接调用 Archive.astro 组件，把数据传给它
+const ArchiveComponent = templates.Archive ?? defaultTemplates.Archive!;
+---
+
+<ArchiveComponent
+  options={options}
+  urls={urls}
+  user={user}
+  isLoggedIn={isLoggedIn}
+  pages={pages}
+  pluginCtx={pluginCtx}
+  currentPath="/archive/"
+  archiveTitle="文章归档"
+  archiveType="archive"
+  posts={allPosts}  {/* 把全部文章传过去 */}
+  pagination={{ totalPages: 1, hasPrev: false, hasNext: false }}  {/* 归档页不需要分页 */}
+  sidebarData={ctx.sidebarData}  {/* 复用侧边栏数据 */}
+/>
