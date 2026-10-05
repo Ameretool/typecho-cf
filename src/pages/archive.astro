@@ -3,9 +3,8 @@
  * ============================================================
  *  归档页面 - /archive/
  * ============================================================
- *  说明：
- *    本项目所有文章数据都通过 prepareIndexData 获取。
- *    这里直接复用它拿到文章列表，避免自定义数据库查询出错。
+ *  说明：完全复用首页的数据获取函数 prepareIndexData，
+ *       避免自定义数据库查询在 Cloudflare 上报错。
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -17,18 +16,19 @@ import { formatDate } from '@/lib/content';
 const ctx = await createContext(Astro.locals, Astro.request);
 const { options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
 
-// 2. 复用首页数据获取逻辑，拿到所有文章
+// 2. 复用首页数据获取逻辑，拿到文章列表
 const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
+const allPosts = data.posts || [];
 
 // 3. 按年份分组
 const postsByYear = {};
-(data.posts || []).forEach((post) => {
+allPosts.forEach((post) => {
   const year = new Date(post.created * 1000).getFullYear();
   if (!postsByYear[year]) postsByYear[year] = [];
   postsByYear[year].push(post);
 });
 
-// 4. 年份倒序排列
+// 4. 年份倒序
 const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
 ---
 
