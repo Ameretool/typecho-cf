@@ -242,7 +242,7 @@ export async function renderMarkdownFiltered(ctx: HookContext, text: string): Pr
  * 原来：没有 <!--more--> 时返回全文 HTML，首页超长
  * 现在：没有 <!--more--> 时自动截取前 maxPlainLength 个纯文本字符
  *
- * 后期想调字数：改 maxPlainLength = 200 里的数字即可
+ * 后期想调字数：改 maxPlainLength = 100 里的数字即可
  * ─────────────────────────────────────────────
  */
 export function renderContentExcerpt(
@@ -287,10 +287,10 @@ export function renderContentExcerpt(
  * 原来：没有 <!--more--> 时返回全文 HTML
  * 现在：没有 <!--more--> 时自动截取前 maxPlainLength 个纯文本字符
  *
- * 后期想调字数：改 maxPlainLength = 200 里的数字即可
+ * 后期想调字数：改 maxPlainLength = 100 里的数字即可
  * ─────────────────────────────────────────────
  */
-export function renderExcerptHtml(text: string, maxPlainLength = 200): string {
+export function renderExcerptHtml(text: string, maxPlainLength = 100): string {
   if (!text) return '';
   const content = stripMarkdownPrefix(text);
 
