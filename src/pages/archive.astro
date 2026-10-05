@@ -6,6 +6,7 @@
  *  说明：
  *    1. 完全复用首页数据获取逻辑（prepareIndexData）
  *    2. 所有变量都做了空值兜底，不会再报 undefined
+ *    3. 传入 pages 给 Base，避免 Base 内部 pages.map 报错
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -43,6 +44,7 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
   urls={urls}
   user={user}
   isLoggedIn={isLoggedIn}
+  pages={pages}
   pluginCtx={pluginCtx}
 >
   <header id="header" class="clearfix">
@@ -56,7 +58,7 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a href={urls.siteUrl + '/'}>首页</a>
             <a href={urls.siteUrl + '/archive/'} class="current">归档</a>
-            {pages.map((page) => (
+            {(pages || []).map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
           </nav>
@@ -84,7 +86,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
                   {year} 年
                 </h4>
                 <ul style="list-style: none; padding-left: 0;">
-                  {/* ✅ 关键修复：确保 postsByYear[year] 是数组才调用 .map() */}
                   {(Array.isArray(postsByYear[year]) ? postsByYear[year] : []).map((post: any) => (
                     <li style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: baseline;">
                       <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
