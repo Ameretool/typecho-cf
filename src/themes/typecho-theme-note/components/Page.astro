@@ -102,29 +102,7 @@ const totalComments = commentPagination.totalComments;
                作用：仅对 .post-content 内的外部链接添加 target="_blank"
                站内链接、锚点链接保持原样
                ============================================================ -->
-          <script>
-            document.addEventListener('DOMContentLoaded', () => {
-              // 获取页面正文容器
-              const container = document.querySelector('.post-content');
-              if (!container) return;
-
-              // 遍历容器内所有带 href 的链接
-              container.querySelectorAll('a[href]').forEach((a) => {
-                const href = a.getAttribute('href');
-                // 跳过空链接和锚点链接（如 #respond）
-                if (!href || href.startsWith('#')) return;
-
-                // 判断是否为外部链接（域名与当前站点不同）
-                const isExternal = a.hostname && a.hostname !== window.location.hostname;
-                if (!isExternal) return;
-
-                // 为外部链接添加新窗口打开属性
-                a.setAttribute('target', '_blank');
-                // 添加 rel 属性，防止新页面通过 window.opener 操控原页面
-                a.setAttribute('rel', 'noopener noreferrer');
-              });
-            });
-          </script>
+          
 
           {/* Comments */}
           {(!page.hasPassword || page.passwordVerified) && commentOptions.allowComment && (
