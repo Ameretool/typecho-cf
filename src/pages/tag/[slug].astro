@@ -6,7 +6,9 @@ import { and, eq } from 'drizzle-orm';
 import { schema } from '@/db';
 
 const { slug } = Astro.params;
-if (!slug) return Astro.redirect('/');
+{/* tag/index 修改 */}
+{/* if (!slug) return Astro.redirect('/');  */}
+// if (!slug) return Astro.redirect('/');
 
 const [ctx, tag] = await createContextAlongside(
   Astro.locals,
