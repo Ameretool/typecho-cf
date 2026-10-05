@@ -53,6 +53,16 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <link rel="icon" href="/favicon.png" type="image/png">
   <slot name="head" />
   <Fragment set:html={pluginSnippets.headHtml} />
+<!-- 全站外链新窗口打开脚本 -->
+<script is:inline>
+  document.addEventListener('click', function(e) {
+    const link = e.target.closest('a');
+    if (link && link.hostname && link.hostname !== window.location.hostname) {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+    }
+  }, true);
+</script>
 </head>
 <body class={bodyClass}>
   <slot />
