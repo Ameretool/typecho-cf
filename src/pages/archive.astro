@@ -1,13 +1,14 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （最终版，侧边栏归档链接已修复）
+ *  归档页面 - /archive/ （最终版，含行分隔 + hover 变色）
  * ============================================================
  *  说明：
  *    1. 完全复用首页数据获取逻辑（prepareIndexData）
  *    2. pages 和 sidebarData 从 data 里取，与 Index.astro 完全一致
- *    3. 侧边栏「归档」不再指向 /2026/10/，改为指向 /archive/
+ *    3. 侧边栏「归档」已隐藏
  *    4. 文章按「年 → 月」折叠，点击月份展开
+ *    5. 每篇文章一行，行间有分隔线，鼠标经过变浅灰蓝
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -104,18 +105,22 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                             ({postsInMonth.length} 篇)
                           </span>
                         </summary>
-                        <ul style="list-style: none; padding: 0.5rem 0 0 1rem; margin: 0;">
+
+                        {/* ==================== 文章列表（含行分隔 + hover 变色） ==================== */}
+                        <ul class="archive-post-list">
                           {postsInMonth.map((post: any) => (
-                            <li style="margin: 0.4rem 0; display: flex; gap: 1rem; align-items: baseline;">
-                              <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
+                            <li class="archive-post-row">
+                              <span class="archive-post-date">
                                 {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
                               </span>
-                              <a href={post.permalink || '#'} style="font-size: 1rem;">
+                              <a href={post.permalink || '#'} class="archive-post-title">
                                 {post.title || '无标题'}
                               </a>
                             </li>
                           ))}
                         </ul>
+                        {/* ========================================================================== */}
+
                       </details>
                     );
                   })}
@@ -159,20 +164,20 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                 </section>
               )}
 
-              {/* ==================== 修改点：归档统一指向  隐藏/archive/ ==================== */}
-            {/*
+              {/* ==================== 归档块（已隐藏） ==================== */}
+              {/*
               {sidebarData.archives && sidebarData.archives.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">归档</h3>
                   <ul class="widget-list">
                     {sidebarData.archives.map((archive) => (
-                     <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
-                   ))}
+                      <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
+                    ))}
                   </ul>
-               </section>
+                </section>
               )}
-            */}
-              {/* ==================================================================== */}
+              */}
+              {/* ========================================================= */}
 
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
@@ -203,3 +208,47 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
    由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
+
+<!-- ==================== 归档页专属样式（切主题不影响） ==================== -->
+<style>
+/* 文章列表容器 */
+.archive-post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 每篇文章一行：行分隔 + hover 变色 */
+.archive-post-row {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid #f0f0f0;   /* 行与行之间的分隔线 */
+  transition: background-color 0.15s ease;
+}
+.archive-post-row:last-child {
+  border-bottom: none;                /* 最后一行不要分隔线 */
+}
+.archive-post-row:hover {
+  background-color: #f7f8fa;          /* 和月份标题栏一致的浅灰蓝 */
+}
+
+/* 日期 */
+.archive-post-date {
+  color: #888;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+/* 标题链接 */
+.archive-post-title {
+  font-size: 1rem;
+  text-decoration: none;
+  color: #3354aa;
+}
+.archive-post-title:hover {
+  text-decoration: underline;
+}
+</style>
