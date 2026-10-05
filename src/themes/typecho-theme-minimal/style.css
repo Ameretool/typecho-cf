@@ -532,7 +532,7 @@ img.alignright {
 @media (min-width: 1200px) {
   .container {
     width: 80%;            /* 占据屏幕宽度的 80% */
-    max-width: 1160px;     /* 最大宽度限制在 1160px，防止超宽屏幕拉得太长 */
+    max-width: 1280px;     /* 最大宽度限制在 1280px，防止超宽屏幕拉得太长 */
     margin: 0 auto;        /* 确保内容居中 */
   }
 }
