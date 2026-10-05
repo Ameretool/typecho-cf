@@ -88,7 +88,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
         <div class="col-mb-12">
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-            <a href={urls.siteUrl + '/archive/'}>归档</a>
+        {/* <a href={urls.siteUrl + '/archive/'}>归档</a> */}  
             {pages.map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
