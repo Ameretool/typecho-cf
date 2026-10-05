@@ -236,51 +236,23 @@ export async function renderMarkdownFiltered(ctx: HookContext, text: string): Pr
 }
 
 /**
- * Render content with <!--more--> support.
+ * 渲染带 <!--more--> 支持的摘要内容，并附带「阅读剩余部分」链接。
  *
- * The full markdown source is rendered first so that reference-style links,
- * footnotes, and other constructs that span the <!--more--> boundary are
- * resolved correctly.  Only after a complete render is the output split at
- * the <!--more--> marker to produce the excerpt.
+ * ─── 本次修改点 ─────────────────────────────
+ * 原来：没有 <!--more--> 时返回全文 HTML，首页超长
+ * 现在：没有 <!--more--> 时自动截取前 maxPlainLength 个纯文本字符
+ *
+ * 后期想调字数：改 maxPlainLength = 200 里的数字即可
+ * ─────────────────────────────────────────────
  */
 export function renderContentExcerpt(
   text: string,
   moreText = '- 阅读剩余部分 -',
-  permalink = '#'
+  permalink = '#',
+  maxPlainLength = 100
 ): string {
   if (!text) return '';
 
-  const content = stripMarkdownPrefix(text);
-
-  if (!content.includes('<!--more-->')) {
-    return renderMarkdown(text);
-  }
-
-  // Surround the marker with blank lines before substituting the placeholder.
-  // This guarantees that marked wraps the placeholder in its own <p> block
-  // regardless of whether the author placed <!--more--> inline or between
-  // paragraphs — enabling a clean split on the rendered output.
-  const withPlaceholder = content.replace(MORE_COMMENT_RE, '\n\n' + MORE_PLACEHOLDER + '\n\n');
-  const html = marked.parse(withPlaceholder, { async: false }) as string;
-  const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
-
-  // Split on the rendered placeholder and keep only the excerpt (part before it).
-  const excerptHtml = sanitized.split(MORE_PLACEHOLDER_RE)[0];
-  return `${excerptHtml}<p class="more"><a href="${escapeHtml(permalink)}" title="${escapeHtml(moreText)}">${escapeHtml(moreText)}</a></p>`;
-}
-
-/**
- * ============================================================
- *  ★★★ 本次修改的核心函数：首页摘要渲染 ★★★
- * ============================================================
- *  改动说明：
- *    - 原来：没有 <!--more--> 时，直接返回全文 HTML，导致首页显示整篇文章
- *    - 现在：没有 <!--more--> 时，自动截取前 maxPlainLength 个字符（默认 200）
- *    - 有 <!--more--> 时，行为不变，返回 more 之前的 HTML
- * ============================================================
- */
-export function renderExcerptHtml(text: string, maxPlainLength = 200): string {
-  if (!text) return '';
   const content = stripMarkdownPrefix(text);
 
   // 情况一：有 <!--more-->，按 more 截取（保持原逻辑）
@@ -288,18 +260,57 @@ export function renderExcerptHtml(text: string, maxPlainLength = 200): string {
     const withPlaceholder = content.replace(MORE_COMMENT_RE, '\n\n' + MORE_PLACEHOLDER + '\n\n');
     const html = marked.parse(withPlaceholder, { async: false }) as string;
     const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
-    return sanitized.split(MORE_PLACEHOLDER_RE)[0];
+    const excerptHtml = sanitized.split(MORE_PLACEHOLDER_RE)[0];
+    return `${excerptHtml}<p class="more"><a href="${escapeHtml(permalink)}" title="${escapeHtml(moreText)}">${escapeHtml(moreText)}</a></p>`;
   }
 
-  // 情况二：没有 <!--more-->，先渲染全文 HTML，再按纯文本长度截取
+  // 情况二：没有 <!--more-->，渲染全文后按纯文本长度截取
   const parsed = marked.parse(content, { async: false }) as string;
   const sanitized = sanitizeHtml(parsed, SANITIZE_OPTIONS);
   const plain = stripHtmlTags(sanitized);
 
-  // 纯文本长度不超过限制：直接返回完整 HTML（保留排版）
+  // 内容短：返回完整 HTML + 阅读链接
+  if (plain.length <= maxPlainLength) {
+    return `${sanitized}<p class="more"><a href="${escapeHtml(permalink)}" title="${escapeHtml(moreText)}">${escapeHtml(moreText)}</a></p>`;
+  }
+
+  // 内容长：截取前 maxPlainLength 个字符 + 阅读链接
+  const truncated = plain.substring(0, maxPlainLength) + '...';
+  return `<p>${escapeHtml(truncated)}</p><p class="more"><a href="${escapeHtml(permalink)}" title="${escapeHtml(moreText)}">${escapeHtml(moreText)}</a></p>`;
+}
+
+/**
+ * 只渲染摘要部分（HTML 格式），不含"阅读更多"链接。
+ * 用于预渲染缓存，列表页使用。
+ *
+ * ─── 本次修改点 ─────────────────────────────
+ * 原来：没有 <!--more--> 时返回全文 HTML
+ * 现在：没有 <!--more--> 时自动截取前 maxPlainLength 个纯文本字符
+ *
+ * 后期想调字数：改 maxPlainLength = 200 里的数字即可
+ * ─────────────────────────────────────────────
+ */
+export function renderExcerptHtml(text: string, maxPlainLength = 200): string {
+  if (!text) return '';
+  const content = stripMarkdownPrefix(text);
+
+  // 情况一：有 <!--more-->，按 more 截取
+  if (content.includes('<!--more-->')) {
+    const withPlaceholder = content.replace(MORE_COMMENT_RE, '\n\n' + MORE_PLACEHOLDER + '\n\n');
+    const html = marked.parse(withPlaceholder, { async: false }) as string;
+    const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
+    return sanitized.split(MORE_PLACEHOLDER_RE)[0];
+  }
+
+  // 情况二：没有 <!--more-->，渲染全文后按纯文本长度截取
+  const parsed = marked.parse(content, { async: false }) as string;
+  const sanitized = sanitizeHtml(parsed, SANITIZE_OPTIONS);
+  const plain = stripHtmlTags(sanitized);
+
+  // 内容本来就短，直接返回完整 HTML
   if (plain.length <= maxPlainLength) return sanitized;
 
-  // 纯文本超过限制：截取前 maxPlainLength 个字符，包成段落
+  // 内容太长，截取前 maxPlainLength 个字符
   const truncated = plain.substring(0, maxPlainLength) + '...';
   return `<p>${escapeHtml(truncated)}</p>`;
 }
