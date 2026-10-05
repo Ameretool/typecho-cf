@@ -16,6 +16,13 @@ body {
   font-size: 87.5%;                      /* 基础字号为浏览器默认的 87.5%，即 14px */
 }
 
+/* ★ 页面整体宽度 80% 并水平居中 */
+.container {
+  width: 80% !important;                 /* ★ 页面主体宽度 80% */
+  margin-left: auto !important;          /* ★ 左边距自动，水平居中 */
+  margin-right: auto !important;         /* ★ 右边距自动，水平居中 */
+}
+
 a {
   color: #3354AA;                        /* 链接颜色蓝色 */
   text-decoration: none;                 /* 去掉下划线 */
@@ -75,9 +82,7 @@ blockquote {
 table {
   border-collapse: separate !important; /* 改为 separate，配合阴影画线 */
   border-spacing: 0 !important;         /* 单元格间距为 0 */
-  width: 80% !important;                /* ★ 宽度改为 80% */
-  margin-left: auto !important;         /* ★ 水平居中：左边距自动 */
-  margin-right: auto !important;        /* ★ 水平居中：右边距自动 */
+  width: 100% !important;               /* 表格宽度 100%（相对容器） */
   margin-bottom: 16px !important;       /* 表格下方外边距 16px */
   border: none !important;              /* 取消原来的实体边框 */
   /* 用阴影画出外框，完美替代边框 */
