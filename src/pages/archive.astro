@@ -1,20 +1,21 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （方案 A：直接查全部文章）
+ *  归档页面 - /archive/ （方案 A：链接用 buildPermalink 生成）
  * ============================================================
  *  说明：
  *    1. 直接查数据库，拿全部已发布文章，不分页
  *    2. 按「年 → 月」分组
- *    3. 导航栏 + 侧边栏与首页一致
- *    4. 每篇文章一行，行分隔 + hover 变色
+ *    3. 用 buildPermalink 生成正确的 /post/xxx.html 链接
+ *    4. 导航栏 + 侧边栏与首页一致
+ *    5. 每篇文章一行，行分隔 + hover 变色
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
 import { createContext } from '@/lib/context';
 import { schema } from '@/db';
 import { and, eq, desc } from 'drizzle-orm';
-import { formatDate } from '@/lib/content';
+import { formatDate, buildPermalink } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
@@ -29,7 +30,7 @@ const allPosts = await db.query.contents.findMany({
   orderBy: [desc(schema.contents.created)],
 });
 
-// 3. 按「年 → 月」分组
+// 3. 按「年 → 月」分组，并顺便算 permalink
 const postsByYearMonth: Record<string, Record<string, any[]>> = {};
 allPosts.forEach((post: any) => {
   const created = Number(post?.created);
@@ -39,13 +40,19 @@ allPosts.forEach((post: any) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   if (!postsByYearMonth[year]) postsByYearMonth[year] = {};
   if (!postsByYearMonth[year][month]) postsByYearMonth[year][month] = [];
+  // 用 buildPermalink 生成正确的 /post/xxx.html 链接
+  post.permalink = buildPermalink(
+    { cid: post.cid, slug: post.slug, type: post.type, created: post.created },
+    urls.siteUrl,
+    options.permalinkPattern as string | undefined,
+  );
   postsByYearMonth[year][month].push(post);
 });
 
 // 4. 年份倒序
 const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Number(a));
 
-// 5. 侧边栏和导航数据（单独加载，避免归档页数据被分页截断）
+// 5. 侧边栏和导航数据
 const { loadSidebarAndNav } = await import('@/lib/sidebar');
 const { sidebarData, pages } = await loadSidebarAndNav(
   ctx,
@@ -122,8 +129,8 @@ const { sidebarData, pages } = await loadSidebarAndNav(
                               <span class="archive-post-date">
                                 {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
                               </span>
-                              {/* 数据库原始行没有 permalink 字段，用 cid 构造 */}
-                              <a href={`${urls.siteUrl}/archives/${post.cid}/`} class="archive-post-title">
+                              {/* 用 buildPermalink 生成的正确链接，格式为 /post/xxx.html */}
+                              <a href={post.permalink} class="archive-post-title">
                                 {post.title || '无标题'}
                               </a>
                             </li>
