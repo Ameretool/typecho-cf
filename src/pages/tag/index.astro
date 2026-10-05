@@ -1,24 +1,30 @@
 ---
 /**
  * ============================================================
- *  标签总览页 - /tag/
+ *  标签总览页 - /tag/ （完整版）
  * ============================================================
  *  功能：
- *    1. 列出所有标签
- *    2. 每个标签自动生成稳定颜色
- *    3. 点击进入对应标签页 /tag/{slug}/
+ *    1. 列出所有标签，自动生成稳定颜色
+ *    2. 导航栏带 pages（项目、链接、关于）
+ *    3. 右侧带完整侧边栏
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
 import { createContext } from '@/lib/context';
+import { prepareIndexData } from '@/lib/page-data';
 import { schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
-const { db, options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
+const { db, options, urls, user, isLoggedIn, pluginCtx } = ctx;
 
-// 2. 查询所有标签
+// 2. 复用首页数据，拿到 pages 和 sidebarData
+const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
+const pages = data?.pages;
+const sidebarData = data?.sidebarData;
+
+// 3. 查询所有标签
 const allTags = await db
   .select({
     mid: schema.metas.mid,
@@ -28,7 +34,7 @@ const allTags = await db
   .from(schema.metas)
   .where(eq(schema.metas.type, 'tag'));
 
-// 3. 统计每个标签下的文章数
+// 4. 统计每个标签下的文章数
 const relationships = await db
   .select({
     mid: schema.relationships.mid,
@@ -41,7 +47,7 @@ relationships.forEach((r) => {
   tagCountMap[r.mid] = (tagCountMap[r.mid] || 0) + 1;
 });
 
-// 4. 根据标签名生成稳定颜色
+// 5. 根据标签名生成稳定颜色
 const tagsWithColor = allTags.map((tag) => {
   const count = tagCountMap[tag.mid] || 0;
   let hash = 0;
@@ -79,6 +85,7 @@ const tagsWithColor = allTags.map((tag) => {
             <a href={urls.siteUrl + '/'}>首页</a>
             <a href={urls.siteUrl + '/archive/'}>归档</a>
             <a href={urls.siteUrl + '/tag/'} class="current">标签</a>
+            {/* 导航栏补齐 pages */}
             {(pages || []).map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
@@ -91,7 +98,8 @@ const tagsWithColor = allTags.map((tag) => {
   <div id="body">
     <div class="container">
       <div class="row">
-        <div class="col-mb-12 transition-fade" id="main" role="main">
+        <!-- ==================== 左侧主内容区 ==================== -->
+        <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           <h3 class="archive-title">所有标签</h3>
 
           {tagsWithColor.length === 0 ? (
@@ -113,6 +121,74 @@ const tagsWithColor = allTags.map((tag) => {
                 </a>
               ))}
             </div>
+          )}
+        </div>
+
+        <!-- ==================== 右侧侧边栏（照抄首页） ==================== -->
+        <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+          {sidebarData && (
+            <>
+              {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">最新文章</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentPosts.map((p) => (
+                      <li><a href={p.permalink}>{p.title}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">最近回复</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentComments.map((c) => (
+                      <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.categories && sidebarData.categories.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">分类</h3>
+                  <ul class="widget-list">
+                    {sidebarData.categories.map((cat) => (
+                      <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {/* 侧边栏归档块已隐藏 */}
+              {/*
+              {sidebarData.archives && sidebarData.archives.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">归档</h3>
+                  <ul class="widget-list">
+                    {sidebarData.archives.map((archive) => (
+                      <li><a href={archive.permalink}>{archive.date}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              */}
+              <section class="widget">
+                <h3 class="widget-title">其它</h3>
+                <ul class="widget-list">
+                  {isLoggedIn ? (
+                    <>
+                      <li class="last">
+                        <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
+                      </li>
+                      <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                    </>
+                  ) : (
+                    <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                  )}
+                  <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                  <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+                </ul>
+              </section>
+            </>
           )}
         </div>
       </div>
