@@ -1,12 +1,12 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （侧边栏完整版）
+ *  归档页面 - /archive/ （侧边栏完整修复版）
  * ============================================================
  *  说明：
  *    1. 完全复用首页数据获取逻辑（prepareIndexData）
- *    2. 导航栏不遍历 pages，避免 .map 报错
- *    3. 侧边栏完整复制 Index.astro 的结构：最新文章、最近回复、分类、归档、其它
+ *    2. sidebarData 直接从 data 里取，和 Index.astro 完全一致
+ *    3. 导航栏不遍历 pages，避免 .map 报错
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -16,13 +16,14 @@ import { formatDate } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
-const { options, urls, user, isLoggedIn, sidebarData, pluginCtx } = ctx;
+const { options, urls, user, isLoggedIn, pluginCtx } = ctx;
 
 // 2. 复用首页数据获取逻辑
 const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
 
-// 3. 安全取出文章列表（兜底为 []）
+// 3. 从 data 里取文章列表和侧边栏数据（和 Index.astro 完全一致）
 const allPosts = Array.isArray(data?.posts) ? data.posts : [];
+const sidebarData = data?.sidebarData;
 
 // 4. 按年份分组（过滤掉 created 无效的文章）
 const postsByYear: Record<string, any[]> = {};
@@ -54,7 +55,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
           <p class="description">{options.description}</p>
         </div>
         <div class="col-mb-12">
-          {/* 导航栏只显示两个按钮，不再遍历 pages，彻底避免 .map 报错 */}
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a href={urls.siteUrl + '/'}>首页</a>
             <a href={urls.siteUrl + '/archive/'} class="current">归档</a>
