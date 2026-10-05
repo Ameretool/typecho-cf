@@ -1,0 +1,143 @@
+---
+/**
+ * ============================================================
+ *  独立归档页面 - /archive/
+ * ============================================================
+ *  功能：
+ *    1. 从数据库查询所有已发布文章
+ *    2. 按年份倒序分组展示
+ *    3. 不依赖主题的 Archive.astro 组件，完全独立渲染
+ * ============================================================
+ */
+import Base from '@/layouts/Base.astro';
+import { createContext } from '@/lib/context';
+import { schema } from '@/db';
+import { and, eq, desc } from 'drizzle-orm';
+import { formatDate } from '@/lib/content';
+
+// 1. 初始化上下文
+const ctx = await createContext(Astro.locals, Astro.request);
+const { db, options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
+
+// 2. 查询所有已发布文章
+const allPosts = await db.query.contents.findMany({
+  where: and(
+    eq(schema.contents.type, 'post'),
+    eq(schema.contents.status, 'publish')
+  ),
+  orderBy: [desc(schema.contents.created)],
+});
+
+// 3. 按年份分组
+const postsByYear = {};
+allPosts.forEach(post => {
+  const year = new Date(post.created * 1000).getFullYear();
+  if (!postsByYear[year]) postsByYear[year] = [];
+  postsByYear[year].push(post);
+});
+
+// 4. 年份倒序排列
+const sortedYears = Object.keys(postsByYear).sort((a, b) => b - a);
+---
+
+<Base
+  title="文章归档"
+  options={options}
+  urls={urls}
+  user={user}
+  isLoggedIn={isLoggedIn}
+  pluginCtx={pluginCtx}
+>
+  <!-- ==================== 页面头部（复制自原主题） ==================== -->
+  <header id="header" class="clearfix">
+    <div class="container">
+      <div class="row">
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        <div class="site-search col-3 kit-hidden-tb">
+          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+            <label for="s" class="sr-only">搜索关键字</label>
+            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+            <button type="submit" class="submit">搜索</button>
+          </form>
+        </div>
+        <div class="col-mb-12">
+          <nav id="nav-menu" class="clearfix" role="navigation">
+            <a href={urls.siteUrl + '/'}>首页</a>
+            {/* 当前页面为归档，高亮显示 */}
+            <a href={urls.siteUrl + '/archive/'} class="current">归档</a>
+            {pages.map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 页面主体 ==================== -->
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
+          <h3 class="archive-title">文章归档</h3>
+
+          {sortedYears.length === 0 ? (
+            <article class="post">
+              <div class="post-content">
+                <p>暂时没有文章。</p>
+              </div>
+            </article>
+          ) : (
+            sortedYears.map(year => (
+              <section class="archive-year" style="margin-bottom: 2rem;">
+                <h4 style="font-size: 1.2rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                  {year} 年
+                </h4>
+                <ul style="list-style: none; padding-left: 0;">
+                  {postsByYear[year].map(post => (
+                    <li style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: baseline;">
+                      <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
+                        {formatDate(post.created, 'm-d', options.timezone)}
+                      </span>
+                      <a href={`${urls.siteUrl}/archives/${post.cid}/`} style="font-size: 1rem;">
+                        {post.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
+        </div>
+
+        <!-- ==================== 侧边栏 ==================== -->
+        <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+          <section class="widget">
+            <h3 class="widget-title">其它</h3>
+            <ul class="widget-list">
+              {isLoggedIn ? (
+                <>
+                  <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
+                  <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                </>
+              ) : (
+                <li class="last"><a href={urls.loginUrl}>登录</a></li>
+              )}
+              <li><a href={urls.feedUrl}>文章 RSS</a></li>
+              <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 页脚 ==================== -->
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+   由 <a href="#">Typecho CF</a> 强力驱动.
+  </footer>
+</Base>
