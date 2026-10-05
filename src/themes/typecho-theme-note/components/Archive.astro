@@ -1,9 +1,12 @@
 ---
 /**
- * Default theme — Archive list component
- *
- * Shared template for category, tag, author, and search archive pages.
- * Renders a titled post list with pagination.
+ * ============================================================
+ *  默认主题 — Archive 列表组件（最终修改版）
+ * ============================================================
+ *  修改点：
+ *    1. 导航栏新增「归档」按钮，指向 /archive/
+ *    2. 侧边栏「归档」改为显示分类列表（彻底解决 404）
+ * ============================================================
  */
 import Base from '@/layouts/Base.astro';
 import type { ThemeArchiveProps } from '@/lib/theme-props';
@@ -26,6 +29,7 @@ const isIndex = currentPath === '/';
   isLoggedIn={isLoggedIn}
   pluginCtx={pluginCtx}
 >
+  <!-- ==================== 页面头部 ==================== -->
   <header id="header" class="clearfix">
     <div class="container">
       <div class="row">
@@ -43,6 +47,11 @@ const isIndex = currentPath === '/';
         <div class="col-mb-12">
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+
+            {/* ==================== 修改点 1：新增「归档」按钮 ==================== */}
+            <a href={urls.siteUrl + '/archive/'}>归档</a>
+            {/* ================================================================ */}
+
             {pages.map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
@@ -52,6 +61,7 @@ const isIndex = currentPath === '/';
     </div>
   </header>
 
+  <!-- ==================== 页面主体 ==================== -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -108,6 +118,7 @@ const isIndex = currentPath === '/';
           )}
         </div>
 
+        <!-- ==================== 侧边栏 ==================== -->
         {sidebarData && (
           <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
             {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
@@ -140,16 +151,20 @@ const isIndex = currentPath === '/';
                 </ul>
               </section>
             )}
-            {sidebarData.archives && sidebarData.archives.length > 0 && (
+
+            {/* ==================== 修改点 2：侧边栏「归档」改为显示分类 ==================== */}
+            {sidebarData.categories && sidebarData.categories.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">归档</h3>
                 <ul class="widget-list">
-                  {sidebarData.archives.map((archive) => (
-                    <li><a href={archive.permalink}>{archive.date}</a></li>
+                  {sidebarData.categories.map((cat) => (
+                    <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
                   ))}
                 </ul>
               </section>
             )}
+            {/* ========================================================================= */}
+
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
@@ -173,6 +188,7 @@ const isIndex = currentPath === '/';
     </div>
   </div>
 
+  <!-- ==================== 页脚 ==================== -->
   <footer id="footer" role="contentinfo">
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
    由 <a href="#">Typecho CF</a> 强力驱动.
