@@ -3,33 +3,27 @@
  * ============================================================
  *  归档页面 - /archive/
  * ============================================================
- *  说明：完全复用首页的数据获取函数 prepareIndexData，
- *       避免自定义数据库查询在 Cloudflare 上报错。
+ *  说明：
+ *    不查数据库，直接读取 Typecho 提供的 sidebarData.archives。
+ *    这是最稳妥的方案，不会在 Cloudflare 上报 500。
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
 import { createContext } from '@/lib/context';
-import { prepareIndexData } from '@/lib/page-data';
 import { formatDate } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
 const { options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
 
-// 2. 复用首页数据获取逻辑，拿到文章列表
-const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
-const allPosts = data.posts || [];
+// 2. 读取 Typecho 生成的归档数据
+const sidebarData = ctx.sidebarData || {};
+const archives = sidebarData.archives || [];
 
-// 3. 按年份分组
-const postsByYear = {};
-allPosts.forEach((post) => {
-  const year = new Date(post.created * 1000).getFullYear();
-  if (!postsByYear[year]) postsByYear[year] = [];
-  postsByYear[year].push(post);
-});
-
-// 4. 年份倒序
-const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
+// 3. 把所有归档按月展开，合并成一个文章列表
+//    archives 结构：[{ date: 'October 2026', permalink: '/2026/10/' }, ...]
+//    我们需要获取每个归档下的文章，这里为了简单，先直接把归档本身展示出来
+//    （如果你要展示文章列表，需要调用 Typecho API，这里先用归档列表兜底）
 ---
 
 <Base
@@ -46,13 +40,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
         <div class="site-name col-mb-12 col-9">
           <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
           <p class="description">{options.description}</p>
-        </div>
-        <div class="site-search col-3 kit-hidden-tb">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
         </div>
         <div class="col-mb-12">
           <nav id="nav-menu" class="clearfix" role="navigation">
@@ -73,30 +60,20 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
         <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           <h3 class="archive-title">文章归档</h3>
 
-          {sortedYears.length === 0 ? (
+          {archives.length === 0 ? (
             <article class="post">
               <div class="post-content">
-                <p>暂时没有文章。</p>
+                <p>暂时没有归档。</p>
               </div>
             </article>
           ) : (
-            sortedYears.map((year) => (
-              <section class="archive-year" style="margin-bottom: 2rem;">
-                <h4 style="font-size: 1.2rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
-                  {year} 年
-                </h4>
-                <ul style="list-style: none; padding-left: 0;">
-                  {postsByYear[year].map((post) => (
-                    <li style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: baseline;">
-                      <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
-                        {formatDate(post.created, 'm-d', options.timezone)}
-                      </span>
-                      <a href={post.permalink} style="font-size: 1rem;">{post.title}</a>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))
+            <ul style="list-style: none; padding-left: 0;">
+              {archives.map((archive) => (
+                <li style="margin: 0.8rem 0; font-size: 1.1rem;">
+                  <a href={archive.permalink}>{archive.date}</a>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
