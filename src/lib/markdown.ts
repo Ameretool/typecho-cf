@@ -270,21 +270,38 @@ export function renderContentExcerpt(
 }
 
 /**
- * 只渲染摘要部分（HTML 格式），不含"阅读更多"链接。
- * 用于预渲染缓存，列表页使用。
- * - 有 <!--more--> 标记：返回 more 之前的 HTML
- * - 没有 <!--more-->：返回全文 HTML
+ * ============================================================
+ *  ★★★ 本次修改的核心函数：首页摘要渲染 ★★★
+ * ============================================================
+ *  改动说明：
+ *    - 原来：没有 <!--more--> 时，直接返回全文 HTML，导致首页显示整篇文章
+ *    - 现在：没有 <!--more--> 时，自动截取前 maxPlainLength 个字符（默认 200）
+ *    - 有 <!--more--> 时，行为不变，返回 more 之前的 HTML
+ * ============================================================
  */
-export function renderExcerptHtml(text: string): string {
+export function renderExcerptHtml(text: string, maxPlainLength = 200): string {
   if (!text) return '';
   const content = stripMarkdownPrefix(text);
-  if (!content.includes('<!--more-->')) {
-    return renderContent(text).html;
+
+  // 情况一：有 <!--more-->，按 more 截取（保持原逻辑）
+  if (content.includes('<!--more-->')) {
+    const withPlaceholder = content.replace(MORE_COMMENT_RE, '\n\n' + MORE_PLACEHOLDER + '\n\n');
+    const html = marked.parse(withPlaceholder, { async: false }) as string;
+    const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
+    return sanitized.split(MORE_PLACEHOLDER_RE)[0];
   }
-  const withPlaceholder = content.replace(MORE_COMMENT_RE, '\n\n' + MORE_PLACEHOLDER + '\n\n');
-  const html = marked.parse(withPlaceholder, { async: false }) as string;
-  const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
-  return sanitized.split(MORE_PLACEHOLDER_RE)[0];
+
+  // 情况二：没有 <!--more-->，先渲染全文 HTML，再按纯文本长度截取
+  const parsed = marked.parse(content, { async: false }) as string;
+  const sanitized = sanitizeHtml(parsed, SANITIZE_OPTIONS);
+  const plain = stripHtmlTags(sanitized);
+
+  // 纯文本长度不超过限制：直接返回完整 HTML（保留排版）
+  if (plain.length <= maxPlainLength) return sanitized;
+
+  // 纯文本超过限制：截取前 maxPlainLength 个字符，包成段落
+  const truncated = plain.substring(0, maxPlainLength) + '...';
+  return `<p>${escapeHtml(truncated)}</p>`;
 }
 
 /**
