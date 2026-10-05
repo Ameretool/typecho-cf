@@ -4,566 +4,296 @@
  * Version: 1.2.8
  * Update: 2013.11.25
  */
+
+/* ==================
+ * 盒模型与容器基础设置
+ * =============== */
+
+/* 统一盒模型：让元素的宽度和高度包含内边距和边框，防止布局计算错误 */
 .container, .row [class*="col-"] {
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
-  box-sizing: border-box; }
+  -webkit-box-sizing: border-box; /* 兼容旧版 WebKit 浏览器 */
+  -moz-box-sizing: border-box;    /* 兼容旧版 Firefox 浏览器 */
+  box-sizing: border-box;         /* 标准盒模型 */
+}
 
+/* 容器基础样式：用于包裹整个页面内容，确保内容居中且两边留白 */
 .container {
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 10px;
-  padding-right: 10px; }
+  margin-left: auto;    /* 左侧自动外边距，配合右侧实现水平居中 */
+  margin-right: auto;   /* 右侧自动外边距，实现水平居中 */
+  padding-left: 10px;   /* 左侧内边距，防止内容贴边 */
+  padding-right: 10px;  /* 右侧内边距，防止内容贴边 */
+}
 
+/* 行基础样式：用于包裹列，通过负外边距抵消列的内边距 */
 .row {
-  margin-right: -10px;
-  margin-left: -10px; }
+  margin-right: -10px;  /* 负右边距，抵消列右内边距 */
+  margin-left: -10px;   /* 负左边距，抵消列左内边距 */
+}
 
+/* 列基础样式：所有以 col- 开头的类都使用浮动排列 */
 .row [class*="col-"] {
-  float: left;
-  min-height: 1px;
-  padding-right: 10px;
-  padding-left: 10px; }
+  float: left;          /* 左浮动，让列横向排列 */
+  min-height: 1px;      /* 最小高度 1px，防止空列高度塌陷 */
+  padding-right: 10px;  /* 列右侧内边距，形成列与列之间的间距 */
+  padding-left: 10px;   /* 列左侧内边距，形成列与列之间的间距 */
+}
 
+/* 偏移和推拉定位的基础设置 */
 .row [class*="-push-"],
 .row [class*="-pull-"] {
-  position: relative; }
+  position: relative;   /* 相对定位，用于后续的 left/right 偏移 */
+}
 
-/*
- * Mobile and up
- */
-.col-mb-1 {
-  width: 8.33333%; }
 
-.col-mb-2 {
-  width: 16.66667%; }
+/* ==================
+ * 移动端优先（Mobile and up）
+ * 默认样式，适用于所有屏幕，特别是手机
+ * =============== */
 
-.col-mb-3 {
-  width: 25%; }
+.col-mb-1 { width: 8.33333%; }   /* 1/12 宽度 */
+.col-mb-2 { width: 16.66667%; }  /* 2/12 宽度 */
+.col-mb-3 { width: 25%; }        /* 3/12 宽度 */
+.col-mb-4 { width: 33.33333%; }  /* 4/12 宽度 */
+.col-mb-5 { width: 41.66667%; }  /* 5/12 宽度 */
+.col-mb-6 { width: 50%; }        /* 6/12 宽度，即一半 */
+.col-mb-7 { width: 58.33333%; }  /* 7/12 宽度 */
+.col-mb-8 { width: 66.66667%; }  /* 8/12 宽度 */
+.col-mb-9 { width: 75%; }        /* 9/12 宽度 */
+.col-mb-10 { width: 83.33333%; } /* 10/12 宽度 */
+.col-mb-11 { width: 91.66667%; } /* 11/12 宽度 */
+.col-mb-12 { width: 100%; }      /* 12/12 宽度，即占满整行 */
 
-.col-mb-4 {
-  width: 33.33333%; }
 
-.col-mb-5 {
-  width: 41.66667%; }
-
-.col-mb-6 {
-  width: 50%; }
-
-.col-mb-7 {
-  width: 58.33333%; }
-
-.col-mb-8 {
-  width: 66.66667%; }
-
-.col-mb-9 {
-  width: 75%; }
-
-.col-mb-10 {
-  width: 83.33333%; }
-
-.col-mb-11 {
-  width: 91.66667%; }
-
-.col-mb-12 {
-  width: 100%; }
-
-/*
- * Tablet and up
- */
+/* ==================
+ * 平板及以上（Tablet and up）
+ * 屏幕宽度 >= 768px 时生效
+ * =============== */
 @media (min-width: 768px) {
-  .container {
-    max-width: 728px; }
+  /* ⚠️ 注意：这里原本定义了 .container { max-width: 728px; }
+     现已删除，因为你的 style.css 会统一控制容器宽度，避免冲突。
+     删除后，宽度由 style.css 全权负责，这里只管列排列。 */
 
-  .col-tb-1 {
-    width: 8.33333%; }
+  /* 平板端的列宽定义（tb = tablet） */
+  .col-tb-1 { width: 8.33333%; }
+  .col-tb-2 { width: 16.66667%; }
+  .col-tb-3 { width: 25%; }
+  .col-tb-4 { width: 33.33333%; }
+  .col-tb-5 { width: 41.66667%; }
+  .col-tb-6 { width: 50%; }
+  .col-tb-7 { width: 58.33333%; }
+  .col-tb-8 { width: 66.66667%; }
+  .col-tb-9 { width: 75%; }
+  .col-tb-10 { width: 83.33333%; }
+  .col-tb-11 { width: 91.66667%; }
+  .col-tb-12 { width: 100%; }
 
-  .col-tb-2 {
-    width: 16.66667%; }
+  /* 平板端的列偏移定义 */
+  .col-tb-offset-0 { margin-left: 0%; }
+  .col-tb-offset-1 { margin-left: 8.33333%; }
+  .col-tb-offset-2 { margin-left: 16.66667%; }
+  .col-tb-offset-3 { margin-left: 25%; }
+  .col-tb-offset-4 { margin-left: 33.33333%; }
+  .col-tb-offset-5 { margin-left: 41.66667%; }
+  .col-tb-offset-6 { margin-left: 50%; }
+  .col-tb-offset-7 { margin-left: 58.33333%; }
+  .col-tb-offset-8 { margin-left: 66.66667%; }
+  .col-tb-offset-9 { margin-left: 75%; }
+  .col-tb-offset-10 { margin-left: 83.33333%; }
+  .col-tb-offset-11 { margin-left: 91.66667%; }
+  .col-tb-offset-12 { margin-left: 100%; }
 
-  .col-tb-3 {
-    width: 25%; }
+  /* 平板端的列向右推/拉定义（用于改变视觉顺序） */
+  .col-tb-pull-0 { right: 0%; }
+  .col-tb-pull-1 { right: 8.33333%; }
+  .col-tb-pull-2 { right: 16.66667%; }
+  .col-tb-pull-3 { right: 25%; }
+  .col-tb-pull-4 { right: 33.33333%; }
+  .col-tb-pull-5 { right: 41.66667%; }
+  .col-tb-pull-6 { right: 50%; }
+  .col-tb-pull-7 { right: 58.33333%; }
+  .col-tb-pull-8 { right: 66.66667%; }
+  .col-tb-pull-9 { right: 75%; }
+  .col-tb-pull-10 { right: 83.33333%; }
+  .col-tb-pull-11 { right: 91.66667%; }
+  .col-tb-pull-12 { right: 100%; }
 
-  .col-tb-4 {
-    width: 33.33333%; }
+  .col-tb-push-0 { left: 0%; }
+  .col-tb-push-1 { left: 8.33333%; }
+  .col-tb-push-2 { left: 16.66667%; }
+  .col-tb-push-3 { left: 25%; }
+  .col-tb-push-4 { left: 33.33333%; }
+  .col-tb-push-5 { left: 41.66667%; }
+  .col-tb-push-6 { left: 50%; }
+  .col-tb-push-7 { left: 58.33333%; }
+  .col-tb-push-8 { left: 66.66667%; }
+  .col-tb-push-9 { left: 75%; }
+  .col-tb-push-10 { left: 83.33333%; }
+  .col-tb-push-11 { left: 91.66667%; }
+  .col-tb-push-12 { left: 100%; }
+}
 
-  .col-tb-5 {
-    width: 41.66667%; }
 
-  .col-tb-6 {
-    width: 50%; }
-
-  .col-tb-7 {
-    width: 58.33333%; }
-
-  .col-tb-8 {
-    width: 66.66667%; }
-
-  .col-tb-9 {
-    width: 75%; }
-
-  .col-tb-10 {
-    width: 83.33333%; }
-
-  .col-tb-11 {
-    width: 91.66667%; }
-
-  .col-tb-12 {
-    width: 100%; }
-
-  .col-tb-offset-0 {
-    margin-left: 0%; }
-
-  .col-tb-offset-1 {
-    margin-left: 8.33333%; }
-
-  .col-tb-offset-2 {
-    margin-left: 16.66667%; }
-
-  .col-tb-offset-3 {
-    margin-left: 25%; }
-
-  .col-tb-offset-4 {
-    margin-left: 33.33333%; }
-
-  .col-tb-offset-5 {
-    margin-left: 41.66667%; }
-
-  .col-tb-offset-6 {
-    margin-left: 50%; }
-
-  .col-tb-offset-7 {
-    margin-left: 58.33333%; }
-
-  .col-tb-offset-8 {
-    margin-left: 66.66667%; }
-
-  .col-tb-offset-9 {
-    margin-left: 75%; }
-
-  .col-tb-offset-10 {
-    margin-left: 83.33333%; }
-
-  .col-tb-offset-11 {
-    margin-left: 91.66667%; }
-
-  .col-tb-offset-12 {
-    margin-left: 100%; }
-
-  .col-tb-pull-0 {
-    right: 0%; }
-
-  .col-tb-pull-1 {
-    right: 8.33333%; }
-
-  .col-tb-pull-2 {
-    right: 16.66667%; }
-
-  .col-tb-pull-3 {
-    right: 25%; }
-
-  .col-tb-pull-4 {
-    right: 33.33333%; }
-
-  .col-tb-pull-5 {
-    right: 41.66667%; }
-
-  .col-tb-pull-6 {
-    right: 50%; }
-
-  .col-tb-pull-7 {
-    right: 58.33333%; }
-
-  .col-tb-pull-8 {
-    right: 66.66667%; }
-
-  .col-tb-pull-9 {
-    right: 75%; }
-
-  .col-tb-pull-10 {
-    right: 83.33333%; }
-
-  .col-tb-pull-11 {
-    right: 91.66667%; }
-
-  .col-tb-pull-12 {
-    right: 100%; }
-
-  .col-tb-push-0 {
-    left: 0%; }
-
-  .col-tb-push-1 {
-    left: 8.33333%; }
-
-  .col-tb-push-2 {
-    left: 16.66667%; }
-
-  .col-tb-push-3 {
-    left: 25%; }
-
-  .col-tb-push-4 {
-    left: 33.33333%; }
-
-  .col-tb-push-5 {
-    left: 41.66667%; }
-
-  .col-tb-push-6 {
-    left: 50%; }
-
-  .col-tb-push-7 {
-    left: 58.33333%; }
-
-  .col-tb-push-8 {
-    left: 66.66667%; }
-
-  .col-tb-push-9 {
-    left: 75%; }
-
-  .col-tb-push-10 {
-    left: 83.33333%; }
-
-  .col-tb-push-11 {
-    left: 91.66667%; }
-
-  .col-tb-push-12 {
-    left: 100%; } }
-/*
- * Desktop and up
- */
+/* ==================
+ * 桌面端及以上（Desktop and up）
+ * 屏幕宽度 >= 992px 时生效
+ * =============== */
 @media (min-width: 992px) {
-  .container {
-    max-width: 952px; }
+  /* ⚠️ 注意：这里原本定义了 .container { max-width: 952px; }
+     现已删除，避免与 style.css 的宽度设置冲突。 */
 
-  .col-1 {
-    width: 8.33333%; }
+  /* 桌面端的列宽定义（无前缀，默认即为桌面端） */
+  .col-1 { width: 8.33333%; }
+  .col-2 { width: 16.66667%; }
+  .col-3 { width: 25%; }
+  .col-4 { width: 33.33333%; }
+  .col-5 { width: 41.66667%; }
+  .col-6 { width: 50%; }
+  .col-7 { width: 58.33333%; }
+  .col-8 { width: 66.66667%; }
+  .col-9 { width: 75%; }
+  .col-10 { width: 83.33333%; }
+  .col-11 { width: 91.66667%; }
+  .col-12 { width: 100%; }
 
-  .col-2 {
-    width: 16.66667%; }
+  /* 桌面端的列偏移定义 */
+  .col-offset-0 { margin-left: 0%; }
+  .col-offset-1 { margin-left: 8.33333%; }
+  .col-offset-2 { margin-left: 16.66667%; }
+  .col-offset-3 { margin-left: 25%; }
+  .col-offset-4 { margin-left: 33.33333%; }
+  .col-offset-5 { margin-left: 41.66667%; }
+  .col-offset-6 { margin-left: 50%; }
+  .col-offset-7 { margin-left: 58.33333%; }
+  .col-offset-8 { margin-left: 66.66667%; }
+  .col-offset-9 { margin-left: 75%; }
+  .col-offset-10 { margin-left: 83.33333%; }
+  .col-offset-11 { margin-left: 91.66667%; }
+  .col-offset-12 { margin-left: 100%; }
 
-  .col-3 {
-    width: 25%; }
+  /* 桌面端的推拉定义 */
+  .col-pull-0 { right: 0%; }
+  .col-pull-1 { right: 8.33333%; }
+  .col-pull-2 { right: 16.66667%; }
+  .col-pull-3 { right: 25%; }
+  .col-pull-4 { right: 33.33333%; }
+  .col-pull-5 { right: 41.66667%; }
+  .col-pull-6 { right: 50%; }
+  .col-pull-7 { right: 58.33333%; }
+  .col-pull-8 { right: 66.66667%; }
+  .col-pull-9 { right: 75%; }
+  .col-pull-10 { right: 83.33333%; }
+  .col-pull-11 { right: 91.66667%; }
+  .col-pull-12 { right: 100%; }
 
-  .col-4 {
-    width: 33.33333%; }
+  .col-push-0 { left: 0%; }
+  .col-push-1 { left: 8.33333%; }
+  .col-push-2 { left: 16.66667%; }
+  .col-push-3 { left: 25%; }
+  .col-push-4 { left: 33.33333%; }
+  .col-push-5 { left: 41.66667%; }
+  .col-push-6 { left: 50%; }
+  .col-push-7 { left: 58.33333%; }
+  .col-push-8 { left: 66.66667%; }
+  .col-push-9 { left: 75%; }
+  .col-push-10 { left: 83.33333%; }
+  .col-push-11 { left: 91.66667%; }
+  .col-push-12 { left: 100%; }
+}
 
-  .col-5 {
-    width: 41.66667%; }
 
-  .col-6 {
-    width: 50%; }
-
-  .col-7 {
-    width: 58.33333%; }
-
-  .col-8 {
-    width: 66.66667%; }
-
-  .col-9 {
-    width: 75%; }
-
-  .col-10 {
-    width: 83.33333%; }
-
-  .col-11 {
-    width: 91.66667%; }
-
-  .col-12 {
-    width: 100%; }
-
-  .col-offset-0 {
-    margin-left: 0%; }
-
-  .col-offset-1 {
-    margin-left: 8.33333%; }
-
-  .col-offset-2 {
-    margin-left: 16.66667%; }
-
-  .col-offset-3 {
-    margin-left: 25%; }
-
-  .col-offset-4 {
-    margin-left: 33.33333%; }
-
-  .col-offset-5 {
-    margin-left: 41.66667%; }
-
-  .col-offset-6 {
-    margin-left: 50%; }
-
-  .col-offset-7 {
-    margin-left: 58.33333%; }
-
-  .col-offset-8 {
-    margin-left: 66.66667%; }
-
-  .col-offset-9 {
-    margin-left: 75%; }
-
-  .col-offset-10 {
-    margin-left: 83.33333%; }
-
-  .col-offset-11 {
-    margin-left: 91.66667%; }
-
-  .col-offset-12 {
-    margin-left: 100%; }
-
-  .col-pull-0 {
-    right: 0%; }
-
-  .col-pull-1 {
-    right: 8.33333%; }
-
-  .col-pull-2 {
-    right: 16.66667%; }
-
-  .col-pull-3 {
-    right: 25%; }
-
-  .col-pull-4 {
-    right: 33.33333%; }
-
-  .col-pull-5 {
-    right: 41.66667%; }
-
-  .col-pull-6 {
-    right: 50%; }
-
-  .col-pull-7 {
-    right: 58.33333%; }
-
-  .col-pull-8 {
-    right: 66.66667%; }
-
-  .col-pull-9 {
-    right: 75%; }
-
-  .col-pull-10 {
-    right: 83.33333%; }
-
-  .col-pull-11 {
-    right: 91.66667%; }
-
-  .col-pull-12 {
-    right: 100%; }
-
-  .col-push-0 {
-    left: 0%; }
-
-  .col-push-1 {
-    left: 8.33333%; }
-
-  .col-push-2 {
-    left: 16.66667%; }
-
-  .col-push-3 {
-    left: 25%; }
-
-  .col-push-4 {
-    left: 33.33333%; }
-
-  .col-push-5 {
-    left: 41.66667%; }
-
-  .col-push-6 {
-    left: 50%; }
-
-  .col-push-7 {
-    left: 58.33333%; }
-
-  .col-push-8 {
-    left: 66.66667%; }
-
-  .col-push-9 {
-    left: 75%; }
-
-  .col-push-10 {
-    left: 83.33333%; }
-
-  .col-push-11 {
-    left: 91.66667%; }
-
-  .col-push-12 {
-    left: 100%; } }
-/*
- * Widescreen and up
- */
+/* ==================
+ * 宽屏及以上（Widescreen and up）
+ * 屏幕宽度 >= 1200px 时生效
+ * =============== */
 @media (min-width: 1200px) {
-  .container {
-    max-width: 1160px; }
+  /* ⚠️ 注意：这里原本定义了 .container { max-width: 1160px; }
+     现已删除，这是导致你之前 width: 80% 不生效的罪魁祸首。
+     删除后，容器宽度由 style.css 的 80% / 1280px 控制。 */
 
-  .col-wd-1 {
-    width: 8.33333%; }
+  /* 宽屏端的列宽定义（wd = widescreen） */
+  .col-wd-1 { width: 8.33333%; }
+  .col-wd-2 { width: 16.66667%; }
+  .col-wd-3 { width: 25%; }
+  .col-wd-4 { width: 33.33333%; }
+  .col-wd-5 { width: 41.66667%; }
+  .col-wd-6 { width: 50%; }
+  .col-wd-7 { width: 58.33333%; }
+  .col-wd-8 { width: 66.66667%; }
+  .col-wd-9 { width: 75%; }
+  .col-wd-10 { width: 83.33333%; }
+  .col-wd-11 { width: 91.66667%; }
+  .col-wd-12 { width: 100%; }
 
-  .col-wd-2 {
-    width: 16.66667%; }
+  /* 宽屏端的列偏移定义 */
+  .col-wd-offset-0 { margin-left: 0%; }
+  .col-wd-offset-1 { margin-left: 8.33333%; }
+  .col-wd-offset-2 { margin-left: 16.66667%; }
+  .col-wd-offset-3 { margin-left: 25%; }
+  .col-wd-offset-4 { margin-left: 33.33333%; }
+  .col-wd-offset-5 { margin-left: 41.66667%; }
+  .col-wd-offset-6 { margin-left: 50%; }
+  .col-wd-offset-7 { margin-left: 58.33333%; }
+  .col-wd-offset-8 { margin-left: 66.66667%; }
+  .col-wd-offset-9 { margin-left: 75%; }
+  .col-wd-offset-10 { margin-left: 83.33333%; }
+  .col-wd-offset-11 { margin-left: 91.66667%; }
+  .col-wd-offset-12 { margin-left: 100%; }
 
-  .col-wd-3 {
-    width: 25%; }
+  /* 宽屏端的推拉定义 */
+  .col-wd-pull-0 { right: 0%; }
+  .col-wd-pull-1 { right: 8.33333%; }
+  .col-wd-pull-2 { right: 16.66667%; }
+  .col-wd-pull-3 { right: 25%; }
+  .col-wd-pull-4 { right: 33.33333%; }
+  .col-wd-pull-5 { right: 41.66667%; }
+  .col-wd-pull-6 { right: 50%; }
+  .col-wd-pull-7 { right: 58.33333%; }
+  .col-wd-pull-8 { right: 66.66667%; }
+  .col-wd-pull-9 { right: 75%; }
+  .col-wd-pull-10 { right: 83.33333%; }
+  .col-wd-pull-11 { right: 91.66667%; }
+  .col-wd-pull-12 { right: 100%; }
 
-  .col-wd-4 {
-    width: 33.33333%; }
+  .col-wd-push-0 { left: 0%; }
+  .col-wd-push-1 { left: 8.33333%; }
+  .col-wd-push-2 { left: 16.66667%; }
+  .col-wd-push-3 { left: 25%; }
+  .col-wd-push-4 { left: 33.33333%; }
+  .col-wd-push-5 { left: 41.66667%; }
+  .col-wd-push-6 { left: 50%; }
+  .col-wd-push-7 { left: 58.33333%; }
+  .col-wd-push-8 { left: 66.66667%; }
+  .col-wd-push-9 { left: 75%; }
+  .col-wd-push-10 { left: 83.33333%; }
+  .col-wd-push-11 { left: 91.66667%; }
+  .col-wd-push-12 { left: 100%; }
+}
 
-  .col-wd-5 {
-    width: 41.66667%; }
 
-  .col-wd-6 {
-    width: 50%; }
+/* ==================
+ * 响应式工具类（Responsive kit）
+ * 用于在不同屏幕下隐藏元素
+ * =============== */
 
-  .col-wd-7 {
-    width: 58.33333%; }
-
-  .col-wd-8 {
-    width: 66.66667%; }
-
-  .col-wd-9 {
-    width: 75%; }
-
-  .col-wd-10 {
-    width: 83.33333%; }
-
-  .col-wd-11 {
-    width: 91.66667%; }
-
-  .col-wd-12 {
-    width: 100%; }
-
-  .col-wd-offset-0 {
-    margin-left: 0%; }
-
-  .col-wd-offset-1 {
-    margin-left: 8.33333%; }
-
-  .col-wd-offset-2 {
-    margin-left: 16.66667%; }
-
-  .col-wd-offset-3 {
-    margin-left: 25%; }
-
-  .col-wd-offset-4 {
-    margin-left: 33.33333%; }
-
-  .col-wd-offset-5 {
-    margin-left: 41.66667%; }
-
-  .col-wd-offset-6 {
-    margin-left: 50%; }
-
-  .col-wd-offset-7 {
-    margin-left: 58.33333%; }
-
-  .col-wd-offset-8 {
-    margin-left: 66.66667%; }
-
-  .col-wd-offset-9 {
-    margin-left: 75%; }
-
-  .col-wd-offset-10 {
-    margin-left: 83.33333%; }
-
-  .col-wd-offset-11 {
-    margin-left: 91.66667%; }
-
-  .col-wd-offset-12 {
-    margin-left: 100%; }
-
-  .col-wd-pull-0 {
-    right: 0%; }
-
-  .col-wd-pull-1 {
-    right: 8.33333%; }
-
-  .col-wd-pull-2 {
-    right: 16.66667%; }
-
-  .col-wd-pull-3 {
-    right: 25%; }
-
-  .col-wd-pull-4 {
-    right: 33.33333%; }
-
-  .col-wd-pull-5 {
-    right: 41.66667%; }
-
-  .col-wd-pull-6 {
-    right: 50%; }
-
-  .col-wd-pull-7 {
-    right: 58.33333%; }
-
-  .col-wd-pull-8 {
-    right: 66.66667%; }
-
-  .col-wd-pull-9 {
-    right: 75%; }
-
-  .col-wd-pull-10 {
-    right: 83.33333%; }
-
-  .col-wd-pull-11 {
-    right: 91.66667%; }
-
-  .col-wd-pull-12 {
-    right: 100%; }
-
-  .col-wd-push-0 {
-    left: 0%; }
-
-  .col-wd-push-1 {
-    left: 8.33333%; }
-
-  .col-wd-push-2 {
-    left: 16.66667%; }
-
-  .col-wd-push-3 {
-    left: 25%; }
-
-  .col-wd-push-4 {
-    left: 33.33333%; }
-
-  .col-wd-push-5 {
-    left: 41.66667%; }
-
-  .col-wd-push-6 {
-    left: 50%; }
-
-  .col-wd-push-7 {
-    left: 58.33333%; }
-
-  .col-wd-push-8 {
-    left: 66.66667%; }
-
-  .col-wd-push-9 {
-    left: 75%; }
-
-  .col-wd-push-10 {
-    left: 83.33333%; }
-
-  .col-wd-push-11 {
-    left: 91.66667%; }
-
-  .col-wd-push-12 {
-    left: 100%; } }
-/*
- * Responsive kit
- */
 @media (max-width: 767px) {
   .kit-hidden-mb {
-    display: none; } }
+    display: none; } } /* 手机端隐藏 (mb = mobile) */
 @media (max-width: 991px) {
   .kit-hidden-tb {
-    display: none; } }
+    display: none; } } /* 平板及以下隐藏 (tb = tablet) */
 @media (max-width: 1199px) {
   .kit-hidden {
-    display: none; } }
-/*
- * Clearfix
- */
+    display: none; } } /* 桌面及以下隐藏 */
+
+
+/* ==================
+ * 清除浮动（Clearfix）
+ * 用于解决浮动元素导致父元素高度塌陷的问题
+ * =============== */
 .clearfix, .row {
-  zoom: 1; }
+  zoom: 1; } /* 兼容 IE6/7 的清除浮动 hack */
   .clearfix:before, .row:before, .clearfix:after, .row:after {
-    content: " ";
-    display: table; }
+    content: " ";       /* 伪元素内容为空 */
+    display: table; }   /* 以表格形式显示，触发 BFC */
   .clearfix:after, .row:after {
-    clear: both; }
+    clear: both; }      /* 清除两侧浮动 */
