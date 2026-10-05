@@ -1,29 +1,40 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/
+ *  归档页面 - /archive/ （最终修复版）
  * ============================================================
  *  说明：
- *    不查数据库，直接读取 Typecho 提供的 sidebarData.archives。
- *    这是最稳妥的方案，不会在 Cloudflare 上报 500。
+ *    1. 完全复用首页数据获取逻辑（prepareIndexData）
+ *    2. 所有变量都做了空值兜底，不会再报 undefined
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
 import { createContext } from '@/lib/context';
+import { prepareIndexData } from '@/lib/page-data';
 import { formatDate } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
 const { options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
 
-// 2. 读取 Typecho 生成的归档数据
-const sidebarData = ctx.sidebarData || {};
-const archives = sidebarData.archives || [];
+// 2. 复用首页数据获取逻辑
+const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
 
-// 3. 把所有归档按月展开，合并成一个文章列表
-//    archives 结构：[{ date: 'October 2026', permalink: '/2026/10/' }, ...]
-//    我们需要获取每个归档下的文章，这里为了简单，先直接把归档本身展示出来
-//    （如果你要展示文章列表，需要调用 Typecho API，这里先用归档列表兜底）
+// 3. 安全取出文章列表（兜底为 []）
+const allPosts = Array.isArray(data?.posts) ? data.posts : [];
+
+// 4. 按年份分组（过滤掉 created 无效的文章）
+const postsByYear: Record<string, any[]> = {};
+allPosts.forEach((post: any) => {
+  const created = Number(post?.created);
+  if (!created || isNaN(created)) return;
+  const year = new Date(created * 1000).getFullYear();
+  if (!postsByYear[year]) postsByYear[year] = [];
+  postsByYear[year].push(post);
+});
+
+// 5. 年份倒序
+const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
 ---
 
 <Base
@@ -60,20 +71,33 @@ const archives = sidebarData.archives || [];
         <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           <h3 class="archive-title">文章归档</h3>
 
-          {archives.length === 0 ? (
+          {sortedYears.length === 0 ? (
             <article class="post">
               <div class="post-content">
-                <p>暂时没有归档。</p>
+                <p>暂时没有文章。</p>
               </div>
             </article>
           ) : (
-            <ul style="list-style: none; padding-left: 0;">
-              {archives.map((archive) => (
-                <li style="margin: 0.8rem 0; font-size: 1.1rem;">
-                  <a href={archive.permalink}>{archive.date}</a>
-                </li>
-              ))}
-            </ul>
+            sortedYears.map((year) => (
+              <section class="archive-year" style="margin-bottom: 2rem;">
+                <h4 style="font-size: 1.2rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                  {year} 年
+                </h4>
+                <ul style="list-style: none; padding-left: 0;">
+                  {/* ✅ 关键修复：确保 postsByYear[year] 是数组才调用 .map() */}
+                  {(Array.isArray(postsByYear[year]) ? postsByYear[year] : []).map((post: any) => (
+                    <li style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: baseline;">
+                      <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
+                        {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
+                      </span>
+                      <a href={post.permalink || '#'} style="font-size: 1rem;">
+                        {post.title || '无标题'}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
           )}
         </div>
 
