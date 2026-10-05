@@ -48,9 +48,9 @@ const isIndex = currentPath === '/';
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
 
-            {/* ==================== 修改点 1：新增「归档」按钮 ==================== */}
+            {/* ==================== 修改点 1：新增「归档」按钮，指向 /archive/ ==================== */}
             <a href={urls.siteUrl + '/archive/'}>归档</a>
-            {/* ================================================================ */}
+            {/* ================================================================================ */}
 
             {pages.map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
