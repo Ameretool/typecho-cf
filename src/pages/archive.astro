@@ -1,12 +1,13 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （侧边栏完整修复版）
+ *  归档页面 - /archive/ （折叠式归档 + 完整导航栏）
  * ============================================================
  *  说明：
  *    1. 完全复用首页数据获取逻辑（prepareIndexData）
- *    2. sidebarData 直接从 data 里取，和 Index.astro 完全一致
- *    3. 导航栏不遍历 pages，避免 .map 报错
+ *    2. sidebarData 从 data 里取，和首页完全一致
+ *    3. 导航栏显示 pages（项目、链接、关于等）
+ *    4. 文章按「年 → 月」折叠，点击月份才展开文章列表
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -16,27 +17,31 @@ import { formatDate } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
-const { options, urls, user, isLoggedIn, pluginCtx } = ctx;
+const { options, urls, user, isLoggedIn, pages, pluginCtx } = ctx;
 
 // 2. 复用首页数据获取逻辑
 const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
 
-// 3. 从 data 里取文章列表和侧边栏数据（和 Index.astro 完全一致）
+// 3. 从 data 里取文章列表和侧边栏数据
 const allPosts = Array.isArray(data?.posts) ? data.posts : [];
 const sidebarData = data?.sidebarData;
 
-// 4. 按年份分组（过滤掉 created 无效的文章）
-const postsByYear: Record<string, any[]> = {};
+// 4. 按「年 → 月」分组
+//    结构：{ '2026': { '10': [post, post], '09': [...] }, '2022': {...} }
+const postsByYearMonth: Record<string, Record<string, any[]>> = {};
 allPosts.forEach((post: any) => {
   const created = Number(post?.created);
   if (!created || isNaN(created)) return;
-  const year = new Date(created * 1000).getFullYear();
-  if (!postsByYear[year]) postsByYear[year] = [];
-  postsByYear[year].push(post);
+  const d = new Date(created * 1000);
+  const year = String(d.getFullYear());
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  if (!postsByYearMonth[year]) postsByYearMonth[year] = {};
+  if (!postsByYearMonth[year][month]) postsByYearMonth[year][month] = [];
+  postsByYearMonth[year][month].push(post);
 });
 
 // 5. 年份倒序
-const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
+const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Number(a));
 ---
 
 <Base
@@ -58,6 +63,10 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a href={urls.siteUrl + '/'}>首页</a>
             <a href={urls.siteUrl + '/archive/'} class="current">归档</a>
+            {/* 恢复 pages 遍历，显示“项目、链接、关于”等 */}
+            {(pages || []).map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
           </nav>
         </div>
       </div>
@@ -83,18 +92,36 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
                 <h4 style="font-size: 1.2rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
                   {year} 年
                 </h4>
-                <ul style="list-style: none; padding-left: 0;">
-                  {(Array.isArray(postsByYear[year]) ? postsByYear[year] : []).map((post: any) => (
-                    <li style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: baseline;">
-                      <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
-                        {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
-                      </span>
-                      <a href={post.permalink || '#'} style="font-size: 1rem;">
-                        {post.title || '无标题'}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+
+                {/* 该年份下的所有月份 */}
+                {Object.keys(postsByYearMonth[year])
+                  .sort((a, b) => Number(b) - Number(a))
+                  .map((month) => {
+                    const postsInMonth = postsByYearMonth[year][month];
+                    const monthId = `archive-${year}-${month}`;
+                    return (
+                      <details class="archive-month" style="margin-bottom: 0.5rem;">
+                        <summary style="cursor: pointer; padding: 0.5rem 0.8rem; background: #f7f8fa; border-radius: 4px; font-size: 1rem; color: #3354aa; user-select: none;">
+                          {year} 年 {month} 月
+                          <span style="color: #888; font-size: 0.85rem; margin-left: 0.5rem;">
+                            ({postsInMonth.length} 篇)
+                          </span>
+                        </summary>
+                        <ul style="list-style: none; padding: 0.5rem 0 0 1rem; margin: 0;">
+                          {postsInMonth.map((post: any) => (
+                            <li style="margin: 0.4rem 0; display: flex; gap: 1rem; align-items: baseline;">
+                              <span style="color: #888; font-size: 0.9rem; flex-shrink: 0;">
+                                {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
+                              </span>
+                              <a href={post.permalink || '#'} style="font-size: 1rem;">
+                                {post.title || '无标题'}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    );
+                  })}
               </section>
             ))
           )}
@@ -104,7 +131,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
         <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
           {sidebarData && (
             <>
-              {/* 最新文章 */}
               {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">最新文章</h3>
@@ -115,8 +141,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
                   </ul>
                 </section>
               )}
-
-              {/* 最近回复 */}
               {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">最近回复</h3>
@@ -127,8 +151,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
                   </ul>
                 </section>
               )}
-
-              {/* 分类 */}
               {sidebarData.categories && sidebarData.categories.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">分类</h3>
@@ -139,8 +161,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
                   </ul>
                 </section>
               )}
-
-              {/* 归档（按月）*/}
               {sidebarData.archives && sidebarData.archives.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">归档</h3>
@@ -151,8 +171,6 @@ const sortedYears = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a
                   </ul>
                 </section>
               )}
-
-              {/* 其它 */}
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
                 <ul class="widget-list">
