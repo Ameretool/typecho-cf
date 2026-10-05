@@ -1,34 +1,35 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （最终版，含行分隔 + hover 变色）
+ *  归档页面 - /archive/ （方案 A：直接查全部文章）
  * ============================================================
  *  说明：
- *    1. 完全复用首页数据获取逻辑（prepareIndexData）
- *    2. pages 和 sidebarData 从 data 里取，与 Index.astro 完全一致
- *    3. 侧边栏「归档」已隐藏
- *    4. 文章按「年 → 月」折叠，点击月份展开
- *    5. 每篇文章一行，行间有分隔线，鼠标经过变浅灰蓝
+ *    1. 直接查数据库，拿全部已发布文章，不分页
+ *    2. 按「年 → 月」分组
+ *    3. 导航栏 + 侧边栏与首页一致
+ *    4. 每篇文章一行，行分隔 + hover 变色
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
 import { createContext } from '@/lib/context';
-import { prepareIndexData } from '@/lib/page-data';
+import { schema } from '@/db';
+import { and, eq, desc } from 'drizzle-orm';
 import { formatDate } from '@/lib/content';
 
 // 1. 初始化上下文
 const ctx = await createContext(Astro.locals, Astro.request);
-const { options, urls, user, isLoggedIn, pluginCtx } = ctx;
+const { db, options, urls, user, isLoggedIn, pluginCtx } = ctx;
 
-// 2. 复用首页数据获取逻辑
-const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
+// 2. 直接查数据库，拿全部已发布文章（不分页）
+const allPosts = await db.query.contents.findMany({
+  where: and(
+    eq(schema.contents.type, 'post'),
+    eq(schema.contents.status, 'publish')
+  ),
+  orderBy: [desc(schema.contents.created)],
+});
 
-// 3. 从 data 里取所有数据（与 Index.astro 完全一致）
-const allPosts = Array.isArray(data?.posts) ? data.posts : [];
-const sidebarData = data?.sidebarData;
-const pages = data?.pages;
-
-// 4. 按「年 → 月」分组
+// 3. 按「年 → 月」分组
 const postsByYearMonth: Record<string, Record<string, any[]>> = {};
 allPosts.forEach((post: any) => {
   const created = Number(post?.created);
@@ -41,8 +42,20 @@ allPosts.forEach((post: any) => {
   postsByYearMonth[year][month].push(post);
 });
 
-// 5. 年份倒序
+// 4. 年份倒序
 const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Number(a));
+
+// 5. 侧边栏和导航数据（单独加载，避免归档页数据被分页截断）
+const { loadSidebarAndNav } = await import('@/lib/sidebar');
+const { sidebarData, pages } = await loadSidebarAndNav(
+  ctx,
+  db,
+  urls.siteUrl,
+  options.permalinkPattern as string | undefined,
+  options.categoryPattern as string | undefined,
+  options.pagePattern as string | undefined,
+  options.cacheVersion,
+);
 ---
 
 <Base
@@ -76,7 +89,6 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
   <div id="body">
     <div class="container">
       <div class="row">
-        <!-- ==================== 左侧主内容区 ==================== -->
         <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           <h3 class="archive-title">文章归档</h3>
 
@@ -92,7 +104,6 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                 <h4 style="font-size: 1.2rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
                   {year} 年
                 </h4>
-
                 {Object.keys(postsByYearMonth[year])
                   .sort((a, b) => Number(b) - Number(a))
                   .map((month) => {
@@ -105,22 +116,19 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                             ({postsInMonth.length} 篇)
                           </span>
                         </summary>
-
-                        {/* ==================== 文章列表（含行分隔 + hover 变色） ==================== */}
                         <ul class="archive-post-list">
                           {postsInMonth.map((post: any) => (
                             <li class="archive-post-row">
                               <span class="archive-post-date">
                                 {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
                               </span>
-                              <a href={post.permalink || '#'} class="archive-post-title">
+                              {/* 数据库原始行没有 permalink 字段，用 cid 构造 */}
+                              <a href={`${urls.siteUrl}/archives/${post.cid}/`} class="archive-post-title">
                                 {post.title || '无标题'}
                               </a>
                             </li>
                           ))}
                         </ul>
-                        {/* ========================================================================== */}
-
                       </details>
                     );
                   })}
@@ -129,7 +137,6 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
           )}
         </div>
 
-        <!-- ==================== 右侧侧边栏 ==================== -->
         <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
           {sidebarData && (
             <>
@@ -163,22 +170,6 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                   </ul>
                 </section>
               )}
-
-              {/* ==================== 归档块（已隐藏） ==================== */}
-              {/*
-              {sidebarData.archives && sidebarData.archives.length > 0 && (
-                <section class="widget">
-                  <h3 class="widget-title">归档</h3>
-                  <ul class="widget-list">
-                    {sidebarData.archives.map((archive) => (
-                      <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-              */}
-              {/* ========================================================= */}
-
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
                 <ul class="widget-list">
@@ -209,40 +200,35 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
   </footer>
 </Base>
 
-<!-- ==================== 归档页专属样式（切主题不影响） ==================== -->
 <style>
-/* 文章列表容器 */
 .archive-post-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-/* 每篇文章一行：行分隔 + hover 变色 */
 .archive-post-row {
   display: flex;
   gap: 1rem;
   align-items: baseline;
   padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid #f0f0f0;   /* 行与行之间的分隔线 */
+  border-bottom: 1px solid #f0f0f0;
   transition: background-color 0.15s ease;
 }
 .archive-post-row:last-child {
-  border-bottom: none;                /* 最后一行不要分隔线 */
+  border-bottom: none;
 }
 .archive-post-row:hover {
-  background-color: #f7f8fa;          /* 和月份标题栏一致的浅灰蓝 */
+  background-color: #f7f8fa;
 }
 
-/* 日期 */
 .archive-post-date {
   color: #888;
   font-size: 0.9rem;
   flex-shrink: 0;
-  min-width: 50px;
+  min-width: 80px;
 }
 
-/* 标题链接 */
 .archive-post-title {
   font-size: 1rem;
   text-decoration: none;
