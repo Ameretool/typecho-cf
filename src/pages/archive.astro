@@ -1,12 +1,13 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （最终版，严格照抄 Index.astro）
+ *  归档页面 - /archive/ （最终版，侧边栏归档链接已修复）
  * ============================================================
  *  说明：
  *    1. 完全复用首页数据获取逻辑（prepareIndexData）
- *    2. pages 和 sidebarData 都从 data 里取，与 Index.astro 完全一致
- *    3. 文章按「年 → 月」折叠，点击月份才展开
+ *    2. pages 和 sidebarData 从 data 里取，与 Index.astro 完全一致
+ *    3. 侧边栏「归档」不再指向 /2026/10/，改为指向 /archive/
+ *    4. 文章按「年 → 月」折叠，点击月份展开
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -62,7 +63,6 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a href={urls.siteUrl + '/'}>首页</a>
             <a href={urls.siteUrl + '/archive/'} class="current">归档</a>
-            {/* 严格照抄 Index.astro，从 data 里取 pages */}
             {(pages || []).map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
@@ -124,7 +124,7 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
           )}
         </div>
 
-        <!-- ==================== 右侧侧边栏（严格照抄 Index.astro） ==================== -->
+        <!-- ==================== 右侧侧边栏 ==================== -->
         <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
           {sidebarData && (
             <>
@@ -158,16 +158,20 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                   </ul>
                 </section>
               )}
+
+              {/* ==================== 修改点：归档统一指向 /archive/ ==================== */}
               {sidebarData.archives && sidebarData.archives.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">归档</h3>
                   <ul class="widget-list">
                     {sidebarData.archives.map((archive) => (
-                      <li><a href={archive.permalink}>{archive.date}</a></li>
+                      <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
                     ))}
                   </ul>
                 </section>
               )}
+              {/* ==================================================================== */}
+
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
                 <ul class="widget-list">
