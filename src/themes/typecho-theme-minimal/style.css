@@ -16,11 +16,11 @@ body {
   font-size: 87.5%;                      /* 基础字号为浏览器默认的 87.5%，即 14px */
 }
 
-/* ★ 页面整体宽度 80% 并水平居中 */
+/* ★ 页面整体容器宽度 80% 并水平居中（桌面端默认） */
 .container {
-  width: 80% !important;                 /* ★ 页面主体宽度 80% */
-  margin-left: auto !important;          /* ★ 左边距自动，水平居中 */
-  margin-right: auto !important;         /* ★ 右边距自动，水平居中 */
+  width: 80%;                            /* ★ 占据屏幕宽度的 80% */
+  max-width: 1280px;                     /* ★ 最大宽度限制在 1280px，防止超宽屏幕拉得太长 */
+  margin: 0 auto;                        /* ★ 确保内容水平居中 */
 }
 
 a {
@@ -517,9 +517,15 @@ img.alignright {
 /* -----------------
  * 响应式
  *--------------- */
+
+/* ★ 小屏幕（手机，最大 767px）：容器放宽到 95%，避免太窄 */
 @media (max-width: 767px) {
   body {
     font-size: 81.25%;                   /* 小屏幕基础字号缩小为 13px */
+  }
+  .container {
+    width: 95% !important;               /* ★ 手机上容器宽度 95%，接近全宽 */
+    max-width: none !important;          /* ★ 取消最大宽度限制 */
   }
   #nav-menu a {
     float: none;                         /* 取消浮动 */
@@ -528,7 +534,12 @@ img.alignright {
   }
 }
 
+/* ★ 平板（最大 768px）：容器放宽到 92% */
 @media (max-width: 768px) {
+  .container {
+    width: 92% !important;               /* ★ 平板容器宽度 92% */
+    max-width: none !important;          /* ★ 取消最大宽度限制 */
+  }
   #header,
   .post-title,
   .post-meta {
@@ -540,9 +551,12 @@ img.alignright {
 
 }
 
+/* ★ 大屏幕（1200px 以上）：保持 80% 宽度，最大 1280px，居中 */
 @media (min-width: 1200px) {
   .container {
-    max-width: 952px;                    /* 大屏幕容器最大宽度 952px */
+    width: 80%;                          /* ★ 占据屏幕宽度的 80% */
+    max-width: 1280px;                   /* ★ 最大宽度限制在 1280px，防止超宽屏幕拉得太长 */
+    margin: 0 auto;                      /* ★ 确保内容居中 */
   }
 }
 
