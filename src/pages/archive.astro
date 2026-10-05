@@ -159,17 +159,19 @@ const sortedYears = Object.keys(postsByYearMonth).sort((a, b) => Number(b) - Num
                 </section>
               )}
 
-              {/* ==================== 修改点：归档统一指向 /archive/ ==================== */}
+              {/* ==================== 修改点：归档统一指向  隐藏/archive/ ==================== */}
+            {/*
               {sidebarData.archives && sidebarData.archives.length > 0 && (
                 <section class="widget">
                   <h3 class="widget-title">归档</h3>
                   <ul class="widget-list">
                     {sidebarData.archives.map((archive) => (
-                      <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
-                    ))}
+                     <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
+                   ))}
                   </ul>
-                </section>
+               </section>
               )}
+            */}
               {/* ==================================================================== */}
 
               <section class="widget">
