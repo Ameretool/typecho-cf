@@ -74,6 +74,22 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     }, true); // true 代表捕获阶段拦截，点击瞬间生效
   </script>
+
+  <!-- ============================================================
+       移动端导航汉堡菜单开关
+       配合 style.css 中的 #nav-menu::before 伪元素使用
+       ============================================================ -->
+  <script is:inline>
+    document.addEventListener('click', function(e) {
+      const nav = document.getElementById('nav-menu');
+      if (!nav) return;
+
+      // 点击 nav 容器本身（即点击了 ☰ 按钮）时，切换展开/收起
+      if (e.target === nav) {
+        nav.classList.toggle('is-open');
+      }
+    }, true);
+  </script>
 </head>
 <body class={bodyClass}>
   <slot />
