@@ -1,0 +1,45 @@
+---
+// ==========================================
+// 全局组件：回到顶部按钮
+// 路径：src/components/BackToTop.astro
+// ==========================================
+---
+<button id="backToTop" class="back-to-top-btn" aria-label="返回顶部">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 19V5M5 12l7-7 7 7"></path>
+  </svg>
+</button>
+
+<style>
+/* 【PC端】右下角 */
+.back-to-top-btn {
+  position: fixed; right: 20px; bottom: 50px; z-index: 9998;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--border-color, #e0e0e0); background: var(--card-bg, #ffffff);
+  color: var(--text-color, #333); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.15));
+  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.2s ease;
+  opacity: 0; visibility: hidden; transform: translateY(10px);
+}
+.back-to-top-btn.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.back-to-top-btn:hover { transform: scale(1.1); }
+
+/* 【移动端】避开主题按钮，放在其上方 */
+@media (max-width: 768px) {
+  .back-to-top-btn {
+    right: 12px; 
+    bottom: 140px; 
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px)); 
+  }
+}
+</style>
+
+<script>
+const backToTopBtn = document.getElementById('backToTop');
+window.addEventListener('scroll', () => {
+  backToTopBtn.classList.toggle('show', window.scrollY > 300);
+});
+backToTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
