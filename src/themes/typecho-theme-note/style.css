@@ -7,25 +7,25 @@
  * --------------------------------- */
 
 /* ============================================================
- * 配色变量说明
+ * 配色变量说明（重要，先看这里）
  * ------------------------------------------------------------
  * --bg-color         页面背景色
  * --text-color       正文文字色
  * --card-bg          卡片/菜单/高亮背景色
- * --border-color     边框/分隔线色（比背景深一档，才看得清）
+ * --border-color     边框/分隔线色
  * --accent-color     强调色（链接、按钮、高亮）
  *
- * 表格和代码块专用：
- * --table-border     表格边框色（比背景深一档）
+ * 以下 5 个控制表格和代码块：
+ * --table-border     表格边框色
  * --table-header-bg  表格表头背景色
  * --table-hover-bg   表格鼠标悬停背景色
  * --code-bg          代码块背景色
  * --code-text        代码块文字色
  *
  * 【怎么换配色】
- *   1. 找到下面「当前启用」那一段
- *   2. 在它的最外层加上 /* 和 */ 注释掉
- *   3. 找到你想用的那套，去掉它前后的 /* 和 */
+ *   1. 找到下面「当前启用」那一段（默认：淡蓝护眼）
+ *   2. 在它的最外层加上  /*  和  */  注释掉
+ *   3. 找到你想用的那套，去掉它前后的  /*  和  */
  * ============================================================ */
 
 
@@ -36,12 +36,12 @@
   --bg-color:     #eaf2fb;
   --text-color:   #333a44;
   --card-bg:      #dde8f5;
-  --border-color: #a8bedb;   /* 加深，边框清晰 */
+  --border-color: #c5d5e8;
   --accent-color: #3354AA;
 
-  --table-border:    #9db6d6;
+  --table-border:    #b8cce4;
   --table-header-bg: #d5e2f2;
-  --table-hover-bg:  #c4d6eb;
+  --table-hover-bg:  #c9d9ed;
   --code-bg:         #d5e2f2;
   --code-text:       #2a3a52;
 }
@@ -57,12 +57,12 @@
   --bg-color:     #ffffff;
   --text-color:   #444444;
   --card-bg:      #f5f5f5;
-  --border-color: #d0d0d0;
+  --border-color: #e0e0e0;
   --accent-color: #3354AA;
 
-  --table-border:    #c8c8c8;
+  --table-border:    #d0d7de;
   --table-header-bg: #f6f8fa;
-  --table-hover-bg:  #eef0f2;
+  --table-hover-bg:  #f6f8fa;
   --code-bg:         #f6f8fa;
   --code-text:       #24292f;
 }
@@ -74,12 +74,12 @@
   --bg-color:     #faf6e9;
   --text-color:   #3a3528;
   --card-bg:      #f2ebd6;
-  --border-color: #c9bd99;   /* 加深，边框清晰 */
+  --border-color: #e0d8c0;
   --accent-color: #7a8f3f;
 
-  --table-border:    #bdb088;
+  --table-border:    #d6cdb0;
   --table-header-bg: #f2ebd6;
-  --table-hover-bg:  #e6dbb9;
+  --table-hover-bg:  #ebe3c8;
   --code-bg:         #f2ebd6;
   --code-text:       #3a3528;
 }
@@ -91,12 +91,12 @@
   --bg-color:     #c7edcc;
   --text-color:   #2c3e35;
   --card-bg:      #b8e2be;
-  --border-color: #7db38b;   /* 加深，边框清晰 */
+  --border-color: #9dd0a8;
   --accent-color: #2e8b6f;
 
-  --table-border:    #6fa67d;
+  --table-border:    #9dd0a8;
   --table-header-bg: #b8e2be;
-  --table-hover-bg:  #a3d4aa;
+  --table-hover-bg:  #a9d9b0;
   --code-bg:         #b8e2be;
   --code-text:       #2c3e35;
 }
@@ -108,12 +108,12 @@
   --bg-color:     #f7f8fa;
   --text-color:   #333333;
   --card-bg:      #eef0f3;
-  --border-color: #c0c4cc;   /* 加深，边框清晰 */
+  --border-color: #dcdfe4;
   --accent-color: #555555;
 
-  --table-border:    #b4b9c2;
+  --table-border:    #dcdfe4;
   --table-header-bg: #eef0f3;
-  --table-hover-bg:  #dfe2e7;
+  --table-hover-bg:  #e3e6ea;
   --code-bg:         #eef0f3;
   --code-text:       #333333;
 }
@@ -125,12 +125,12 @@
   --bg-color:     #e8f4f4;
   --text-color:   #2f3e3e;
   --card-bg:      #d8eaea;
-  --border-color: #9dc0c0;   /* 加深，边框清晰 */
+  --border-color: #bcd8d8;
   --accent-color: #2a7a7a;
 
-  --table-border:    #8db1b1;
+  --table-border:    #bcd8d8;
   --table-header-bg: #d8eaea;
-  --table-hover-bg:  #c4dede;
+  --table-hover-bg:  #c8e0e0;
   --code-bg:         #d8eaea;
   --code-text:       #2f3e3e;
 }
@@ -142,12 +142,12 @@
   --bg-color:     #f5eef2;
   --text-color:   #3e3339;
   --card-bg:      #ece0e7;
-  --border-color: #c4a9b6;   /* 加深，边框清晰 */
+  --border-color: #d9c4cf;
   --accent-color: #9c4f7a;
 
-  --table-border:    #b89aa8;
+  --table-border:    #d9c4cf;
   --table-header-bg: #ece0e7;
-  --table-hover-bg:  #e0d0d9;
+  --table-hover-bg:  #e2d2dc;
   --code-bg:         #ece0e7;
   --code-text:       #3e3339;
 }
@@ -159,10 +159,10 @@
   --bg-color:     #1e1e28;
   --text-color:   #c8c8d0;
   --card-bg:      #2a2a38;
-  --border-color: #4a4a5e;   /* 提亮，边框可见 */
+  --border-color: #3a3a4a;
   --accent-color: #7aa2e8;
 
-  --table-border:    #50506a;
+  --table-border:    #3a3a4a;
   --table-header-bg: #2a2a38;
   --table-hover-bg:  #353545;
   --code-bg:         #2a2a38;
@@ -176,10 +176,10 @@
   --bg-color:     #2b2620;
   --text-color:   #d4c8b8;
   --card-bg:      #38322a;
-  --border-color: #5a5148;   /* 提亮，边框可见 */
+  --border-color: #4a4238;
   --accent-color: #c8a878;
 
-  --table-border:    #60564c;
+  --table-border:    #4a4238;
   --table-header-bg: #38322a;
   --table-hover-bg:  #443d33;
   --code-bg:         #38322a;
@@ -193,10 +193,10 @@
   --bg-color:     #1a2620;
   --text-color:   #c8ddd0;
   --card-bg:      #243a30;
-  --border-color: #3f5d4c;   /* 提亮，边框可见 */
+  --border-color: #345040;
   --accent-color: #5cc9a0;
 
-  --table-border:    #4a6b58;
+  --table-border:    #345040;
   --table-header-bg: #243a30;
   --table-hover-bg:  #2c463a;
   --code-bg:         #243a30;
@@ -210,10 +210,10 @@
   --bg-color:     #16223a;
   --text-color:   #c8d4e8;
   --card-bg:      #1e2c48;
-  --border-color: #3a5278;   /* 提亮，边框可见 */
+  --border-color: #2e3e60;
   --accent-color: #64a0f0;
 
-  --table-border:    #425a82;
+  --table-border:    #2e3e60;
   --table-header-bg: #1e2c48;
   --table-hover-bg:  #253452;
   --code-bg:         #1e2c48;
@@ -298,7 +298,7 @@ button {
 }
 
 /* =========================================
- * GitHub 风格表格
+ * GitHub 风格表格（全部使用变量）
  * ========================================= */
 table {
   border-collapse: separate !important;
@@ -345,7 +345,7 @@ table td code {
 }
 
 /* =========================================
- * 代码块
+ * 代码块（全部使用变量）
  * ========================================= */
 pre {
   background-color: var(--code-bg) !important;
@@ -435,7 +435,7 @@ textarea {
   font-style: italic;
 }
 
-/* 导航菜单 */
+/* 导航菜单（桌面端） */
 #nav-menu {
   margin: 25px 0 0;
   padding: 0;
@@ -909,7 +909,7 @@ img.alignright {
 }
 
 /* =========================================
- * 辅助类
+ * 辅助类 (隐藏、无障碍)
  * ========================================= */
 .hidden {
   display: none !important;
