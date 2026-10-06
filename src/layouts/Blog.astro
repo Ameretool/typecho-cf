@@ -163,6 +163,7 @@ const isIndex = currentPath === '/';
     由 <a href="https://github.com/eslizn/typecho-cf">Typecho</a> 强力驱动.
   </footer>
 
-  <ThemeSwitcher />
-  <BackToTop />
+  <!-- 加了 transition:persist，让 Swup 页面切换时保留这两个按钮 -->
+  <ThemeSwitcher transition:persist />
+  <BackToTop transition:persist />
 </Base>
