@@ -15,13 +15,34 @@
   --card-bg: #f5f5f5;
   --border-color: #e0e0e0;
   --accent-color: #3354AA;
+
+  /* 表格与代码块专用变量 */
+  --table-border: #d0d7de;
+  --table-header-bg: #f6f8fa;
+  --table-hover-bg: #f6f8fa;
+  --code-bg: #f6f8fa;
+  --code-text: #24292f;
+  --inline-code-bg: rgba(175, 184, 193, 0.2);
+  --blockquote-border: #eee;
+  --blockquote-text: #666;
 }
+
 [data-mode="dark"] {
   --bg-color: #1a1a2e;
   --text-color: #e0e0e0;
   --card-bg: #16213e;
   --border-color: #2a2a4a;
   --accent-color: #64b5f6;
+
+  /* 暗黑模式下的表格与代码块配色 */
+  --table-border: #3a3a5a;
+  --table-header-bg: #1e1e3a;
+  --table-hover-bg: #232345;
+  --code-bg: #1e1e3a;
+  --code-text: #d0d0e0;
+  --inline-code-bg: rgba(100, 120, 160, 0.25);
+  --blockquote-border: #3a3a5a;
+  --blockquote-text: #b0b0c0;
 }
 
 /* ==================
@@ -57,7 +78,7 @@ a {
   text-decoration: none;
 }
 a:hover, a:active {
-  color: #444;
+  color: var(--text-color);
 }
 
 button {
@@ -96,11 +117,11 @@ button {
 }
 .logout-form button:hover,
 .logout-form button:active {
-  color: #444;
+  color: var(--text-color);
 }
 
 /* =========================================
- * GitHub 风格表格与代码块样式
+ * GitHub 风格表格与代码块样式（已改为变量）
  * ========================================= */
 table {
   border-collapse: separate !important;
@@ -108,7 +129,7 @@ table {
   width: 100% !important;
   margin-bottom: 16px !important;
   border: none !important;
-  box-shadow: 0 0 0 2px #d0d7de !important;
+  box-shadow: 0 0 0 2px var(--table-border) !important;
   border-radius: 6px !important;
   overflow: hidden !important;
   font-size: 15px !important;
@@ -119,27 +140,27 @@ table td {
   padding: 12px 16px !important;
   border: none !important;
   vertical-align: middle !important;
-  box-shadow: 1px 0 0 0 #d0d7de, 0 1px 0 0 #d0d7de !important;
+  box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important;
 }
 
 table tr > *:last-child {
-  box-shadow: 0 1px 0 0 #d0d7de !important;
+  box-shadow: 0 1px 0 0 var(--table-border) !important;
 }
 
 table th {
-  background-color: #f6f8fa !important;
+  background-color: var(--table-header-bg) !important;
   font-weight: 600 !important;
   text-align: center !important;
-  color: #24292f !important;
+  color: var(--code-text) !important;
 }
 
 table tbody tr:hover {
-  background-color: #f6f8fa !important;
+  background-color: var(--table-hover-bg) !important;
 }
 
 table td code {
-  background-color: rgba(175, 184, 193, 0.2) !important;
-  color: #24292f !important;
+  background-color: var(--inline-code-bg) !important;
+  color: var(--code-text) !important;
   padding: 3px 6px !important;
   border-radius: 6px !important;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
@@ -147,7 +168,7 @@ table td code {
 }
 
 pre {
-  background-color: #f6f8fa !important;
+  background-color: var(--code-bg) !important;
   padding: 16px !important;
   border-radius: 6px !important;
   overflow: auto !important;
@@ -157,7 +178,7 @@ pre {
 pre code {
   background-color: transparent !important;
   padding: 0 !important;
-  color: #24292f !important;
+  color: var(--code-text) !important;
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
   font-size: .92857em !important;
@@ -166,12 +187,13 @@ pre code {
 blockquote {
   margin: 1em 0;
   padding-left: 1.5em;
-  border-left: 4px solid #eee;
-  color: #666;
+  border-left: 4px solid var(--blockquote-border);
+  color: var(--blockquote-text);
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "WenQuanYi Micro Hei","Microsoft Yahei", sans-serif;
+  color: var(--text-color);
 }
 
 input[type="text"],
@@ -180,12 +202,14 @@ input[type="url"],
 input[type="password"],
 textarea {
   padding: 5px;
-  border: 1px solid #E9E9E9;
+  border: 1px solid var(--border-color);
   width: 100%;
   border-radius: 2px;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
+  background-color: var(--bg-color);
+  color: var(--text-color);
 }
 textarea {
   resize: vertical;
@@ -198,7 +222,7 @@ textarea {
 .post-content a,
 .widget a,
 .comment-content a {
-  border-bottom: 1px solid #EEE;
+  border-bottom: 1px solid var(--border-color);
 }
 .post-meta a:hover,
 .post-content a:hover,
@@ -212,11 +236,11 @@ textarea {
  * --------------- */
 #header {
   padding-top: 35px;
-  border-bottom: 1px solid #EEE;
+  border-bottom: 1px solid var(--border-color);
 }
 
 #logo {
-  color: #333;
+  color: var(--text-color);
   font-size: 2.5em;
 }
 #logo img {
@@ -238,16 +262,16 @@ textarea {
   display: block;
   margin-right: -1px;
   padding: 0 20px;
-  border: 1px solid #EEE;
+  border: 1px solid var(--border-color);
   border-bottom: none;
   height: 32px;
   line-height: 32px;
-  color: #444;
+  color: var(--text-color);
   float: left;
 }
 #nav-menu a:hover,
 #nav-menu .current {
-  background: #F6F6F6;
+  background: var(--card-bg);
 }
 
 /* 搜索框 */
@@ -283,11 +307,12 @@ textarea {
  * --------------- */
 .post {
   padding: 15px 0 0 0;
-  border-bottom: 1px solid #EEE;
+  border-bottom: 1px solid var(--border-color);
 }
 .post-title {
   margin: .83em 0;
   font-size: 1.4em;
+  color: var(--text-color);
 }
 .post-meta {
   margin-top: -0.5em;
@@ -299,7 +324,7 @@ textarea {
   display: inline-block;
   margin: 0 8px 0 0;
   padding-left: 12px;
-  border-left: 1px solid #EEE;
+  border-left: 1px solid var(--border-color);
 }
 .post-meta li:first-child {
   margin-left: 0;
@@ -308,6 +333,7 @@ textarea {
 }
 .post-content {
   line-height: 1.8;
+  color: var(--text-color);
 }
 .post .tags {
   clear: both;
@@ -329,7 +355,7 @@ textarea {
   font-size: 14px !important;
 }
 .post-near a:hover {
-  color: #444 !important;
+  color: var(--text-color) !important;
 }
 
 .archive-title {
@@ -364,14 +390,15 @@ textarea {
   padding: 0 10px;
   height: 30px;
   line-height: 30px;
+  color: var(--text-color);
 }
 .page-navigator a:hover {
-  background: #EEE;
+  background: var(--card-bg);
   text-decoration: none;
 }
 .page-navigator .current a {
-  color: #444;
-  background: #EEE;
+  color: var(--text-color);
+  background: var(--card-bg);
 }
 
 /* ------------------
@@ -388,16 +415,16 @@ textarea {
 .comment-list li {
   padding: 14px;
   margin-top: 10px;
-  border: 1px solid #EEE;
+  border: 1px solid var(--border-color);
 }
 .comment-list li.comment-level-odd {
-  background: #F6F6F3;
+  background: var(--card-bg);
 }
 .comment-list li.comment-level-even {
-  background: #FFF;
+  background: var(--bg-color);
 }
 .comment-list li.comment-by-author {
-  background: #FFF9E8;
+  background: var(--card-bg);
 }
 .comment-list li .comment-reply {
   text-align: right;
@@ -410,7 +437,7 @@ textarea {
 .comment-author {
   display: block;
   margin-bottom: 3px;
-  color: #444;
+  color: var(--text-color);
 }
 .comment-author .avatar {
   float: left;
@@ -438,7 +465,7 @@ textarea {
 /* 评论回复表单 */
 .comment-list .respond {
   margin-top: 15px;
-  border-top: 1px solid #EEE;
+  border-top: 1px solid var(--border-color);
 }
 .respond .cancel-comment-reply {
   float: right;
@@ -501,6 +528,7 @@ textarea {
 .post-content, .comment-content {
   line-height: 1.8;
   word-wrap: break-word;
+  color: var(--text-color);
 }
 .post-content h2, .comment-content h2 {
   font-size: 1.28571em;
@@ -512,7 +540,7 @@ textarea {
 }
 .post-content a img,
 .comment-content a img {
-  background: #FFF;
+  background: var(--bg-color);
   position: relative;
   border-radius: 6px;
   bottom: -4px;
@@ -520,7 +548,7 @@ textarea {
 .post-content hr, .comment-content hr {
   margin: 2em auto;
   width: 100px;
-  border: 1px solid #E9E9E9;
+  border: 1px solid var(--border-color);
   border-width: 2px 0 0 0;
 }
 
@@ -692,7 +720,7 @@ img.alignright {
  * ========================================= */
 .hidden {
   display: none !important;
-  visibility: hidden; 
+  visibility: hidden;
 }
 .sr-only {
   border: 0;
@@ -701,7 +729,7 @@ img.alignright {
   overflow: hidden;
   padding: 0;
   position: absolute;
-  width: 1px; 
+  width: 1px;
 }
 .sr-only.focusable:active,
 .sr-only.focusable:focus {
@@ -710,10 +738,10 @@ img.alignright {
   margin: 0;
   overflow: visible;
   position: static;
-  width: auto; 
+  width: auto;
 }
 .invisible {
-  visibility: hidden; 
+  visibility: hidden;
 }
 
 /* =========================================
@@ -741,12 +769,12 @@ img.alignright {
 #secondary {
   font-size: 14px !important;
   line-height: 1.8 !important;
-  color: #444 !important;
+  color: var(--text-color) !important;
 }
 #secondary .widget-title {
   font-size: 15px !important;
   font-weight: 600 !important;
-  color: #333 !important;
+  color: var(--text-color) !important;
   margin-bottom: 8px !important;
 }
 #secondary .widget-list li {
@@ -757,7 +785,7 @@ img.alignright {
   color: #3354AA !important;
 }
 #secondary .widget-list a:hover {
-  color: #444 !important;
+  color: var(--text-color) !important;
 }
 
 /* =========================================
@@ -780,7 +808,7 @@ img.alignright {
     display: none !important;
   }
 
-  /* 汉堡按钮：40x40 小方块，半透明白底 */
+  /* 汉堡按钮：40x40 小方块，跟随主题配色 */
   .nav-toggle-btn {
     display: block !important;
     width: 40px !important;
@@ -788,9 +816,9 @@ img.alignright {
     line-height: 40px !important;
     text-align: center !important;
     font-size: 22px !important;
-    color: #444 !important;
-    background: rgba(255, 255, 255, 0.85) !important;
-    border: 1px solid #EEE !important;
+    color: var(--text-color) !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 8px !important;
     cursor: pointer !important;
     user-select: none !important;
@@ -805,9 +833,10 @@ img.alignright {
     position: relative !important;
     text-align: center !important;
     padding: 12px 0 !important;
-    border: 1px solid #EEE !important;
+    border: 1px solid var(--border-color) !important;
     border-top: none !important;
-    background: #FFF !important;
+    background: var(--bg-color) !important;
+    color: var(--text-color) !important;
     height: auto !important;
     line-height: 1.5 !important;
     margin: 0 !important;
