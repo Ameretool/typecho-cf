@@ -1,9 +1,16 @@
 ---
+// ============================================================
+// 全局布局 Base.astro（整合版）
+// ============================================================
 import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
 import type { UserRow } from '@/lib/context';
 import { getThemeStylesheets } from '@/lib/theme';
 import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
+
+// 引入我们的全局组件
+import ThemeSwitcher from '../components/ThemeSwitcher.astro';
+import BackToTop from '../components/BackToTop.astro';
 
 interface Props {
   title?: string;
@@ -34,7 +41,7 @@ const {
 const pageTitle = title ? `${title} - ${options.title}` : options.title;
 const themeStylesheets = getThemeStylesheets(options.theme || 'typecho-theme-minimal');
 
-// Collect client-side snippets from all activated plugins
+// 收集插件客户端片段
 const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: new Set<string>() }, options as Record<string, any>, pageContext);
 ---
 <!DOCTYPE html>
@@ -42,7 +49,8 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <head>
   <meta charset={options.charset || 'UTF-8'} />
   <meta name="renderer" content="webkit" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- 【关键】加了 viewport-fit=cover，让 iPhone 底部手势条不遮挡右下角按钮 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{pageTitle}</title>
   {description && <meta name="description" content={description} />}
   {keywords && <meta name="keywords" content={keywords} />}
@@ -53,6 +61,21 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <link rel="icon" href="/favicon.png" type="image/png">
   <slot name="head" />
   <Fragment set:html={pluginSnippets.headHtml} />
+
+  <!-- ============================================================
+       主题防闪烁脚本（必须放在 head 里，最先执行）
+       ============================================================ -->
+  <script is:inline>
+    (function() {
+      const pref = localStorage.getItem('hbw-theme-pref') || 'system';
+      let mode = pref;
+      if (pref === 'system') {
+        mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-pref', pref);
+      document.documentElement.setAttribute('data-mode', mode);
+    })();
+  </script>
 
   <!-- ============================================================
        全站外链新窗口打开脚本
@@ -73,7 +96,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 
   <!-- ============================================================
        移动端导航汉堡菜单（仅手机端插入按钮）
-       核心判断：window.innerWidth > 767 时直接 return，不插入
        ============================================================ -->
   <script is:inline>
     (function() {
@@ -119,65 +141,10 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
 
-  <!-- 返回顶部按钮 -->
-  <button id="back-to-top" aria-label="返回顶部" style="display:none;">↑</button>
-  <style is:global>
-    #back-to-top {
-      position: fixed;
-      bottom: 30px;
-      right: 20px;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.45);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: #333;
-      font-size: 26px;
-      font-weight: 900;
-      line-height: 42px;
-      text-align: center;
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      cursor: pointer;
-      z-index: 9998;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-      transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
-      opacity: 0;
-      transform: translateY(10px);
-      padding: 0;
-    }
-    #back-to-top.show {
-      display: block !important;
-      opacity: 1;
-      transform: translateY(0);
-    }
-    #back-to-top:hover {
-      background: rgba(255, 255, 255, 0.7);
-    }
-    html.dark #back-to-top {
-      background: rgba(40, 40, 40, 0.45);
-      color: #F0F0F0;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    html.dark #back-to-top:hover {
-      background: rgba(60, 60, 60, 0.65);
-    }
-  </style>
-  <script is:inline>
-    (function() {
-      const btn = document.getElementById('back-to-top');
-      if (!btn) return;
-      window.addEventListener('scroll', function() {
-        if (window.scrollY > 300) {
-          btn.classList.add('show');
-        } else {
-          btn.classList.remove('show');
-        }
-      }, { passive: true });
-      btn.addEventListener('click', function() {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-    })();
-  </script>
+  <!-- ============================================================
+       全局组件挂载区（原来内联的返回顶部按钮已删除，改为组件）
+       ============================================================ -->
+  <ThemeSwitcher />
+  <BackToTop />
 </body>
 </html>
