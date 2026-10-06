@@ -44,11 +44,44 @@
 /*
 方案  淡蓝护眼
 :root {
-  --bg-color:     #eaf2fb;
-  --text-color:   #333a44;
-  --card-bg:      #dde8f5;
-  --border-color: #c5d5e8;
-  --accent-color: #3354AA;
+  --bg-color:     #e0ecf8;
+  --text-color:   #2d3a4a;
+  --card-bg:      #cfe0f0;
+  --border-color: #b0c8e0;
+  --accent-color: #2c4f9e;
+}
+*/
+
+/*
+方案  淡蓝护眼 · 加深一档
+:root {
+  --bg-color:     #d6e6f7;
+  --text-color:   #2a3444;
+  --card-bg:      #c4d9ee;
+  --border-color: #a3bcd9;
+  --accent-color: #2a4a99;
+}
+*/
+
+/*
+方案  淡蓝护眼 · 加深两档（明显对比）
+:root {
+  --bg-color:     #c2d9f0;
+  --text-color:   #1f2a3a;
+  --card-bg:      #aac7e5;
+  --border-color: #7fa3c9;
+  --accent-color: #1e3d85;
+}
+*/
+
+/*
+淡蓝护眼 · 微深一档（保守）
+:root {
+  --bg-color:     #e0ecf8;
+  --text-color:   #2d3a4a;
+  --card-bg:      #cfe0f0;
+  --border-color: #b0c8e0;
+  --accent-color: #2c4f9e;
 }
 */
 
