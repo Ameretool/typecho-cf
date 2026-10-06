@@ -1,0 +1,123 @@
+---
+// ==========================================
+// 全局组件：三态明暗模式切换
+// 路径：src/components/ThemeSwitcher.astro
+// ==========================================
+---
+<div class="theme-switcher-wrapper" id="themeSwitcherWrapper">
+  <button class="theme-toggle-btn" id="themeToggle" aria-label="切换显示模式">
+    <!-- 白色太阳（浅色模式显示） -->
+    <svg class="icon-sun-light" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="5"></circle>
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+    </svg>
+    <!-- 电脑图标（跟随系统显示） -->
+    <svg class="icon-system" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+      <line x1="8" y1="21" x2="16" y2="21"></line>
+      <line x1="12" y1="17" x2="12" y2="21"></line>
+    </svg>
+    <!-- 黑色太阳（暗黑模式显示） -->
+    <svg class="icon-sun-dark" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="5"></circle>
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+    </svg>
+  </button>
+  
+  <div class="theme-dropdown" id="themeDropdown" hidden>
+    <button data-set-mode="light">☀️ 默认（浅色）</button>
+    <button data-set-mode="system">💻 跟随系统</button>
+    <button data-set-mode="dark">🌙 黑暗模式</button>
+  </div>
+</div>
+
+<style>
+/* 【PC端】固定在顶部导航栏右侧 */
+.theme-switcher-wrapper {
+  position: fixed; 
+  top: 16px;
+  right: 20px;
+  z-index: 9999;
+}
+.theme-toggle-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border-color, #e0e0e0); 
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s ease, background-color 0.3s ease;
+}
+.theme-toggle-btn:hover { transform: scale(1.08); }
+
+/* 图标与背景反转逻辑 */
+:global([data-mode="light"]) .theme-toggle-btn { background: #2a2a2a; border-color: #444; }
+:global([data-mode="light"]) .icon-sun-light { display: block; }
+:global([data-mode="light"]) .icon-sun-dark { display: none; }
+:global([data-mode="light"]) .icon-system { display: none; }
+
+:global([data-mode="dark"]) .theme-toggle-btn { background: #f5f5f5; border-color: #ccc; }
+:global([data-mode="dark"]) .icon-sun-light { display: none; }
+:global([data-mode="dark"]) .icon-sun-dark { display: block; }
+:global([data-mode="dark"]) .icon-system { display: none; }
+
+:global([data-pref="system"]) .icon-sun-light { display: none; }
+:global([data-pref="system"]) .icon-sun-dark { display: none; }
+:global([data-pref="system"]) .icon-system { display: block; }
+
+/* 下拉菜单 */
+.theme-dropdown {
+  position: absolute; top: 46px; right: 0;
+  background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px; box-shadow: var(--shadow, 0 4px 12px rgba(0,0,0,0.15));
+  padding: 6px; min-width: 130px;
+}
+.theme-dropdown button {
+  display: block; width: 100%; padding: 8px 12px; border: none;
+  background: transparent; color: var(--text-color, #333); text-align: left;
+  border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.theme-dropdown button:hover { background: var(--border-color, #e0e0e0); }
+.theme-dropdown button.active { font-weight: bold; color: var(--accent-color, #0066cc); }
+
+/* 【移动端】小于768px时右下角悬浮 */
+@media (max-width: 768px) {
+  .theme-switcher-wrapper {
+    top: auto; right: 12px; 
+    bottom: 80px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)); 
+  }
+  .theme-toggle-btn { width: 44px; height: 44px; }
+  .theme-dropdown { top: auto; bottom: 54px; }
+}
+</style>
+
+<script>
+const html = document.documentElement;
+const btn = document.getElementById('themeToggle');
+const dropdown = document.getElementById('themeDropdown');
+const menuItems = document.querySelectorAll('[data-set-mode]');
+
+let userPref = localStorage.getItem('hbw-theme-pref') || 'system';
+
+function applyTheme() {
+  html.setAttribute('data-pref', userPref);
+  localStorage.setItem('hbw-theme-pref', userPref);
+  let actualMode = userPref;
+  if (userPref === 'system') {
+    actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  html.setAttribute('data-mode', actualMode);
+  menuItems.forEach(item => item.classList.toggle('active', item.dataset.setMode === userPref));
+}
+applyTheme();
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (userPref === 'system') applyTheme();
+});
+
+btn.addEventListener('click', (e) => { e.stopPropagation(); dropdown.hidden = !dropdown.hidden; });
+menuItems.forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.stopPropagation(); userPref = item.dataset.setMode; applyTheme(); dropdown.hidden = true;
+  });
+});
+document.addEventListener('click', () => { dropdown.hidden = true; });
+</script>
