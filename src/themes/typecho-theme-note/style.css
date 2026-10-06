@@ -10,196 +10,177 @@
  * 全局基础样式 (Global style)
  * =============== */
 html {
-  -webkit-tap-highlight-color: transparent; /* 移动端点击链接或按钮时，去除默认的灰色高亮背景 */
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* 页面主体和页脚的过渡动画（通常用于 AJAX/PJAX 无刷新加载页面） */
 #main, #footer {
-  transition: opacity 0.35s ease, transform 0.35s ease; /* 定义透明度和位移动画的过渡效果，持续 0.35 秒 */
-  will-change: opacity, transform; /* 性能优化：提前告知浏览器这两个属性会发生变化 */
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  will-change: opacity, transform;
 }
 html.is-animating #main, #footer {
-  opacity: 0; /* 页面准备进入时，透明度设为 0（隐藏） */
-  transform: translateY(20px); /* 页面准备进入时，向下偏移 20px */
+  opacity: 0;
+  transform: translateY(20px);
 }
 html.is-leaving #main, #footer {
-  opacity: 1; /* 页面离开时，恢复透明度为 1（显示） */
-  transform: translateY(0); /* 页面离开时，恢复原位 */
+  opacity: 1;
+  transform: translateY(0);
 }
 
 body {
-  background-color: #FFF; /* 网页全局背景色：纯白色 */
-  color: #444; /* 网页全局默认文字颜色：深灰色 */
-  /* 字体栈：优先使用衬线体（Serif），涵盖中英文及不同操作系统的备选字体 */
+  background-color: #FFF;
+  color: #444;
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
   font-size: 100%; /* ✅ 已修改：全局基础字号 16px */
 }
 
-/* 全局链接样式 */
 a {
-  color: #3354AA; /* 链接默认颜色：深蓝色 */
-  text-decoration: none; /* 去除链接默认的下划线 */
+  color: #3354AA;
+  text-decoration: none;
 }
 a:hover, a:active {
-  color: #444; /* 鼠标悬停或点击时，链接颜色变深灰 */
+  color: #444;
 }
 
-/* 全局按钮基础样式 */
 button {
-  -webkit-appearance: button; /* 确保在 iOS 上按钮样式正常渲染 */
-  background-color: #5973b9; /* 按钮背景色：蓝色 */
-  border: none; /* 去除边框 */
-  color: #ffffff; /* 按钮文字颜色：白色 */
-  padding: 5px 15px; /* 按钮内边距：上下 5px，左右 15px */
-  text-align: center; /* 文字居中 */
-  text-decoration: none; /* 去除下划线 */
-  display: inline-block; /* 行内块级元素 */
-  border-radius: 6px; /* 按钮圆角 */
+  -webkit-appearance: button;
+  background-color: #5973b9;
+  border: none;
+  color: #ffffff;
+  padding: 5px 15px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 6px;
 }
 
-/* 文章标签小药丸样式 */
 .meta-tags {
-  background:#ffa5c2; /* 标签背景色：粉色 */
-  color:#fff; /* 标签文字颜色：白色 */
-  font-size:0.65rem; /* 字体大小：相对根元素的 0.65 倍 */
-  padding:2px 8px; /* 内边距 */
-  border-radius:4px; /* 圆角 */
-  margin-left:8px; /* 左侧外边距 */
+  background:#ffa5c2;
+  color:#fff;
+  font-size:0.65rem;
+  padding:2px 8px;
+  border-radius:4px;
+  margin-left:8px;
 }
 
-/* 登出表单样式 */
 .logout-form {
-  display: inline; /* 行内显示 */
+  display: inline;
   margin: 0;
   padding: 0;
 }
 .logout-form button {
   padding: 0;
   border: 0;
-  background: transparent; /* 背景透明 */
-  color: #3354AA; /* 文字颜色同链接 */
-  font: inherit; /* 继承父元素的字体设置 */
-  cursor: pointer; /* 鼠标悬停变手型 */
+  background: transparent;
+  color: #3354AA;
+  font: inherit;
+  cursor: pointer;
 }
 .logout-form button:hover,
 .logout-form button:active {
-  color: #444; /* 悬停/点击时文字变灰 */
+  color: #444;
 }
 
 /* =========================================
- * GitHub 风格表格与代码块样式 (终极修复版，用阴影画线)
+ * GitHub 风格表格与代码块样式
  * ========================================= */
-
-/* 1. 表格整体外框 (用外阴影画出四周的灰色外框) */
 table {
-  border-collapse: separate !important; /* 边框分离模式，配合阴影画线 */
-  border-spacing: 0 !important; /* 单元格间距为 0 */
-  width: 100% !important; /* 表格宽度占满父容器 */
-  margin-bottom: 16px !important; /* 底部外边距 */
-  border: none !important; /* 取消传统的实体边框 */
-  box-shadow: 0 0 0 2px #d0d7de !important; 
-  border-radius: 6px !important; /* 表格整体圆角 */
-  overflow: hidden !important; /* 隐藏超出圆角的部分 */
-  font-size: 15px !important; /* ✅ 已修改：表格内字体大小，原来是 14px */
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+  margin-bottom: 16px !important;
+  border: none !important;
+  box-shadow: 0 0 0 2px #d0d7de !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  font-size: 15px !important; /* ✅ 已修改：表格内字体大小 */
 }
 
-/* 2. 表头与单元格 (强行用右侧和底部的阴影画出竖线和横线) */
 table th,
 table td {
-  padding: 12px 16px !important; /* 单元格内边距 */
-  border: none !important; /* 取消所有实体边框 */
-  vertical-align: middle !important; /* 垂直居中对齐 */
+  padding: 12px 16px !important;
+  border: none !important;
+  vertical-align: middle !important;
   box-shadow: 1px 0 0 0 #d0d7de, 0 1px 0 0 #d0d7de !important;
 }
 
-/* 3. 去除表格最右侧多余的阴影线 (防止双线) */
 table tr > *:last-child {
-  box-shadow: 0 1px 0 0 #d0d7de !important; /* 最后一列只保留底部阴影，去掉右侧阴影 */
+  box-shadow: 0 1px 0 0 #d0d7de !important;
 }
 
-/* 4. 表头专属样式 (浅灰背景 + 文字居中加粗) */
 table th {
-  background-color: #f6f8fa !important; /* 表头浅灰背景 */
-  font-weight: 600 !important; /* 字体加粗 */
-  text-align: center !important; /* 表头文字居中 */
-  color: #24292f !important; /* 深灰文字色 */
+  background-color: #f6f8fa !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  color: #24292f !important;
 }
 
-/* 5. 表格内容行鼠标悬停效果 */
 table tbody tr:hover {
-  background-color: #f6f8fa !important; /* 鼠标滑过时整行变浅灰 */
+  background-color: #f6f8fa !important;
 }
 
-/* 6. 表格内代码块 (比如命令列的代码) 专属样式 */
 table td code {
-  background-color: rgba(175, 184, 193, 0.2) !important; /* 半透明浅灰背景 */
-  color: #24292f !important; /* 深灰色字体 */
-  padding: 3px 6px !important; /* 代码块内边距 */
-  border-radius: 6px !important; /* 代码块圆角 */
+  background-color: rgba(175, 184, 193, 0.2) !important;
+  color: #24292f !important;
+  padding: 3px 6px !important;
+  border-radius: 6px !important;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
-  font-size: 85% !important; /* 代码字体稍微小一点点 */
+  font-size: 85% !important;
 }
 
-/* 7. 普通代码块 (如 pre 标签) 修复红字和红底问题 */
 pre {
-  background-color: #f6f8fa !important; /* 代码块背景色：浅灰 */
-  padding: 16px !important; /* 内边距 */
-  border-radius: 6px !important; /* 圆角 */
-  overflow: auto !important; /* 代码太长时允许横向滚动 */
-  white-space: pre-wrap !important; /* 保留换行和空格，允许自动折行 */
-  word-wrap: break-word !important; /* 长单词换行 */
-}
-pre code {
-  background-color: transparent !important; /* 清除嵌套的代码背景色，避免双重背景 */
-  padding: 0 !important;
-  color: #24292f !important; /* 强制深灰色文字 */
+  background-color: #f6f8fa !important;
+  padding: 16px !important;
+  border-radius: 6px !important;
+  overflow: auto !important;
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
-  font-size: .92857em !important; /* 代码字体大小 */
+}
+pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  color: #24292f !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  font-size: .92857em !important;
 }
 
-/* 引用块样式 */
 blockquote {
-  margin: 1em 0; /* 上下外边距 */
-  padding-left: 1.5em; /* 左侧内边距 */
-  border-left: 4px solid #eee; /* 左侧灰色粗边框 */
-  color: #666; /* 文字颜色：中灰色 */
+  margin: 1em 0;
+  padding-left: 1.5em;
+  border-left: 4px solid #eee;
+  color: #666;
 }
 
-/* 标题字体族 (与正文衬线体不同，标题使用无衬线体更清爽) */
 h1, h2, h3, h4, h5, h6 {
   font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "WenQuanYi Micro Hei","Microsoft Yahei", sans-serif;
 }
 
-/* 表单输入框基础样式 */
 input[type="text"],
 input[type="email"],
 input[type="url"],
 input[type="password"],
 textarea {
-  padding: 5px; /* 内边距 */
-  border: 1px solid #E9E9E9; /* 浅灰边框 */
-  width: 100%; /* 宽度占满 */
-  border-radius: 2px; /* 小圆角 */
-  -webkit-box-sizing: border-box; /* 盒模型：包含边框和内边距 */
+  padding: 5px;
+  border: 1px solid #E9E9E9;
+  width: 100%;
+  border-radius: 2px;
+  -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
 }
 textarea {
-  resize: vertical; /* 允许用户垂直拖拽调整大小，防止破坏水平布局 */
+  resize: vertical;
 }
 
 /* ------------------
  * 特殊链接样式
  * --------------- */
-/* 文章元信息、正文、侧边栏、评论中的链接增加虚线下划线效果 */
 .post-meta a,
 .post-content a,
 .widget a,
 .comment-content a {
   border-bottom: 1px solid #EEE;
 }
-/* 鼠标悬停时下划线消失 */
 .post-meta a:hover,
 .post-content a:hover,
 .widget a:hover,
@@ -211,110 +192,110 @@ textarea {
  * 头部区域 (Header)
  * --------------- */
 #header {
-  padding-top: 35px; /* 顶部内边距 */
-  border-bottom: 1px solid #EEE; /* 底部灰色分割线 */
+  padding-top: 35px;
+  border-bottom: 1px solid #EEE;
 }
 
 #logo {
-  color: #333; /* LOGO 文字颜色 */
-  font-size: 2.5em; /* LOGO 字号放大 */
+  color: #333;
+  font-size: 2.5em;
 }
 #logo img {
-  max-height: 64px; /* LOGO 图片最大高度限制 */
+  max-height: 64px;
 }
 
 .description {
-  margin: .5em 0 0; /* 上外边距 */
-  color: #999; /* 描述文字颜色：浅灰 */
-  font-style: italic; /* 斜体 */
+  margin: .5em 0 0;
+  color: #999;
+  font-style: italic;
 }
 
 /* 导航菜单 */
 #nav-menu {
-  margin: 25px 0 0; /* 上外边距 */
+  margin: 25px 0 0;
   padding: 0;
 }
 #nav-menu a {
   display: block;
-  margin-right: -1px; /* 负边距实现相邻边框重叠，避免双线 */
-  padding: 0 20px; /* 左右内边距 */
-  border: 1px solid #EEE; /* 边框 */
-  border-bottom: none; /* 去掉底边框，与下方内容融合 */
-  height: 32px; /* 固定高度 */
-  line-height: 32px; /* 行高与高度一致，实现垂直居中 */
-  color: #444; /* 文字颜色 */
-  float: left; /* 浮动排列 */
+  margin-right: -1px;
+  padding: 0 20px;
+  border: 1px solid #EEE;
+  border-bottom: none;
+  height: 32px;
+  line-height: 32px;
+  color: #444;
+  float: left;
 }
 #nav-menu a:hover,
 #nav-menu .current {
-  background: #F6F6F6; /* 悬停或当前选中项的背景色 */
+  background: #F6F6F6;
 }
 
 /* 搜索框 */
 #search {
-  position: relative; /* 相对定位，作为搜索按钮绝对定位的参考点 */
-  margin-top: 15px; /* 上外边距 */
+  position: relative;
+  margin-top: 15px;
 }
 #search input {
-  padding-right: 30px; /* 右侧留出空间给搜索按钮，防止文字被遮挡 */
+  padding-right: 30px;
 }
 #search button {
-  position: absolute; /* 绝对定位，悬浮在输入框右侧 */
+  position: absolute;
   right: 4px;
   top: 2px;
   border: none;
   padding: 0;
   width: 24px;
   height: 24px;
-  background: transparent; /* 背景透明 */
-  cursor: pointer; /* 鼠标手型 */
-  direction: ltr; /* 文字方向从左到右 */
-  font-size: 0; /* 隐藏按钮默认文字 */
-  color: transparent; /* 文字颜色透明 */
+  background: transparent;
+  cursor: pointer;
+  direction: ltr;
+  font-size: 0;
+  color: transparent;
 }
 #search button:before {
-  content: "\1F50D"; /* 使用伪元素插入 Unicode 放大镜图标 🔍 */
-  font-size: 14px; /* 图标大小 */
-  color: #999; /* 图标颜色 */
+  content: "\1F50D";
+  font-size: 14px;
+  color: #999;
 }
 
 /* ------------------
  * 主内容区域 (Main)
  * --------------- */
 .post {
-  padding: 15px 0 0 0; /* 顶部内边距 */
-  border-bottom: 1px solid #EEE; /* 文章之间的分割线 */
+  padding: 15px 0 0 0;
+  border-bottom: 1px solid #EEE;
 }
 .post-title {
-  margin: .83em 0; /* 标题外边距 */
-  font-size: 1.4em; /* 标题字号 */
+  margin: .83em 0;
+  font-size: 1.4em;
 }
 .post-meta {
-  margin-top: -0.5em; /* 负边距，拉近与标题的距离 */
+  margin-top: -0.5em;
   padding: 0;
-  color: #999; /* 元信息文字颜色：浅灰 */
-  font-size: .92857em; /* 字号略小 */
+  color: #999;
+  font-size: .92857em;
 }
 .post-meta li {
-  display: inline-block; /* 行内块级，横向排列 */
-  margin: 0 8px 0 0; /* 右侧外边距 */
-  padding-left: 12px; /* 左侧内边距 */
-  border-left: 1px solid #EEE; /* 左侧分割线 */
+  display: inline-block;
+  margin: 0 8px 0 0;
+  padding-left: 12px;
+  border-left: 1px solid #EEE;
 }
 .post-meta li:first-child {
-  margin-left: 0; /* 第一个元素去除左外边距 */
-  padding-left: 0; /* 去除左内边距 */
-  border: none; /* 去除左侧分割线 */
+  margin-left: 0;
+  padding-left: 0;
+  border: none;
 }
 .post-content {
   line-height: 1.8; /* ✅ 已修改：正文行高 1.8 */
 }
 .post .tags {
-  clear: both; /* 清除浮动，防止标签与上方内容重叠 */
+  clear: both;
 }
 
 .post-near {
-  list-style: none; /* 去除列表默认的小圆点 */
+  list-style: none;
   margin: 30px 0;
   padding: 0;
   color: #999;
@@ -330,13 +311,13 @@ textarea {
   font-size: 1em;
 }
 .more {
-  text-align: center; /* “阅读更多”文字居中 */
+  text-align: center;
 }
 .more a {
-  border: none; /* 去除链接底部边框 */
+  border: none;
 }
 .protected .text {
-  width: 50%; /* 密码保护文章输入框宽度 */
+  width: 50%;
 }
 
 /* 分页导航 */
@@ -344,58 +325,58 @@ textarea {
   list-style: none;
   margin: 25px 0;
   padding: 0;
-  text-align: center; /* 分页按钮居中 */
+  text-align: center;
 }
 .page-navigator li {
-  display: inline-block; /* 横向排列 */
+  display: inline-block;
   margin: 0 4px;
 }
 .page-navigator a {
   display: inline-block;
   padding: 0 10px;
   height: 30px;
-  line-height: 30px; /* 垂直居中 */
+  line-height: 30px;
 }
 .page-navigator a:hover {
-  background: #EEE; /* 悬停背景 */
+  background: #EEE;
   text-decoration: none;
 }
 .page-navigator .current a {
-  color: #444; /* 当前页码文字颜色 */
-  background: #EEE; /* 当前页码背景色 */
+  color: #444;
+  background: #EEE;
 }
 
 /* ------------------
  * 评论列表 (Comment list)
  * --------------- */
 #comments {
-  padding-top: 15px; /* 评论区顶部内边距 */
+  padding-top: 15px;
 }
 .comment-list, .comment-list ol {
-  list-style: none; /* 去除列表默认样式 */
+  list-style: none;
   margin: 0;
   padding: 0;
 }
 .comment-list li {
-  padding: 14px; /* 单条评论内边距 */
-  margin-top: 10px; /* 评论之间的间距 */
-  border: 1px solid #EEE; /* 评论边框 */
+  padding: 14px;
+  margin-top: 10px;
+  border: 1px solid #EEE;
 }
 .comment-list li.comment-level-odd {
-  background: #F6F6F3; /* 奇数楼层的背景色，产生斑马纹效果 */
+  background: #F6F6F3;
 }
 .comment-list li.comment-level-even {
-  background: #FFF; /* 偶数楼层背景色：白色 */
+  background: #FFF;
 }
 .comment-list li.comment-by-author {
-  background: #FFF9E8; /* 博主自己的评论背景色：淡黄色 */
+  background: #FFF9E8;
 }
 .comment-list li .comment-reply {
-  text-align: right; /* 回复按钮右对齐 */
+  text-align: right;
   font-size: .92857em;
 }
 .comment-meta a {
-  color: #999; /* 评论元信息链接颜色 */
+  color: #999;
   font-size: .92857em;
 }
 .comment-author {
@@ -404,24 +385,22 @@ textarea {
   color: #444;
 }
 .comment-author .avatar {
-  float: left; /* 头像左浮动 */
-  margin-right: 10px; /* 头像与文字间距 */
+  float: left;
+  margin-right: 10px;
 }
 .comment-author cite {
-  font-weight: bold; /* 评论者名字加粗 */
-  font-style: normal; /* 字体样式正常（去除引用默认的斜体） */
+  font-weight: bold;
+  font-style: normal;
 }
 .comment-children {
-  margin: 0 -14px; /* 负外边距，使子评论对齐父级边缘 */
+  margin: 0 -14px;
   padding: 0;
 }
-/* 第二层评论特殊处理 */
 #comments > .comment-list > li > .comment-children > .comment-list > li {
-  margin-left: 20px; /* 左侧缩进 */
-  border: 0px; /* 去除子评论独立边框 */
-  padding: 14px 14px 0px 14px; /* 调整内边距 */
+  margin-left: 20px;
+  border: 0px;
+  padding: 14px 14px 0px 14px;
 }
-/* 第三层评论特殊处理 */
 #comments .comment-list .comment-list .comment-list .comment-body {
   margin-left: 0;
   border: 0px;
@@ -431,20 +410,20 @@ textarea {
 /* 评论回复表单 */
 .comment-list .respond {
   margin-top: 15px;
-  border-top: 1px solid #EEE; /* 顶部边框 */
+  border-top: 1px solid #EEE;
 }
 .respond .cancel-comment-reply {
-  float: right; /* 取消回复按钮右浮动 */
+  float: right;
   margin-top: 15px;
   font-size: .92857em;
 }
 #comment-form label {
-  display: block; /* 块级显示，独占一行 */
+  display: block;
   margin-bottom: .5em;
-  font-weight: bold; /* 标签加粗 */
+  font-weight: bold;
 }
 #comment-form .required:after {
-  content: " *"; /* 必填项后在伪元素添加红色星号 */
+  content: " *";
   color: #C00;
 }
 
@@ -453,10 +432,10 @@ textarea {
  * --------------- */
 #secondary {
   padding-top: 15px;
-  word-wrap: break-word; /* 长单词自动换行，防止撑破布局 */
+  word-wrap: break-word;
 }
 .widget {
-  margin-bottom: 30px; /* 侧边栏小工具之间的间距 */
+  margin-bottom: 30px;
 }
 .widget-list {
   list-style: none;
@@ -467,7 +446,7 @@ textarea {
   line-height: 1.6;
 }
 .widget-list li ul {
-  margin-left: 15px; /* 嵌套列表缩进 */
+  margin-left: 15px;
 }
 
 /* ------------------
@@ -476,8 +455,8 @@ textarea {
 #footer {
   padding: 3em 0;
   line-height: 1.5;
-  text-align: center; /* 页脚文字居中 */
-  color: #999; /* 页脚文字颜色：浅灰 */
+  text-align: center;
+  color: #999;
 }
 
 /* -----------------
@@ -500,21 +479,21 @@ textarea {
 }
 .post-content img, .comment-content img,
 .post-content video, .comment-content video {
-  max-width: 100%; /* 图片/视频自适应容器宽度，防止溢出 */
-  border-radius: 6px; /* 给媒体文件加圆角 */
+  max-width: 100%;
+  border-radius: 6px;
 }
 .post-content a img,
 .comment-content a img {
   background: #FFF;
   position: relative;
   border-radius: 6px;
-  bottom: -4px; /* 微调图片底部位置，处理行内块元素底部空隙 */
+  bottom: -4px;
 }
 .post-content hr, .comment-content hr {
-  margin: 2em auto; /* 水平居中 */
-  width: 100px; /* 固定宽度 */
+  margin: 2em auto;
+  width: 100px;
   border: 1px solid #E9E9E9;
-  border-width: 2px 0 0 0; /* 只保留顶部边框 */
+  border-width: 2px 0 0 0;
 }
 
 /* -----------------
@@ -522,62 +501,50 @@ textarea {
  *--------------- */
 .aligncenter, div.aligncenter {
   display: block;
-  margin-left: auto; /* 居中 */
+  margin-left: auto;
   margin-right: auto;
 }
 .alignleft {
-  float: left; /* 左浮动 */
+  float: left;
 }
 .alignright {
-  float: right; /* 右浮动 */
+  float: right;
 }
 img.alignleft {
-  margin: 0 15px 0 0; /* 左浮动图片右侧留空 */
+  margin: 0 15px 0 0;
 }
 img.alignright {
-  margin: 0 0 0 15px; /* 右浮动图片左侧留空 */
+  margin: 0 0 0 15px;
 }
 
 /* -----------------
  * 响应式布局 (Responsive)
  *--------------- */
-/* 当屏幕宽度小于 767px 时（手机端） */
 @media (max-width: 767px) {
   body {
     font-size: 100%; /* ✅ 已修改：手机端基础字号不再缩小，保持 16px */
   }
-  #nav-menu a {
-    float: none; /* 取消浮动 */
-    display: inline-block; /* 变为行内块，方便换行排列 */
-    margin: 0px;
-  }
   .container {
-    padding-left: 16px; /* 增加左右内边距，防止内容贴边 */
+    padding-left: 16px;
     padding-right: 16px;
   }
 }
-/* 当屏幕宽度小于 768px 时（平板竖屏/大手机） */
 @media (max-width: 768px) {
   #header {
-    padding-left: 30px; /* 头部增加左内边距 */
+    padding-left: 30px;
   }
   #nav-menu {
     margin: 25px 0 0 -10px;
   }
 }
-/* 当屏幕宽度大于等于 992px 时（小屏电脑） */
 @media (min-width: 992px) {
-  /* 这里原本是空的，可以用于设置中等屏幕样式 */
+  /* 这里原本是空的 */
 }
-/* =========================================
- * 【已修改】1200px 屏幕下的容器宽度设置
- * ========================================= */
-/* 当屏幕宽度大于等于 1200px 时（大屏电脑） */
 @media (min-width: 1200px) {
   .container {
-    width: 80%;            /* 占据屏幕宽度的 80% */
-    max-width: 1280px;     /* 最大宽度限制在 1280px，防止超宽屏幕拉得太长 */
-    margin: 0 auto;        /* 确保内容居中 */
+    width: 80%;
+    max-width: 1280px;
+    margin: 0 auto;
   }
 }
 
@@ -585,86 +552,70 @@ img.alignright {
  * LivePhoto 实况照片样式
  * ========================================= */
 .live-photo {
-  position: relative; /* 相对定位，作为内部元素的参考 */
-  overflow: hidden; /* 隐藏超出容器的部分 */
-  cursor: pointer; /* 鼠标手型，暗示可点击 */
-  user-select: none !important; /* 禁止用户选中文本/图片 */
-  -webkit-user-select: none !important; /* 兼容 Safari */
-  -webkit-tap-highlight-color: transparent; /* 移动端点击无高亮 */
-  touch-action: pan-y pinch-zoom; /* 允许垂直滑动和缩放，防止误触 */
-  border-radius: 6px; /* 圆角 */
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y pinch-zoom;
+  border-radius: 6px;
 }
-
-/* 实况照片中的图片和视频统一样式 */
 .live-photo-img,
 .live-photo-video {
-  position: absolute; /* 绝对定位，覆盖整个容器 */
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 保持比例填满容器，裁剪多余部分 */
-  pointer-events: none; /* 禁止鼠标事件，防止干扰点击 */
-  transform-origin: center center; /* 缩放中心点居中 */
+  object-fit: cover;
+  pointer-events: none;
+  transform-origin: center center;
   border-radius: 6px;
   user-select: none;
 }
-
-/* 实况照片的封面图（静态图） */
 .live-photo-img {
-  z-index: 2; /* 层级高于视频 */
-  opacity: 1; /* 默认显示 */
-  transform: scale(1); /* 默认缩放比例 */
-  transition: opacity 0.3s linear, transform 0.3s linear; /* 过渡动画 */
+  z-index: 2;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.3s linear, transform 0.3s linear;
 }
-
-/* 实况照片的视频部分 */
 .live-photo-video {
-  z-index: 1; /* 层级低于图片 */
+  z-index: 1;
   transform: scale(1);
   transition: transform 0.3s linear;
 }
-
-/* 播放状态：图片透明度变为 0（隐藏），并轻微放大 */
 .live-photo.is-playing .live-photo-img {
   opacity: 0;
   transform: scale(1.08);
 }
-
-/* 播放状态：视频轻微放大，产生动态效果 */
 .live-photo.is-playing .live-photo-video {
   transform: scale(1.08);
 }
-
-/* 实况照片徽标 (Live 图标和文字) */
 .live-photo-badge {
   position: absolute;
-  top: 12px; /* 距离顶部 12px */
-  left: 12px; /* 距离左侧 12px */
-  z-index: 20; /* 层级最高，确保显示在最上层 */
-  display: flex; /* 弹性布局 */
-  align-items: center; /* 垂直居中 */
-  gap: 6px; /* 图标和文字间距 */
-  background: rgba(255, 255, 255, 0.5); /* 半透明白色背景 */
-  backdrop-filter: blur(4px); /* 毛玻璃模糊效果 */
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(4px);
   padding: 2px 8px 2px 2px;
   border-radius: 5px;
-  pointer-events: none; /* 徽标不响应鼠标事件，避免遮挡点击 */
+  pointer-events: none;
 }
-
 .live-photo-icon {
   width: 20px;
   height: 20px;
   position: relative;
 }
-
 .live-photo-icon-svg {
   width: 100%;
   height: 100%;
   display: block;
 }
-
-/* 禁用状态的图标（默认隐藏） */
 .live-photo-disabled-icon {
   position: absolute;
   top: 0;
@@ -673,7 +624,6 @@ img.alignright {
   height: 100%;
   display: none;
 }
-
 .live-photo-text {
   font-size: 12px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -683,23 +633,17 @@ img.alignright {
   line-height: 1;
   margin-top: 1px;
 }
-
-/* 进度环动画（用于显示视频加载或播放进度） */
 .live-photo-progress-ring {
   transition: stroke-dashoffset 0.2s linear;
 }
-
-/* 针对列表卡片中的 LivePhoto 容器 */
 .post-list .live-photo-wrapper,
 .archive-list .live-photo-wrapper {
   display: block;
   width: 100%;
   height: auto;
   overflow: hidden;
-  background: #000; /* 黑色背景，作为视频加载时的底色 */
+  background: #000;
 }
-
-/* 内部图片视频铺满并保持比例 */
 .post-list .live-photo-wrapper img,
 .post-list .live-photo-wrapper video,
 .archive-list .live-photo-wrapper img,
@@ -711,8 +655,6 @@ img.alignright {
   height: 100% !important;
   object-fit: cover;
 }
-
-/* 如果网格项本身有固定的宽高限制，可让容器自适应 */
 .post-list article {
   height: auto;
 }
@@ -720,13 +662,10 @@ img.alignright {
 /* =========================================
  * 辅助类 (隐藏、无障碍)
  * ========================================= */
-/* 完全隐藏 (屏幕阅读器和浏览器都不显示) */
 .hidden {
   display: none !important;
   visibility: hidden; 
 }
-
-/* 仅供屏幕阅读器 (视觉上隐藏，但仍可被阅读器读取) */
 .sr-only {
   border: 0;
   height: 1px;
@@ -736,8 +675,6 @@ img.alignright {
   position: absolute;
   width: 1px; 
 }
-
-/* 扩展 .sr-only，允许键盘聚焦时显示 */
 .sr-only.focusable:active,
 .sr-only.focusable:focus {
   clip: auto;
@@ -747,28 +684,73 @@ img.alignright {
   position: static;
   width: auto; 
 }
-
-/* 隐藏但保留布局空间 */
 .invisible {
   visibility: hidden; 
 }
 
 /* =========================================
- * 【新增】强制正文段落字号（解决某些主题 <p> 标签过小的问题）
+ * 【新增】强制正文段落字号
  * ========================================= */
 .post-content p,
 .post-content li,
 .post-content blockquote,
 .post-content h2,
 .post-content h3 {
-  font-size: 16px !important;      /* 强制正文内容为 16px */
-  line-height: 1.8 !important;     /* 1.8 倍行高，阅读更舒服 */
+  font-size: 16px !important;
+  line-height: 1.8 !important;
 }
 
-/* 如果是手机端，确保这个字号也绝对生效 */
 @media (max-width: 767px) {
   .post-content p,
   .post-content li {
     font-size: 16px !important;
+  }
+}
+
+/* =========================================
+ * 【汉堡菜单·修正版】移动端导航：点击展开下拉
+ * ========================================= */
+@media (max-width: 767px) {
+  #nav-menu {
+    position: relative !important;
+    margin: 15px 0 0 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 默认隐藏所有菜单项 */
+  #nav-menu a {
+    display: none !important;
+  }
+
+  /* 用真实按钮代替伪元素 */
+  .nav-toggle-btn {
+    display: block !important;
+    width: 100% !important;
+    height: 44px !important;
+    line-height: 44px !important;
+    text-align: center !important;
+    font-size: 22px !important;
+    color: #444 !important;
+    background: #F6F6F6 !important;
+    border: 1px solid #EEE !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 展开时菜单竖排显示 */
+  #nav-menu.is-open a {
+    display: block !important;
+    text-align: center !important;
+    padding: 12px 0 !important;
+    border: 1px solid #EEE !important;
+    border-top: none !important;
+    height: auto !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    float: none !important;
+    font-size: 15px !important;
   }
 }
