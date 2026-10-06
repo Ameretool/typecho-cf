@@ -1,0 +1,1040 @@
+/* ------------------------------------
+ * Typecho Default Theme
+ * 备注：全站样式主文件
+ * --------------------------------- */
+
+/* ============================================================
+ * 【配色方案总说明】
+ * ------------------------------------------------------------
+ * 想换配色时，只需要改下面 :root 里的变量值
+ * 变量说明：
+ *   --bg-color         页面背景色
+ *   --text-color       正文文字色
+ *   --card-bg          卡片/菜单/高亮背景色
+ *   --border-color     边框/分隔线颜色
+ *   --accent-color     强调色（链接、按钮、高亮）
+ *
+ * 表格与代码块专用变量：
+ *   --table-border     表格边框色
+ *   --table-header-bg  表格表头背景色
+ *   --table-hover-bg   表格鼠标悬停背景色
+ *   --code-bg          代码块背景色
+ *   --code-text        代码块文字色
+ *
+ * 【换配色方法】
+ *   1. 找到「当前启用」那套，整段用注释包起来
+ *   2. 找到想用的那套，去掉它前后的注释符
+ * ============================================================ */
+
+/* ============================================================
+ * 【当前启用】方案 ① GitHub Dark Dimmed（护眼暗色）
+ * ============================================================ */
+:root {
+  --bg-color:     #22272e;   /* 页面背景：深蓝灰 */
+  --text-color:   #adbac7;   /* 正文文字：柔白 */
+  --card-bg:      #2d333b;   /* 卡片/菜单：比背景略亮 */
+  --border-color: #444c56;   /* 边框：比背景更深 */
+  --accent-color: #539bf5;   /* 强调色：亮蓝 */
+
+  --table-border:    #444c56;   /* 表格边框 */
+  --table-header-bg: #2d333b;   /* 表格表头背景 */
+  --table-hover-bg:  #373e47;   /* 表格悬停背景 */
+  --code-bg:         #2d333b;   /* 代码块背景 */
+  --code-text:       #adbac7;   /* 代码块文字 */
+}
+
+
+/* ============================================================
+ * 【以下全部被注释掉，想用哪套就去掉注释】
+ * ============================================================ */
+
+/*
+方案 ② 深灰蓝·更冷（深夜模式）
+:root {
+  --bg-color:     #1c2128;
+  --text-color:   #a3b1c2;
+  --card-bg:      #282e36;
+  --border-color: #3d444d;
+  --accent-color: #79b8ff;
+  --table-border:    #3d444d;
+  --table-header-bg: #282e36;
+  --table-hover-bg:  #31373f;
+  --code-bg:         #282e36;
+  --code-text:       #a3b1c2;
+}
+*/
+
+/*
+方案 ③ 深灰蓝·更暖（暖调暗色）
+:root {
+  --bg-color:     #2b2f38;
+  --text-color:   #c8d1dc;
+  --card-bg:      #363b45;
+  --border-color: #4a505c;
+  --accent-color: #6cb6ff;
+  --table-border:    #4a505c;
+  --table-header-bg: #363b45;
+  --table-hover-bg:  #40454f;
+  --code-bg:         #363b45;
+  --code-text:       #c8d1dc;
+}
+*/
+
+/*
+方案 ④ 护眼暗蓝（深蓝底）
+:root {
+  --bg-color:     #1e2633;
+  --text-color:   #b8c6d9;
+  --card-bg:      #2a3446;
+  --border-color: #3e4a60;
+  --accent-color: #5b9bd5;
+  --table-border:    #3e4a60;
+  --table-header-bg: #2a3446;
+  --table-hover-bg:  #334054;
+  --code-bg:         #2a3446;
+  --code-text:       #b8c6d9;
+}
+*/
+
+/*
+方案 ⑤ 护眼暗绿（墨绿底）
+:root {
+  --bg-color:     #1f2a24;
+  --text-color:   #b8c8bd;
+  --card-bg:      #2a3830;
+  --border-color: #3e4e44;
+  --accent-color: #5cc9a0;
+  --table-border:    #3e4e44;
+  --table-header-bg: #2a3830;
+  --table-hover-bg:  #33423a;
+  --code-bg:         #2a3830;
+  --code-text:       #b8c8bd;
+}
+*/
+
+/*
+方案 ⑥ 护眼暗棕（咖啡底）
+:root {
+  --bg-color:     #2b2620;
+  --text-color:   #d4c8b8;
+  --card-bg:      #38322a;
+  --border-color: #4a4238;
+  --accent-color: #c8a878;
+  --table-border:    #4a4238;
+  --table-header-bg: #38322a;
+  --table-hover-bg:  #443d33;
+  --code-bg:         #38322a;
+  --code-text:       #d4c8b8;
+}
+*/
+
+/*
+方案 ⑦ 淡蓝护眼（清爽冷色）
+:root {
+  --bg-color:     #eaf2fb;
+  --text-color:   #333a44;
+  --card-bg:      #dde8f5;
+  --border-color: #c5d5e8;
+  --accent-color: #3354AA;
+  --table-border:    #9db6d6;
+  --table-header-bg: #d5e2f2;
+  --table-hover-bg:  #c4d6eb;
+  --code-bg:         #d5e2f2;
+  --code-text:       #2a3a52;
+}
+*/
+
+/*
+方案 ⑧ 淡青护眼（冷色清新）
+:root {
+  --bg-color:     #e8f4f4;
+  --text-color:   #2f3e3e;
+  --card-bg:      #d8eaea;
+  --border-color: #bcd8d8;
+  --accent-color: #2a7a7a;
+  --table-border:    #8db1b1;
+  --table-header-bg: #d8eaea;
+  --table-hover-bg:  #c4dede;
+  --code-bg:         #d8eaea;
+  --code-text:       #2f3e3e;
+}
+*/
+
+/*
+方案 ⑨ 米黄护眼（纸质感）
+:root {
+  --bg-color:     #faf6e9;
+  --text-color:   #3a3528;
+  --card-bg:      #f2ebd6;
+  --border-color: #c9bd99;
+  --accent-color: #7a8f3f;
+  --table-border:    #bdb088;
+  --table-header-bg: #f2ebd6;
+  --table-hover-bg:  #e6dbb9;
+  --code-bg:         #f2ebd6;
+  --code-text:       #3a3528;
+}
+*/
+
+/*
+方案 ⑩ 豆沙绿（最强护眼）
+:root {
+  --bg-color:     #c7edcc;
+  --text-color:   #2c3e35;
+  --card-bg:      #b8e2be;
+  --border-color: #7db38b;
+  --accent-color: #2e8b6f;
+  --table-border:    #6fa67d;
+  --table-header-bg: #b8e2be;
+  --table-hover-bg:  #a3d4aa;
+  --code-bg:         #b8e2be;
+  --code-text:       #2c3e35;
+}
+*/
+
+/*
+方案 ⑪ 浅灰极简（无彩色百搭）
+:root {
+  --bg-color:     #f7f8fa;
+  --text-color:   #333333;
+  --card-bg:      #eef0f3;
+  --border-color: #c0c4cc;
+  --accent-color: #555555;
+  --table-border:    #b4b9c2;
+  --table-header-bg: #eef0f3;
+  --table-hover-bg:  #dfe2e7;
+  --code-bg:         #eef0f3;
+  --code-text:       #333333;
+}
+*/
+
+/*
+方案 ⑫ 藕荷粉（柔和暖粉）
+:root {
+  --bg-color:     #f5eef2;
+  --text-color:   #3e3339;
+  --card-bg:      #ece0e7;
+  --border-color: #c4a9b6;
+  --accent-color: #9c4f7a;
+  --table-border:    #b89aa8;
+  --table-header-bg: #ece0e7;
+  --table-hover-bg:  #e0d0d9;
+  --code-bg:         #ece0e7;
+  --code-text:       #3e3339;
+}
+*/
+
+
+/* ============================================================
+ * 全局基础样式
+ * ============================================================ */
+html {
+  -webkit-tap-highlight-color: transparent;   /* 移动端点击不闪蓝框 */
+}
+
+/* 页面过渡动画 */
+#main, #footer {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  will-change: opacity, transform;
+}
+html.is-animating #main, #footer {
+  opacity: 0;
+  transform: translateY(20px);
+}
+html.is-leaving #main, #footer {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 页面主体 */
+body {
+  background-color: var(--bg-color);           /* 引用变量：页面背景 */
+  color: var(--text-color);                    /* 引用变量：正文文字 */
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
+  font-size: 100%;
+  transition: background-color 0.3s ease, color 0.3s ease;   /* 换色平滑过渡 */
+}
+
+/* 链接 */
+a {
+  color: var(--accent-color);                  /* 引用变量：强调色 */
+  text-decoration: none;
+}
+a:hover, a:active {
+  color: var(--text-color);                    /* 悬停变正文色 */
+}
+
+/* 通用按钮 */
+button {
+  -webkit-appearance: button;
+  background-color: var(--accent-color);
+  border: none;
+  color: #ffffff;
+  padding: 5px 15px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 6px;
+}
+
+/* 文章标签 */
+.meta-tags {
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+/* 退出按钮（侧边栏） */
+.logout-form {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+.logout-form button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-color);
+  font: inherit;
+  cursor: pointer;
+}
+.logout-form button:hover,
+.logout-form button:active {
+  color: var(--text-color);
+}
+
+
+/* ============================================================
+ * 表格样式（GitHub 风格，全部使用变量）
+ * ============================================================ */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+  margin-bottom: 16px !important;
+  border: none !important;
+  box-shadow: 0 0 0 2px var(--table-border) !important;    /* 表格外边框 */
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  font-size: 15px !important;
+}
+
+/* 单元格：上下左右用细线区分 */
+table th,
+table td {
+  padding: 12px 16px !important;
+  border: none !important;
+  vertical-align: middle !important;
+  box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important;
+}
+table tr > *:last-child {
+  box-shadow: 0 1px 0 0 var(--table-border) !important;
+}
+
+/* 表头：加粗 + 深色底 */
+table th {
+  background-color: var(--table-header-bg) !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  color: var(--code-text) !important;
+}
+
+/* 表格悬停：整行变色 */
+table tbody tr:hover {
+  background-color: var(--table-hover-bg) !important;
+}
+
+/* 单元格内的行内代码 */
+table td code {
+  background-color: var(--table-hover-bg) !important;
+  color: var(--code-text) !important;
+  padding: 3px 6px !important;
+  border-radius: 6px !important;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
+  font-size: 85% !important;
+}
+
+
+/* ============================================================
+ * 代码块样式
+ * ============================================================ */
+pre {
+  background-color: var(--code-bg) !important;
+  padding: 16px !important;
+  border-radius: 6px !important;
+  overflow: auto !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  color: var(--code-text) !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  font-size: .92857em !important;
+}
+
+/* 引用块 */
+blockquote {
+  margin: 1em 0;
+  padding-left: 1.5em;
+  border-left: 4px solid var(--border-color);
+  color: var(--text-color);
+  opacity: 0.85;
+}
+
+/* 标题 */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "WenQuanYi Micro Hei","Microsoft Yahei", sans-serif;
+  color: var(--text-color);
+}
+
+/* 输入框 / 文本框 */
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+textarea {
+  padding: 5px;
+  border: 1px solid var(--border-color);
+  width: 100%;
+  border-radius: 2px;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+textarea {
+  resize: vertical;
+}
+
+
+/* ============================================================
+ * 特殊链接样式
+ * ============================================================ */
+.post-meta a,
+.post-content a,
+.widget a,
+.comment-content a {
+  border-bottom: 1px solid var(--border-color);
+}
+.post-meta a:hover,
+.post-content a:hover,
+.widget a:hover,
+.comment-content a:hover {
+  border-bottom-color: transparent;
+}
+
+
+/* ============================================================
+ * 头部区域
+ * ============================================================ */
+#header {
+  padding-top: 35px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#logo {
+  color: var(--text-color);
+  font-size: 2.5em;
+}
+#logo img {
+  max-height: 64px;
+}
+
+.description {
+  margin: .5em 0 0;
+  color: var(--text-color);
+  opacity: 0.6;                               /* 描述文字稍淡 */
+  font-style: italic;
+}
+
+
+/* ============================================================
+ * 导航菜单
+ * ============================================================ */
+#nav-menu {
+  margin: 25px 0 0;
+  padding: 0;
+}
+#nav-menu a {
+  display: block;
+  margin-right: -1px;
+  padding: 0 20px;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  height: 32px;
+  line-height: 32px;
+  color: var(--text-color);
+  background: var(--bg-color);
+  float: left;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+/* 悬停：底色变卡片色，字变强调色 */
+#nav-menu a:hover {
+  background: var(--card-bg);
+  color: var(--accent-color);
+}
+/* 当前页：强调色描边 + 加粗 */
+#nav-menu a.current {
+  background: var(--card-bg);
+  color: var(--accent-color);
+  font-weight: 700;
+  border-color: var(--accent-color);
+}
+
+
+/* ============================================================
+ * 搜索框
+ * ============================================================ */
+#search {
+  position: relative;
+  margin-top: 15px;
+}
+#search input {
+  padding-right: 30px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+#search button {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  border: none;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+  direction: ltr;
+  font-size: 0;
+  color: transparent;
+}
+#search button:before {
+  content: "\1F50D";                          /* 🔍 图标 */
+  font-size: 14px;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+
+/* ============================================================
+ * 主内容区域
+ * ============================================================ */
+.post {
+  padding: 15px 0 0 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.post-title {
+  margin: .83em 0;
+  font-size: 1.4em;
+  color: var(--text-color);
+}
+.post-meta {
+  margin-top: -0.5em;
+  padding: 0;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: .92857em;
+}
+.post-meta li {
+  display: inline-block;
+  margin: 0 8px 0 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-color);
+}
+.post-meta li:first-child {
+  margin-left: 0;
+  padding-left: 0;
+  border: none;
+}
+.post-content {
+  line-height: 1.8;
+  color: var(--text-color);
+}
+.post .tags {
+  clear: both;
+}
+
+/* 上一篇 / 下一篇 */
+.post-near {
+  list-style: none;
+  margin: 30px 0;
+  padding: 0;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+.post-near li {
+  margin: 10px 0;
+}
+.post-near a {
+  color: var(--accent-color) !important;
+  font-size: 14px !important;
+}
+.post-near a:hover {
+  color: var(--text-color) !important;
+}
+
+/* 归档页标题 */
+.archive-title {
+  margin: 1em 0 -1em;
+  padding-top: 20px;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: 1em;
+}
+.more {
+  text-align: center;
+}
+.more a {
+  border: none;
+}
+.protected .text {
+  width: 50%;
+}
+
+
+/* ============================================================
+ * 分页导航
+ * ============================================================ */
+.page-navigator {
+  list-style: none;
+  margin: 25px 0;
+  padding: 0;
+  text-align: center;
+}
+.page-navigator li {
+  display: inline-block;
+  margin: 0 4px;
+}
+.page-navigator a {
+  display: inline-block;
+  padding: 0 10px;
+  height: 30px;
+  line-height: 30px;
+  color: var(--text-color);
+}
+.page-navigator a:hover {
+  background: var(--card-bg);
+  text-decoration: none;
+}
+.page-navigator .current a {
+  color: var(--text-color);
+  background: var(--card-bg);
+}
+
+
+/* ============================================================
+ * 评论列表
+ * ============================================================ */
+#comments {
+  padding-top: 15px;
+}
+.comment-list, .comment-list ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.comment-list li {
+  padding: 14px;
+  margin-top: 10px;
+  border: 1px solid var(--border-color);
+}
+.comment-list li.comment-level-odd {
+  background: var(--card-bg);
+}
+.comment-list li.comment-level-even {
+  background: var(--bg-color);
+}
+.comment-list li.comment-by-author {
+  background: var(--card-bg);
+}
+.comment-list li .comment-reply {
+  text-align: right;
+  font-size: .92857em;
+}
+.comment-meta a {
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: .92857em;
+}
+.comment-author {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-color);
+}
+.comment-author .avatar {
+  float: left;
+  margin-right: 10px;
+}
+.comment-author cite {
+  font-weight: bold;
+  font-style: normal;
+}
+.comment-children {
+  margin: 0 -14px;
+  padding: 0;
+}
+#comments > .comment-list > li > .comment-children > .comment-list > li {
+  margin-left: 20px;
+  border: 0px;
+  padding: 14px 14px 0px 14px;
+}
+#comments .comment-list .comment-list .comment-list .comment-body {
+  margin-left: 0;
+  border: 0px;
+  padding: 14px 14px 0px 14px;
+}
+
+/* 评论回复表单 */
+.comment-list .respond {
+  margin-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+.respond .cancel-comment-reply {
+  float: right;
+  margin-top: 15px;
+  font-size: .92857em;
+}
+#comment-form label {
+  display: block;
+  margin-bottom: .5em;
+  font-weight: bold;
+}
+#comment-form .required:after {
+  content: " *";
+  color: #C00;                                /* 必填项红星 */
+}
+
+
+/* ============================================================
+ * 侧边栏
+ * ============================================================ */
+#secondary {
+  padding-top: 15px;
+  word-wrap: break-word;
+}
+.widget {
+  margin-bottom: 30px;
+}
+.widget-list {
+  list-style: none;
+  padding: 0;
+}
+.widget-list li {
+  margin: 5px 0;
+  line-height: 1.6;
+}
+.widget-list li ul {
+  margin-left: 15px;
+}
+
+/* 桌面端：侧边栏和正文之间加竖线 */
+@media (min-width: 992px) {
+  #secondary {
+    border-left: 1px solid var(--border-color);
+    padding-left: 24px;
+  }
+}
+
+
+/* ============================================================
+ * 底部区域
+ * ============================================================ */
+#footer {
+  padding: 3em 0;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+
+/* ============================================================
+ * 错误页面
+ * ============================================================ */
+.error-page {
+  margin-top: 100px;
+  margin-bottom: 100px;
+}
+
+
+/* ============================================================
+ * 内容格式
+ * ============================================================ */
+.post-content, .comment-content {
+  line-height: 1.8;
+  word-wrap: break-word;
+  color: var(--text-color);
+}
+.post-content h2, .comment-content h2 {
+  font-size: 1.28571em;
+}
+.post-content img, .comment-content img,
+.post-content video, .comment-content video {
+  max-width: 100%;
+  border-radius: 6px;
+}
+.post-content a img,
+.comment-content a img {
+  background: var(--bg-color);
+  position: relative;
+  border-radius: 6px;
+  bottom: -4px;
+}
+.post-content hr, .comment-content hr {
+  margin: 2em auto;
+  width: 100px;
+  border: 1px solid var(--border-color);
+  border-width: 2px 0 0 0;
+}
+
+
+/* ============================================================
+ * 杂项
+ * ============================================================ */
+.aligncenter, div.aligncenter {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+.alignleft {
+  float: left;
+}
+.alignright {
+  float: right;
+}
+img.alignleft {
+  margin: 0 15px 0 0;
+}
+img.alignright {
+  margin: 0 0 0 15px;
+}
+
+
+/* ============================================================
+ * 响应式布局
+ * ============================================================ */
+@media (max-width: 767px) {
+  body {
+    font-size: 100%;
+  }
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+@media (max-width: 768px) {
+  #header {
+    padding-left: 30px;
+  }
+  #nav-menu {
+    margin: 25px 0 0 -10px;
+  }
+}
+@media (min-width: 992px) {
+  /* 这里原本是空的 */
+}
+@media (min-width: 1200px) {
+  .container {
+    width: 80%;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+}
+
+
+/* ============================================================
+ * LivePhoto 实况照片样式
+ * ============================================================ */
+.live-photo {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y pinch-zoom;
+  border-radius: 6px;
+}
+.live-photo-img,
+.live-photo-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transform-origin: center center;
+  border-radius: 6px;
+  user-select: none;
+}
+.live-photo-img {
+  z-index: 2;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.3s linear, transform 0.3s linear;
+}
+.live-photo-video {
+  z-index: 1;
+  transform: scale(1);
+  transition: transform 0.3s linear;
+}
+.live-photo.is-playing .live-photo-img {
+  opacity: 0;
+  transform: scale(1.08);
+}
+.live-photo.is-playing .live-photo-video {
+  transform: scale(1.08);
+}
+.live-photo-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(4px);
+  padding: 2px 8px 2px 2px;
+  border-radius: 5px;
+  pointer-events: none;
+}
+.live-photo-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+.live-photo-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.live-photo-disabled-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+.live-photo-text {
+  font-size: 12px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: #000;
+  line-height: 1;
+  margin-top: 1px;
+}
+.live-photo-progress-ring {
+  transition: stroke-dashoffset 0.2s linear;
+}
+.post-list .live-photo-wrapper,
+.archive-list .live-photo-wrapper {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  background: #000;
+}
+.post-list .live-photo-wrapper img,
+.post-list .live-photo-wrapper video,
+.archive-list .live-photo-wrapper img,
+.archive-list .live-photo-wrapper video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+.post-list article {
+  height: auto;
+}
+
+
+/* ============================================================
+ * 辅助类（隐藏、无障碍）
+ * ============================================================ */
+.hidden {
+  display: none !important;
+  visibility: hidden;
+}
+.sr-only {
+  border: 0;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+.sr-only.focusable:active,
+.sr-only.focusable:focus {
+  clip: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  position: static;
+  width: auto;
+}
+.invisible {
+  visibility: hidden;
+}
+
+
+/* ============================================================
+ * 强制正文段落字号
+ * ============================================================ */
+.post-content p,
+.post-content li,
+.post-content blockquote,
+.post-content h2,
+.post-content h3 {
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+@media (max-width: 767px) {
+  .post-content p,
+  .post-content li {
+    font-size: 16px !important;
+  }
+}
+
+
+/* ============================================================
+ * 侧边栏样式优化
+ * ============================================================ */
+#secondary {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+  color: var(--text-color) !important;
+}
+#secondary .widget-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--text-color) !important;
+  margin-bottom: 8px !important;
+}
+#secondary .widget-list li {
+  margin: 6px 0 !important;
+  line-height: 1.8 !important;
+}
+#secondary .widget-list a {
+  color: var(--accent-color) !important;
+}
+#secondary .widget-list a:hover {
+  color: var(--text-color) !important;
+}
