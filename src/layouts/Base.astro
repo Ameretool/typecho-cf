@@ -56,7 +56,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 
   <!-- ============================================================
        全站外链新窗口打开脚本
-       放在 Base.astro 中，换主题绝不丢失，且彻底解决慢半拍
+       作用：点击站外链接时，自动在新窗口打开，彻底解决慢半拍
        ============================================================ -->
   <script is:inline>
     document.addEventListener('click', function(e) {
@@ -74,22 +74,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     }, true); // true 代表捕获阶段拦截，点击瞬间生效
   </script>
-
-  <!-- ============================================================
-       移动端导航汉堡菜单开关
-       配合 style.css 中的 #nav-menu::before 伪元素使用
-       ============================================================ -->
-  <script is:inline>
-    document.addEventListener('click', function(e) {
-      const nav = document.getElementById('nav-menu');
-      if (!nav) return;
-
-      // 点击 nav 容器本身（即点击了 ☰ 按钮）时，切换展开/收起
-      if (e.target === nav) {
-        nav.classList.toggle('is-open');
-      }
-    }, true);
-  </script>
 </head>
 <body class={bodyClass}>
   <slot />
@@ -97,7 +81,8 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 
   <!-- ============================================================
        返回顶部按钮（全站生效）
-       滚动超过 300px 后出现，点击平滑滚回顶部
+       作用：滚动超过 300px 后出现，点击平滑滚回顶部
+       配色：半透明白色 + 中性灰箭头，提前兼容未来的暗黑模式
        ============================================================ -->
   <button id="back-to-top" aria-label="返回顶部" style="display:none;">↑</button>
   <style is:global>
@@ -108,27 +93,49 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: #3354AA;
-      color: #fff;
-      border: none;
+
+      /* 半透明背景 + 中性文字颜色，同时适配浅色/深色模式 */
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);          /* 毛玻璃效果，更有质感 */
+      -webkit-backdrop-filter: blur(8px);
+      color: #444;                         /* 深灰色箭头，浅色下看得清 */
+      border: 1px solid rgba(0, 0, 0, 0.08); /* 淡边框，让按钮有轮廓 */
+
       font-size: 22px;
-      line-height: 44px;
+      line-height: 42px;
       text-align: center;
       cursor: pointer;
       z-index: 9998;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);  /* 柔和阴影，深浅模式都自然 */
+      transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
       opacity: 0;
       transform: translateY(10px);
       padding: 0;
     }
+
+    /* 按钮出现时 */
     #back-to-top.show {
       display: block !important;
       opacity: 1;
       transform: translateY(0);
     }
+
+    /* 鼠标悬停时稍微亮一点 */
     #back-to-top:hover {
-      background: #444;
+      background: rgba(255, 255, 255, 1);
+    }
+
+    /* ==================================================
+       未来接入“暗黑模式”时，只需在 <html> 上切换类名
+       比如 <html class="dark">，下面这段就会自动生效。
+       ================================================== */
+    html.dark #back-to-top {
+      background: rgba(40, 40, 40, 0.85);  /* 深色模式下变成深灰玻璃 */
+      color: #E0E0E0;                       /* 箭头变亮灰，看得清 */
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    html.dark #back-to-top:hover {
+      background: rgba(60, 60, 60, 0.95);
     }
   </style>
   <script is:inline>
