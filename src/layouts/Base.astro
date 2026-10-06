@@ -54,7 +54,9 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <slot name="head" />
   <Fragment set:html={pluginSnippets.headHtml} />
 
-  <!-- 全站外链新窗口打开脚本 -->
+  <!-- ============================================================
+       全站外链新窗口打开脚本
+       ============================================================ -->
   <script is:inline>
     document.addEventListener('click', function(e) {
       const link = e.target.closest('a');
@@ -70,12 +72,15 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
   <!-- ============================================================
-       移动端导航汉堡菜单开关
-       作用：在导航容器中动态插入一个 ☰ 按钮，点击展开/收起菜单
+       移动端导航汉堡菜单（仅手机端插入按钮）
+       核心判断：window.innerWidth > 767 时直接 return，不插入
        ============================================================ -->
   <script is:inline>
     (function() {
       function initNav() {
+        // 只在手机端（宽度 <= 767px）才插入按钮
+        if (window.innerWidth > 767) return;
+
         const nav = document.getElementById('nav-menu');
         if (!nav) return;
         // 避免重复添加
@@ -92,6 +97,13 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
           e.stopPropagation();
           nav.classList.toggle('is-open');
           btn.innerHTML = nav.classList.contains('is-open') ? '✕' : '☰';
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!nav.classList.contains('is-open')) return;
+          if (nav.contains(e.target)) return;
+          nav.classList.remove('is-open');
+          btn.innerHTML = '☰';
         });
       }
 
