@@ -88,47 +88,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     }, true);
   </script>
-
-  <!-- ============================================================
-       移动端导航汉堡菜单
-       ============================================================ -->
-  <script is:inline>
-    (function() {
-      function initNav() {
-        if (window.innerWidth > 767) return;
-
-        const nav = document.getElementById('nav-menu');
-        if (!nav) return;
-        if (nav.querySelector('.nav-toggle-btn')) return;
-
-        const btn = document.createElement('button');
-        btn.className = 'nav-toggle-btn';
-        btn.setAttribute('aria-label', '展开导航');
-        btn.innerHTML = '☰';
-        nav.insertBefore(btn, nav.firstChild);
-
-        btn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          nav.classList.toggle('is-open');
-          btn.innerHTML = nav.classList.contains('is-open') ? '✕' : '☰';
-        });
-
-        document.addEventListener('click', function(e) {
-          if (!nav.classList.contains('is-open')) return;
-          if (nav.contains(e.target)) return;
-          nav.classList.remove('is-open');
-          btn.innerHTML = '☰';
-        });
-      }
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initNav);
-      } else {
-        initNav();
-      }
-    })();
-  </script>
 </head>
 <body class={bodyClass}>
   <slot />
