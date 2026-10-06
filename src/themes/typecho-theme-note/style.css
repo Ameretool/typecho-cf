@@ -742,50 +742,73 @@ img.alignright {
 }
 
 /* =========================================
- * 【汉堡菜单】移动端导航：点击 ☰ 展开下拉
+ * 【A 方案】移动端导航：右上角小图标汉堡菜单
  * ========================================= */
 @media (max-width: 767px) {
+  /* 导航容器变成绝对定位，固定在右上角 */
   #nav-menu {
-    position: relative !important;
-    margin: 15px 0 0 0 !important;
+    position: absolute !important;
+    top: 35px !important;
+    right: 20px !important;
+    margin: 0 !important;
     padding: 0 !important;
+    z-index: 9999 !important;
     overflow: visible !important;
   }
 
-  /* 移动端默认隐藏所有菜单项 */
+  /* 默认隐藏所有菜单项 */
   #nav-menu a {
     display: none !important;
   }
 
-  /* 汉堡按钮样式（JS 动态插入） */
+  /* 汉堡按钮：40x40 小方块，半透明白底 */
   .nav-toggle-btn {
     display: block !important;
-    width: 100% !important;
-    height: 44px !important;
-    line-height: 44px !important;
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
     text-align: center !important;
     font-size: 22px !important;
     color: #444 !important;
-    background: #F6F6F6 !important;
+    background: rgba(255, 255, 255, 0.85) !important;
     border: 1px solid #EEE !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
     user-select: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
   }
 
-  /* 展开时菜单竖排显示 */
+  /* 展开时：菜单在按钮下方弹出（向右对齐） */
   #nav-menu.is-open a {
     display: block !important;
+    position: relative !important;
     text-align: center !important;
     padding: 12px 0 !important;
     border: 1px solid #EEE !important;
     border-top: none !important;
+    background: #FFF !important;
     height: auto !important;
     line-height: 1.5 !important;
     margin: 0 !important;
     float: none !important;
     font-size: 15px !important;
+    width: 120px !important;
+    margin-left: -80px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  }
+}
+
+/* =========================================
+ * 电脑端强制隐藏汉堡菜单按钮（终极保险）
+ * ========================================= */
+@media screen and (min-width: 768px) {
+  .nav-toggle-btn {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
 }
