@@ -7,25 +7,25 @@
  * --------------------------------- */
 
 /* ============================================================
- * 配色变量说明（重要，先看这里）
+ * 配色变量说明
  * ------------------------------------------------------------
  * --bg-color         页面背景色
  * --text-color       正文文字色
  * --card-bg          卡片/菜单/高亮背景色
- * --border-color     边框/分隔线色
+ * --border-color     边框/分隔线色（比背景深一档，才看得清）
  * --accent-color     强调色（链接、按钮、高亮）
  *
- * 以下 5 个控制表格和代码块：
- * --table-border     表格边框色
+ * 表格和代码块专用：
+ * --table-border     表格边框色（比背景深一档）
  * --table-header-bg  表格表头背景色
  * --table-hover-bg   表格鼠标悬停背景色
  * --code-bg          代码块背景色
  * --code-text        代码块文字色
  *
  * 【怎么换配色】
- *   1. 找到下面「当前启用」那一段（默认：淡蓝护眼）
- *   2. 在它的最外层加上  /*  和  */  注释掉
- *   3. 找到你想用的那套，去掉它前后的  /*  和  */
+ *   1. 找到下面「当前启用」那一段
+ *   2. 在它的最外层加上 /* 和 */ 注释掉
+ *   3. 找到你想用的那套，去掉它前后的 /* 和 */
  * ============================================================ */
 
 
@@ -36,12 +36,12 @@
   --bg-color:     #eaf2fb;
   --text-color:   #333a44;
   --card-bg:      #dde8f5;
-  --border-color: #c5d5e8;
+  --border-color: #a8bedb;
   --accent-color: #3354AA;
 
-  --table-border:    #b8cce4;
+  --table-border:    #9db6d6;
   --table-header-bg: #d5e2f2;
-  --table-hover-bg:  #c9d9ed;
+  --table-hover-bg:  #c4d6eb;
   --code-bg:         #d5e2f2;
   --code-text:       #2a3a52;
 }
@@ -57,12 +57,12 @@
   --bg-color:     #ffffff;
   --text-color:   #444444;
   --card-bg:      #f5f5f5;
-  --border-color: #e0e0e0;
+  --border-color: #d0d0d0;
   --accent-color: #3354AA;
 
-  --table-border:    #d0d7de;
+  --table-border:    #c8c8c8;
   --table-header-bg: #f6f8fa;
-  --table-hover-bg:  #f6f8fa;
+  --table-hover-bg:  #eef0f2;
   --code-bg:         #f6f8fa;
   --code-text:       #24292f;
 }
@@ -74,12 +74,12 @@
   --bg-color:     #faf6e9;
   --text-color:   #3a3528;
   --card-bg:      #f2ebd6;
-  --border-color: #e0d8c0;
+  --border-color: #c9bd99;
   --accent-color: #7a8f3f;
 
-  --table-border:    #d6cdb0;
+  --table-border:    #bdb088;
   --table-header-bg: #f2ebd6;
-  --table-hover-bg:  #ebe3c8;
+  --table-hover-bg:  #e6dbb9;
   --code-bg:         #f2ebd6;
   --code-text:       #3a3528;
 }
@@ -91,12 +91,12 @@
   --bg-color:     #c7edcc;
   --text-color:   #2c3e35;
   --card-bg:      #b8e2be;
-  --border-color: #9dd0a8;
+  --border-color: #7db38b;
   --accent-color: #2e8b6f;
 
-  --table-border:    #9dd0a8;
+  --table-border:    #6fa67d;
   --table-header-bg: #b8e2be;
-  --table-hover-bg:  #a9d9b0;
+  --table-hover-bg:  #a3d4aa;
   --code-bg:         #b8e2be;
   --code-text:       #2c3e35;
 }
@@ -108,12 +108,12 @@
   --bg-color:     #f7f8fa;
   --text-color:   #333333;
   --card-bg:      #eef0f3;
-  --border-color: #dcdfe4;
+  --border-color: #c0c4cc;
   --accent-color: #555555;
 
-  --table-border:    #dcdfe4;
+  --table-border:    #b4b9c2;
   --table-header-bg: #eef0f3;
-  --table-hover-bg:  #e3e6ea;
+  --table-hover-bg:  #dfe2e7;
   --code-bg:         #eef0f3;
   --code-text:       #333333;
 }
@@ -125,12 +125,12 @@
   --bg-color:     #e8f4f4;
   --text-color:   #2f3e3e;
   --card-bg:      #d8eaea;
-  --border-color: #bcd8d8;
+  --border-color: #9dc0c0;
   --accent-color: #2a7a7a;
 
-  --table-border:    #bcd8d8;
+  --table-border:    #8db1b1;
   --table-header-bg: #d8eaea;
-  --table-hover-bg:  #c8e0e0;
+  --table-hover-bg:  #c4dede;
   --code-bg:         #d8eaea;
   --code-text:       #2f3e3e;
 }
@@ -142,12 +142,12 @@
   --bg-color:     #f5eef2;
   --text-color:   #3e3339;
   --card-bg:      #ece0e7;
-  --border-color: #d9c4cf;
+  --border-color: #c4a9b6;
   --accent-color: #9c4f7a;
 
-  --table-border:    #d9c4cf;
+  --table-border:    #b89aa8;
   --table-header-bg: #ece0e7;
-  --table-hover-bg:  #e2d2dc;
+  --table-hover-bg:  #e0d0d9;
   --code-bg:         #ece0e7;
   --code-text:       #3e3339;
 }
@@ -159,10 +159,10 @@
   --bg-color:     #1e1e28;
   --text-color:   #c8c8d0;
   --card-bg:      #2a2a38;
-  --border-color: #3a3a4a;
+  --border-color: #4a4a5e;
   --accent-color: #7aa2e8;
 
-  --table-border:    #3a3a4a;
+  --table-border:    #50506a;
   --table-header-bg: #2a2a38;
   --table-hover-bg:  #353545;
   --code-bg:         #2a2a38;
@@ -176,10 +176,10 @@
   --bg-color:     #2b2620;
   --text-color:   #d4c8b8;
   --card-bg:      #38322a;
-  --border-color: #4a4238;
+  --border-color: #5a5148;
   --accent-color: #c8a878;
 
-  --table-border:    #4a4238;
+  --table-border:    #60564c;
   --table-header-bg: #38322a;
   --table-hover-bg:  #443d33;
   --code-bg:         #38322a;
@@ -193,10 +193,10 @@
   --bg-color:     #1a2620;
   --text-color:   #c8ddd0;
   --card-bg:      #243a30;
-  --border-color: #345040;
+  --border-color: #3f5d4c;
   --accent-color: #5cc9a0;
 
-  --table-border:    #345040;
+  --table-border:    #4a6b58;
   --table-header-bg: #243a30;
   --table-hover-bg:  #2c463a;
   --code-bg:         #243a30;
@@ -210,10 +210,10 @@
   --bg-color:     #16223a;
   --text-color:   #c8d4e8;
   --card-bg:      #1e2c48;
-  --border-color: #2e3e60;
+  --border-color: #3a5278;
   --accent-color: #64a0f0;
 
-  --table-border:    #2e3e60;
+  --table-border:    #425a82;
   --table-header-bg: #1e2c48;
   --table-hover-bg:  #253452;
   --code-bg:         #1e2c48;
@@ -298,7 +298,7 @@ button {
 }
 
 /* =========================================
- * GitHub 风格表格（全部使用变量）
+ * GitHub 风格表格
  * ========================================= */
 table {
   border-collapse: separate !important;
@@ -345,7 +345,7 @@ table td code {
 }
 
 /* =========================================
- * 代码块（全部使用变量）
+ * 代码块
  * ========================================= */
 pre {
   background-color: var(--code-bg) !important;
@@ -435,7 +435,9 @@ textarea {
   font-style: italic;
 }
 
-/* 导航菜单（桌面端） */
+/* ------------------
+ * 导航菜单（含高亮）
+ * --------------- */
 #nav-menu {
   margin: 25px 0 0;
   padding: 0;
@@ -451,11 +453,19 @@ textarea {
   color: var(--text-color);
   background: var(--bg-color);
   float: left;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
-#nav-menu a:hover,
-#nav-menu .current {
+/* 悬停：底色变卡片色，字变强调色 */
+#nav-menu a:hover {
   background: var(--card-bg);
+  color: var(--accent-color);
+}
+/* 当前页高亮：强调色描边 + 加粗 + 卡片底 */
+#nav-menu a.current {
+  background: var(--card-bg);
+  color: var(--accent-color);
+  font-weight: 700;
+  border-color: var(--accent-color);
 }
 
 /* 搜索框 */
@@ -696,6 +706,14 @@ textarea {
   margin-left: 15px;
 }
 
+/* 桌面端：侧边栏和正文之间加竖线 */
+@media (min-width: 992px) {
+  #secondary {
+    border-left: 1px solid var(--border-color);
+    padding-left: 24px;
+  }
+}
+
 /* ------------------
  * 底部区域
  * --------------- */
@@ -909,7 +927,7 @@ img.alignright {
 }
 
 /* =========================================
- * 辅助类 (隐藏、无障碍)
+ * 辅助类
  * ========================================= */
 .hidden {
   display: none !important;
@@ -979,4 +997,58 @@ img.alignright {
 }
 #secondary .widget-list a:hover {
   color: var(--text-color) !important;
+}
+
+/* =========================================
+ * 【追加 1】导航菜单：区分当前页 + 悬停
+ * ========================================= */
+#nav-menu a {
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+#nav-menu a:hover {
+  background: var(--card-bg);
+  color: var(--accent-color);
+}
+#nav-menu a.current {
+  background: var(--card-bg);
+  color: var(--accent-color);
+  font-weight: 700;
+  border-color: var(--accent-color);
+}
+
+/* =========================================
+ * 【追加 2】侧边栏和正文之间加竖线（仅桌面端）
+ * ========================================= */
+@media (min-width: 992px) {
+  #secondary {
+    border-left: 1px solid var(--border-color);
+    padding-left: 24px;
+  }
+}
+
+/* =========================================
+ * 【追加 3】表格：加强层次感
+ * ========================================= */
+table th {
+  background-color: var(--table-header-bg) !important;
+  color: var(--code-text) !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid var(--table-border) !important;
+}
+table td {
+  border-bottom: 1px solid var(--table-border) !important;
+}
+table tbody tr:hover {
+  background-color: var(--table-hover-bg) !important;
+  transition: background 0.15s ease;
+}
+table td code {
+  background-color: var(--code-bg) !important;
+  color: var(--code-text) !important;
+  border: 1px solid var(--table-border);
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
 }
