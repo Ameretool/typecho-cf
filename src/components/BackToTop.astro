@@ -11,15 +11,30 @@
 </button>
 
 <style>
-/* 【PC端】右下角 */
+/* 【PC端】右下角，强制清空 left/top 防止被父级干扰 */
 .back-to-top-btn {
-  position: fixed; right: 20px; bottom: 50px; z-index: 9998;
-  width: 44px; height: 44px; border-radius: 50%;
-  border: 1px solid var(--border-color, #e0e0e0); background: var(--card-bg, #ffffff);
-  color: var(--text-color, #333); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  position: fixed !important; 
+  right: 20px !important; 
+  left: auto !important;         /* 关键：防止跑到左侧 */
+  bottom: 50px !important; 
+  top: auto !important;          /* 关键：防止被顶部定位干扰 */
+  z-index: 99998 !important;
+  width: 44px; 
+  height: 44px; 
+  border-radius: 50%;
+  border: 1px solid var(--border-color, #e0e0e0); 
+  background: var(--card-bg, #ffffff);
+  color: var(--text-color, #333); 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
   box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.15));
   transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.2s ease;
-  opacity: 0; visibility: hidden; transform: translateY(10px);
+  opacity: 0; 
+  visibility: hidden; 
+  transform: translateY(10px);
+  padding: 0;
 }
 .back-to-top-btn.show { opacity: 1; visibility: visible; transform: translateY(0); }
 .back-to-top-btn:hover { transform: scale(1.1); }
@@ -27,9 +42,11 @@
 /* 【移动端】避开主题按钮，放在其上方 */
 @media (max-width: 768px) {
   .back-to-top-btn {
-    right: 12px; 
-    bottom: 140px; 
-    bottom: calc(140px + env(safe-area-inset-bottom, 0px)); 
+    right: 12px !important; 
+    left: auto !important;
+    bottom: 140px !important; 
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important; 
+    top: auto !important;
   }
 }
 </style>
