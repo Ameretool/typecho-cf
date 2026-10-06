@@ -97,13 +97,6 @@ const totalComments = commentPagination.totalComments;
             )}
           </article>
 
-          <!-- ============================================================
-               外部链接新窗口打开脚本
-               作用：仅对 .post-content 内的外部链接添加 target="_blank"
-               站内链接、锚点链接保持原样
-               ============================================================ -->
-          
-
           {/* Comments */}
           {(!page.hasPassword || page.passwordVerified) && commentOptions.allowComment && (
             <div id="comments">
