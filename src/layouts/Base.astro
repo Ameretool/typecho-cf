@@ -94,5 +94,60 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <body class={bodyClass}>
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
+
+  <!-- ============================================================
+       返回顶部按钮（全站生效）
+       滚动超过 300px 后出现，点击平滑滚回顶部
+       ============================================================ -->
+  <button id="back-to-top" aria-label="返回顶部" style="display:none;">↑</button>
+  <style is:global>
+    #back-to-top {
+      position: fixed;
+      bottom: 30px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #3354AA;
+      color: #fff;
+      border: none;
+      font-size: 22px;
+      line-height: 44px;
+      text-align: center;
+      cursor: pointer;
+      z-index: 9998;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      opacity: 0;
+      transform: translateY(10px);
+      padding: 0;
+    }
+    #back-to-top.show {
+      display: block !important;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #back-to-top:hover {
+      background: #444;
+    }
+  </style>
+  <script is:inline>
+    (function() {
+      const btn = document.getElementById('back-to-top');
+      if (!btn) return;
+      // 监听滚动，超过 300px 显示按钮
+      window.addEventListener('scroll', function() {
+        if (window.scrollY > 300) {
+          btn.classList.add('show');
+        } else {
+          btn.classList.remove('show');
+        }
+      }, { passive: true });
+      // 点击平滑滚回顶部
+      btn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    })();
+  </script>
 </body>
 </html>
