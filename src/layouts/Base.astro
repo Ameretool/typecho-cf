@@ -50,23 +50,33 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     <link rel="stylesheet" href={href} />
   ))}
   <link rel="alternate" type="application/rss+xml" title={`${options.title} RSS`} href={urls.feedUrl} />
-<link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.png" type="image/png">
   <slot name="head" />
   <Fragment set:html={pluginSnippets.headHtml} />
-<!-- 全站外链新窗口打开脚本 -->
-<script is:inline>
-  document.addEventListener('click', function(e) {
-    const link = e.target.closest('a');
-    if (link && link.hostname && link.hostname !== window.location.hostname) {
-      link.setAttribute('target', '_blank');
-      link.setAttribute('rel', 'noopener noreferrer');
-    }
-  }, true);
-</script>
+
+  <!-- ============================================================
+       全站外链新窗口打开脚本
+       放在 Base.astro 中，换主题绝不丢失，且彻底解决慢半拍
+       ============================================================ -->
+  <script is:inline>
+    document.addEventListener('click', function(e) {
+      // 向上寻找被点击的 <a> 标签
+      const link = e.target.closest('a');
+
+      // 判断：是链接、有域名、且域名与当前站点不同（即外链）
+      if (
+        link &&
+        link.hostname &&
+        link.hostname !== window.location.hostname
+      ) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }, true); // true 代表捕获阶段拦截，点击瞬间生效
+  </script>
 </head>
 <body class={bodyClass}>
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
-  
 </body>
 </html>
