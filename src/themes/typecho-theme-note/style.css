@@ -36,7 +36,7 @@
   --bg-color:     #eaf2fb;
   --text-color:   #333a44;
   --card-bg:      #dde8f5;
-  --border-color: #a8bedb;
+  --border-color: #a8bedb;   /* 加深，边框清晰 */
   --accent-color: #3354AA;
 
   --table-border:    #9db6d6;
@@ -74,7 +74,7 @@
   --bg-color:     #faf6e9;
   --text-color:   #3a3528;
   --card-bg:      #f2ebd6;
-  --border-color: #c9bd99;
+  --border-color: #c9bd99;   /* 加深，边框清晰 */
   --accent-color: #7a8f3f;
 
   --table-border:    #bdb088;
@@ -91,7 +91,7 @@
   --bg-color:     #c7edcc;
   --text-color:   #2c3e35;
   --card-bg:      #b8e2be;
-  --border-color: #7db38b;
+  --border-color: #7db38b;   /* 加深，边框清晰 */
   --accent-color: #2e8b6f;
 
   --table-border:    #6fa67d;
@@ -108,7 +108,7 @@
   --bg-color:     #f7f8fa;
   --text-color:   #333333;
   --card-bg:      #eef0f3;
-  --border-color: #c0c4cc;
+  --border-color: #c0c4cc;   /* 加深，边框清晰 */
   --accent-color: #555555;
 
   --table-border:    #b4b9c2;
@@ -125,7 +125,7 @@
   --bg-color:     #e8f4f4;
   --text-color:   #2f3e3e;
   --card-bg:      #d8eaea;
-  --border-color: #9dc0c0;
+  --border-color: #9dc0c0;   /* 加深，边框清晰 */
   --accent-color: #2a7a7a;
 
   --table-border:    #8db1b1;
@@ -142,7 +142,7 @@
   --bg-color:     #f5eef2;
   --text-color:   #3e3339;
   --card-bg:      #ece0e7;
-  --border-color: #c4a9b6;
+  --border-color: #c4a9b6;   /* 加深，边框清晰 */
   --accent-color: #9c4f7a;
 
   --table-border:    #b89aa8;
@@ -159,7 +159,7 @@
   --bg-color:     #1e1e28;
   --text-color:   #c8c8d0;
   --card-bg:      #2a2a38;
-  --border-color: #4a4a5e;
+  --border-color: #4a4a5e;   /* 提亮，边框可见 */
   --accent-color: #7aa2e8;
 
   --table-border:    #50506a;
@@ -176,7 +176,7 @@
   --bg-color:     #2b2620;
   --text-color:   #d4c8b8;
   --card-bg:      #38322a;
-  --border-color: #5a5148;
+  --border-color: #5a5148;   /* 提亮，边框可见 */
   --accent-color: #c8a878;
 
   --table-border:    #60564c;
@@ -193,7 +193,7 @@
   --bg-color:     #1a2620;
   --text-color:   #c8ddd0;
   --card-bg:      #243a30;
-  --border-color: #3f5d4c;
+  --border-color: #3f5d4c;   /* 提亮，边框可见 */
   --accent-color: #5cc9a0;
 
   --table-border:    #4a6b58;
@@ -210,7 +210,7 @@
   --bg-color:     #16223a;
   --text-color:   #c8d4e8;
   --card-bg:      #1e2c48;
-  --border-color: #3a5278;
+  --border-color: #3a5278;   /* 提亮，边框可见 */
   --accent-color: #64a0f0;
 
   --table-border:    #425a82;
@@ -435,9 +435,7 @@ textarea {
   font-style: italic;
 }
 
-/* ------------------
- * 导航菜单（含高亮）
- * --------------- */
+/* 导航菜单 */
 #nav-menu {
   margin: 25px 0 0;
   padding: 0;
@@ -453,19 +451,11 @@ textarea {
   color: var(--text-color);
   background: var(--bg-color);
   float: left;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease;
 }
-/* 悬停：底色变卡片色，字变强调色 */
-#nav-menu a:hover {
+#nav-menu a:hover,
+#nav-menu .current {
   background: var(--card-bg);
-  color: var(--accent-color);
-}
-/* 当前页高亮：强调色描边 + 加粗 + 卡片底 */
-#nav-menu a.current {
-  background: var(--card-bg);
-  color: var(--accent-color);
-  font-weight: 700;
-  border-color: var(--accent-color);
 }
 
 /* 搜索框 */
@@ -704,14 +694,6 @@ textarea {
 }
 .widget-list li ul {
   margin-left: 15px;
-}
-
-/* 桌面端：侧边栏和正文之间加竖线 */
-@media (min-width: 992px) {
-  #secondary {
-    border-left: 1px solid var(--border-color);
-    padding-left: 24px;
-  }
 }
 
 /* ------------------
@@ -997,58 +979,4 @@ img.alignright {
 }
 #secondary .widget-list a:hover {
   color: var(--text-color) !important;
-}
-
-/* =========================================
- * 【追加 1】导航菜单：区分当前页 + 悬停
- * ========================================= */
-#nav-menu a {
-  border: 1px solid var(--border-color);
-  border-bottom: none;
-  background: var(--bg-color);
-  color: var(--text-color);
-}
-#nav-menu a:hover {
-  background: var(--card-bg);
-  color: var(--accent-color);
-}
-#nav-menu a.current {
-  background: var(--card-bg);
-  color: var(--accent-color);
-  font-weight: 700;
-  border-color: var(--accent-color);
-}
-
-/* =========================================
- * 【追加 2】侧边栏和正文之间加竖线（仅桌面端）
- * ========================================= */
-@media (min-width: 992px) {
-  #secondary {
-    border-left: 1px solid var(--border-color);
-    padding-left: 24px;
-  }
-}
-
-/* =========================================
- * 【追加 3】表格：加强层次感
- * ========================================= */
-table th {
-  background-color: var(--table-header-bg) !important;
-  color: var(--code-text) !important;
-  font-weight: 700 !important;
-  border-bottom: 2px solid var(--table-border) !important;
-}
-table td {
-  border-bottom: 1px solid var(--table-border) !important;
-}
-table tbody tr:hover {
-  background-color: var(--table-hover-bg) !important;
-  transition: background 0.15s ease;
-}
-table td code {
-  background-color: var(--code-bg) !important;
-  color: var(--code-text) !important;
-  border: 1px solid var(--table-border);
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
 }
