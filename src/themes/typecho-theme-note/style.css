@@ -30,7 +30,7 @@ body {
   background-color: #FFF;
   color: #444;
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
-  font-size: 100%; /* ✅ 全局基础字号 16px */
+  font-size: 100%;
 }
 
 a {
@@ -92,7 +92,7 @@ table {
   box-shadow: 0 0 0 2px #d0d7de !important;
   border-radius: 6px !important;
   overflow: hidden !important;
-  font-size: 15px !important; /* ✅ 表格内字体大小 */
+  font-size: 15px !important;
 }
 
 table th,
@@ -288,7 +288,7 @@ textarea {
   border: none;
 }
 .post-content {
-  line-height: 1.8; /* ✅ 正文行高 1.8 */
+  line-height: 1.8;
 }
 .post .tags {
   clear: both;
@@ -299,7 +299,7 @@ textarea {
   margin: 30px 0;
   padding: 0;
   color: #999;
-  font-size: 14px !important;        /* ✅ 上一篇/下一篇字号 14px */
+  font-size: 14px !important;
   line-height: 1.6 !important;
 }
 .post-near li {
@@ -356,7 +356,7 @@ textarea {
 }
 
 /* ------------------
- * 评论列表 (Comment list)
+ * 评论列表
  * --------------- */
 #comments {
   padding-top: 15px;
@@ -437,7 +437,7 @@ textarea {
 }
 
 /* ------------------
- * 侧边栏 (Secondary)
+ * 侧边栏
  * --------------- */
 #secondary {
   padding-top: 15px;
@@ -459,7 +459,7 @@ textarea {
 }
 
 /* ------------------
- * 底部区域 (Footer)
+ * 底部区域
  * --------------- */
 #footer {
   padding: 3em 0;
@@ -469,7 +469,7 @@ textarea {
 }
 
 /* -----------------
- * 错误页面 (Error page)
+ * 错误页面
  * -------------- */
 .error-page {
   margin-top: 100px;
@@ -477,10 +477,10 @@ textarea {
 }
 
 /* -----------------
- * 内容格式 (Content format)
+ * 内容格式
  *--------------- */
 .post-content, .comment-content {
-  line-height: 1.8; /* ✅ 正文与评论内容行高 1.8 */
+  line-height: 1.8;
   word-wrap: break-word;
 }
 .post-content h2, .comment-content h2 {
@@ -506,7 +506,7 @@ textarea {
 }
 
 /* -----------------
- * 杂项 (Misc)
+ * 杂项
  *--------------- */
 .aligncenter, div.aligncenter {
   display: block;
@@ -527,11 +527,11 @@ img.alignright {
 }
 
 /* -----------------
- * 响应式布局 (Responsive)
+ * 响应式布局
  *--------------- */
 @media (max-width: 767px) {
   body {
-    font-size: 100%; /* ✅ 手机端基础字号保持 16px */
+    font-size: 100%;
   }
   .container {
     padding-left: 16px;
@@ -698,7 +698,7 @@ img.alignright {
 }
 
 /* =========================================
- * 【新增】强制正文段落字号
+ * 强制正文段落字号
  * ========================================= */
 .post-content p,
 .post-content li,
@@ -717,7 +717,7 @@ img.alignright {
 }
 
 /* =========================================
- * 侧边栏样式优化（字体、行距、层级）
+ * 侧边栏样式优化
  * ========================================= */
 #secondary {
   font-size: 14px !important;
@@ -742,51 +742,50 @@ img.alignright {
 }
 
 /* =========================================
- * 【稳妥版】移动端导航：固定顶部 + 横向滑动
- * 不需要 JS，不会消失，绝对可靠
+ * 【汉堡菜单】移动端导航：点击 ☰ 展开下拉
  * ========================================= */
 @media (max-width: 767px) {
-  /* 1. 导航栏固定在屏幕顶部 */
   #nav-menu {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    z-index: 9999 !important;
-    background: #FFF !important;
-    margin: 0 !important;
+    position: relative !important;
+    margin: 15px 0 0 0 !important;
     padding: 0 !important;
-    border-bottom: 1px solid #EEE !important;
-
-    /* 2. 横向滑动，禁止换行 */
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible !important;
   }
 
-  /* 3. 隐藏滚动条 */
-  #nav-menu::-webkit-scrollbar {
+  /* 移动端默认隐藏所有菜单项 */
+  #nav-menu a {
     display: none !important;
   }
 
-  /* 4. 每个菜单项固定宽度，方便手指点击 */
-  #nav-menu a {
-    flex: 0 0 auto !important;
-    padding: 0 18px !important;
+  /* 汉堡按钮样式（JS 动态插入） */
+  .nav-toggle-btn {
+    display: block !important;
+    width: 100% !important;
     height: 44px !important;
     line-height: 44px !important;
-    font-size: 15px !important;
-    white-space: nowrap !important;
-    border: none !important;
-    float: none !important;
-    display: block !important;
+    text-align: center !important;
+    font-size: 22px !important;
+    color: #444 !important;
+    background: #F6F6F6 !important;
+    border: 1px solid #EEE !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* 5. 因为导航钉在了顶部，给页面头部留出空间 */
-  #header {
-    padding-top: 60px !important;
+  /* 展开时菜单竖排显示 */
+  #nav-menu.is-open a {
+    display: block !important;
+    text-align: center !important;
+    padding: 12px 0 !important;
+    border: 1px solid #EEE !important;
+    border-top: none !important;
+    height: auto !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    float: none !important;
+    font-size: 15px !important;
   }
 }
-  
