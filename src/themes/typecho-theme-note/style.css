@@ -299,9 +299,18 @@ textarea {
   margin: 30px 0;
   padding: 0;
   color: #999;
+  font-size: 14px !important;        /* ✅ 已修改：上一篇/下一篇字号 14px */
+  line-height: 1.6 !important;
 }
 .post-near li {
   margin: 10px 0;
+}
+.post-near a {
+  color: #3354AA !important;
+  font-size: 14px !important;
+}
+.post-near a:hover {
+  color: #444 !important;
 }
 
 .archive-title {
