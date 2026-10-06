@@ -1,4 +1,6 @@
 ---
+import ThemeSwitcher from '../components/ThemeSwitcher.astro';
+import BackToTop from '../components/BackToTop.astro';
 import Base from './Base.astro';
 import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
@@ -160,4 +162,7 @@ const isIndex = currentPath === '/';
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
     由 <a href="https://github.com/eslizn/typecho-cf">Typecho</a> 强力驱动.
   </footer>
+
+  <ThemeSwitcher />
+  <BackToTop />
 </Base>
