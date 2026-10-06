@@ -1,16 +1,13 @@
 ---
 // ============================================================
-// 全局布局 Base.astro（整合版）
+// 全局布局 Base.astro（清理版）
+// 说明：组件已改由 Blog.astro 渲染，这里不再挂载浮动组件
 // ============================================================
 import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
 import type { UserRow } from '@/lib/context';
 import { getThemeStylesheets } from '@/lib/theme';
 import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
-
-// 引入我们的全局组件
-import ThemeSwitcher from '../components/ThemeSwitcher.astro';
-import BackToTop from '../components/BackToTop.astro';
 
 interface Props {
   title?: string;
@@ -140,33 +137,5 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <body class={bodyClass}>
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
-
-  <!-- ============================================================
-       全局浮动组件容器
-       用一个 position: fixed 的空容器包裹，强制内部两个按钮脱离
-       所有父级定位上下文，避免被主题的 relative 容器干扰
-       ============================================================ -->
-  <div id="global-floating-ui">
-    <ThemeSwitcher />
-    <BackToTop />
-  </div>
-
-  <style is:global>
-    /* 容器本身不占空间、不挡点击 */
-    #global-floating-ui {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 0;
-      height: 0;
-      overflow: visible;
-      z-index: 99999;
-      pointer-events: none;
-    }
-    /* 容器内的按钮恢复可点击 */
-    #global-floating-ui > * {
-      pointer-events: auto;
-    }
-  </style>
 </body>
 </html>
