@@ -27,22 +27,22 @@
  * ============================================================ */
 
 /* ============================================================
- * 【当前启用】方案 深蓝底
+ * 【当前启用】GitHub 浅色模式配色
  * ============================================================ */
 :root {
   /* 主配色 */
-  --bg-color:     #f0f7fb;   /* 页面背景：极淡蓝，比 e8f6f3 更淡 */
-  --text-color:   #2a3a48;   /* 正文文字：深蓝灰 */
-  --card-bg:      #e4eff7;   /* 卡片/菜单：比背景略深 */
-  --border-color: #b8d0e0;   /* 边框：中淡蓝，清晰可见 */
-  --accent-color: #2e6b9a;   /* 强调色：深蓝 */
+  --bg-color:     #f6f8fa;   /* 页面背景：极淡冷灰 */
+  --text-color:   #24292f;   /* 正文文字：深灰 */
+  --card-bg:      #eaeef2;   /* 卡片/菜单：比背景深一档 */
+  --border-color: #d0d7de;   /* 边框：浅灰，清晰可见 */
+  --accent-color: #0969da;   /* 强调色：GitHub 蓝 */
 
   /* 表格与代码块 */
-  --table-border:    #b8d0e0;
-  --table-header-bg: #e4eff7;
-  --table-hover-bg:  #d8e8f2;
-  --code-bg:         #e4eff7;
-  --code-text:       #2a3a48;
+  --table-border:    #d0d7de;
+  --table-header-bg: #f6f8fa;
+  --table-hover-bg:  #eaeef2;
+  --code-bg:         #f6f8fa;
+  --code-text:       #24292f;
 }
 /* ============================================================
  * 【以下全部被注释掉，想用哪套就去掉注释】
@@ -82,22 +82,6 @@
   --table-hover-bg:  #2c3849;
   --code-bg:         #232d3f;
   --code-text:       #b8c6d9;
-}
-*/
-
-/*
-方案 3 深灰蓝·更暖（暖调暗色）
-:root {
-  --bg-color:     #2b2f38;
-  --text-color:   #c8d1dc;
-  --card-bg:      #363b45;
-  --border-color: #4a505c;
-  --accent-color: #6cb6ff;
-  --table-border:    #4a505c;
-  --table-header-bg: #363b45;
-  --table-hover-bg:  #40454f;
-  --code-bg:         #363b45;
-  --code-text:       #c8d1dc;
 }
 */
 
