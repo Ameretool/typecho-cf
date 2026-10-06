@@ -31,20 +31,19 @@
  * ============================================================ */
 :root {
   /* 主配色 */
-  --bg-color:     #1a2230;   /* 深蓝底 */
-  --text-color:   #b8c6d9;   /* 柔白偏蓝字 */
-  --card-bg:      #232d3f;   /* 卡片/菜单：比背景略亮 */
-  --border-color: #38445c;   /* 边框：比背景深 */
-  --accent-color: #5b9bd5;   /* 强调色：柔和蓝 */
+  --bg-color:     #e8f6f3;   /* 页面背景：极淡薄荷绿 */
+  --text-color:   #2a3d3a;   /* 正文文字：深青灰 */
+  --card-bg:      #d5ede8;   /* 卡片/菜单：比背景深一档 */
+  --border-color: #a8d8d0;   /* 边框：中青绿，清晰可见 */
+  --accent-color: #2e8b7a;   /* 强调色：深青绿 */
 
   /* 表格与代码块 */
-  --table-border:    #38445c;
-  --table-header-bg: #232d3f;
-  --table-hover-bg:  #2c3849;
-  --code-bg:         #232d3f;
-  --code-text:       #b8c6d9;
+  --table-border:    #a8d8d0;
+  --table-header-bg: #d5ede8;
+  --table-hover-bg:  #c8e6e0;
+  --code-bg:         #d5ede8;
+  --code-text:       #2a3d3a;
 }
-
 
 /* ============================================================
  * 【以下全部被注释掉，想用哪套就去掉注释】
@@ -69,18 +68,21 @@
 */
 
 /*
-方案 2 深灰蓝·更冷（深夜模式）
+方案 2 深蓝底 
 :root {
-  --bg-color:     #1c2128;
-  --text-color:   #a3b1c2;
-  --card-bg:      #282e36;
-  --border-color: #3d444d;
-  --accent-color: #79b8ff;
-  --table-border:    #3d444d;
-  --table-header-bg: #282e36;
-  --table-hover-bg:  #31373f;
-  --code-bg:         #282e36;
-  --code-text:       #a3b1c2;
+  /* 主配色 */
+  --bg-color:     #1a2230;   /* 深蓝底 */
+  --text-color:   #b8c6d9;   /* 柔白偏蓝字 */
+  --card-bg:      #232d3f;   /* 卡片/菜单：比背景略亮 */
+  --border-color: #38445c;   /* 边框：比背景深 */
+  --accent-color: #5b9bd5;   /* 强调色：柔和蓝 */
+
+  /* 表格与代码块 */
+  --table-border:    #38445c;
+  --table-header-bg: #232d3f;
+  --table-hover-bg:  #2c3849;
+  --code-bg:         #232d3f;
+  --code-text:       #b8c6d9;
 }
 */
 
