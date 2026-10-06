@@ -142,9 +142,31 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <Fragment set:html={pluginSnippets.bodyHtml} />
 
   <!-- ============================================================
-       全局组件挂载区（原来内联的返回顶部按钮已删除，改为组件）
+       全局浮动组件容器
+       用一个 position: fixed 的空容器包裹，强制内部两个按钮脱离
+       所有父级定位上下文，避免被主题的 relative 容器干扰
        ============================================================ -->
-  <ThemeSwitcher />
-  <BackToTop />
+  <div id="global-floating-ui">
+    <ThemeSwitcher />
+    <BackToTop />
+  </div>
+
+  <style is:global>
+    /* 容器本身不占空间、不挡点击 */
+    #global-floating-ui {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      overflow: visible;
+      z-index: 99999;
+      pointer-events: none;
+    }
+    /* 容器内的按钮恢复可点击 */
+    #global-floating-ui > * {
+      pointer-events: auto;
+    }
+  </style>
 </body>
 </html>
