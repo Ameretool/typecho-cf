@@ -1,7 +1,6 @@
 ---
 // ============================================================
-// 全局布局 Base.astro（清理版）
-// 说明：组件已改由 Blog.astro 渲染，这里不再挂载浮动组件
+// 全局布局 Base.astro
 // ============================================================
 import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
@@ -46,7 +45,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <head>
   <meta charset={options.charset || 'UTF-8'} />
   <meta name="renderer" content="webkit" />
-  <!-- 【关键】加了 viewport-fit=cover，让 iPhone 底部手势条不遮挡右下角按钮 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{pageTitle}</title>
   {description && <meta name="description" content={description} />}
@@ -60,7 +58,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <Fragment set:html={pluginSnippets.headHtml} />
 
   <!-- ============================================================
-       主题防闪烁脚本（必须放在 head 里，最先执行）
+       主题防闪烁脚本
        ============================================================ -->
   <script is:inline>
     (function() {
@@ -92,17 +90,15 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
   <!-- ============================================================
-       移动端导航汉堡菜单（仅手机端插入按钮）
+       移动端导航汉堡菜单
        ============================================================ -->
   <script is:inline>
     (function() {
       function initNav() {
-        // 只在手机端（宽度 <= 767px）才插入按钮
         if (window.innerWidth > 767) return;
 
         const nav = document.getElementById('nav-menu');
         if (!nav) return;
-        // 避免重复添加
         if (nav.querySelector('.nav-toggle-btn')) return;
 
         const btn = document.createElement('button');
