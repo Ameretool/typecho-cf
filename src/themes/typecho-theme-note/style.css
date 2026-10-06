@@ -763,3 +763,35 @@ img.alignright {
     font-size: 15px !important;
   }
 }
+
+/* =========================================
+ * 侧边栏样式优化（字体、行距、层级）
+ * ========================================= */
+#secondary {
+  font-size: 14px !important;        /* 侧边栏基础字号 14px，比正文小一号 */
+  line-height: 1.8 !important;        /* 行距拉开，阅读更舒服 */
+  color: #444 !important;
+}
+
+/* 侧边栏小标题（最新文章、最近回复、分类、其它） */
+#secondary .widget-title {
+  font-size: 15px !important;         /* 标题比列表字号大 1px */
+  font-weight: 600 !important;        /* 加粗，突出层级 */
+  color: #333 !important;             /* 深灰色，比列表文字更醒目 */
+  margin-bottom: 8px !important;      /* 标题与列表之间拉开距离 */
+}
+
+/* 侧边栏列表项 */
+#secondary .widget-list li {
+  margin: 6px 0 !important;           /* 每一项之间留点空隙 */
+  line-height: 1.8 !important;
+}
+
+/* 侧边栏链接颜色 */
+#secondary .widget-list a {
+  color: #3354AA !important;          /* 保留主题蓝，不抢眼 */
+}
+
+#secondary .widget-list a:hover {
+  color: #444 !important;             /* 悬停变深灰 */
+}
