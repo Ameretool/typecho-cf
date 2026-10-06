@@ -7,10 +7,6 @@
  * --------------------------------- */
 
 /* =========================================
- * 主题基础变量（只保留必要项）
- * ========================================= */
-
-/* =========================================
  * 当前生效的配色（默认：淡蓝护眼）
  * 想换配色：把下面【备选配色】里对应方案
  * 的注释去掉，同时把当前这段注释掉即可
@@ -28,20 +24,6 @@
  * 想用哪套：删掉那套前后的 /* 和 */ 即可
  * ========================================= */
 
-/* ------------------------------------
- * Typecho Default Theme
- *
- * @author  Typecho Team
- * @link  http://typecho.org/
- * @update  2013-10-28
- * --------------------------------- */
-
-
-/* =========================================
- * 【备选配色方案】以下全部被注释掉
- * 想用哪套：删掉那套前后的 /* 和 */ 即可
- * ========================================= */
-
 /*
 方案0 原主题的
 :root {
@@ -49,17 +31,6 @@
   --text-color: #444444;
   --card-bg: #f5f5f5;
   --border-color: #e0e0e0;
-  --accent-color: #3354AA;
-}
-*/
-
-/*
-方案 ② 配色（默认：淡蓝护眼）
-:root {
-  --bg-color:     #eaf2fb;
-  --text-color:   #333a44;
-  --card-bg:      #dde8f5;
-  --border-color: #c5d5e8;
   --accent-color: #3354AA;
 }
 */
@@ -166,8 +137,6 @@
 /* ==================
  * 全局基础样式 (Global style)
  * =============== */
-
-
 html {
   -webkit-tap-highlight-color: transparent;
 }
@@ -900,76 +869,4 @@ img.alignright {
 }
 #secondary .widget-list a:hover {
   color: #444 !important;
-}
-
-/* =========================================
- * 【A 方案】移动端导航：右上角小图标汉堡菜单
- * ========================================= */
-@media (max-width: 767px) {
-  /* 导航容器变成绝对定位，固定在右上角 */
-  #nav-menu {
-    position: absolute !important;
-    top: 35px !important;
-    right: 20px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    z-index: 9999 !important;
-    overflow: visible !important;
-  }
-
-  /* 默认隐藏所有菜单项 */
-  #nav-menu a {
-    display: none !important;
-  }
-
-  /* 汉堡按钮：40x40 小方块 */
-  .nav-toggle-btn {
-    display: block !important;
-    width: 40px !important;
-    height: 40px !important;
-    line-height: 40px !important;
-    text-align: center !important;
-    font-size: 22px !important;
-    color: #444 !important;
-    background: rgba(255, 255, 255, 0.85) !important;
-    border: 1px solid #EEE !important;
-    border-radius: 8px !important;
-    cursor: pointer !important;
-    user-select: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
-  }
-
-  /* 展开时：菜单在按钮下方弹出（向右对齐） */
-  #nav-menu.is-open a {
-    display: block !important;
-    position: relative !important;
-    text-align: center !important;
-    padding: 12px 0 !important;
-    border: 1px solid #EEE !important;
-    border-top: none !important;
-    background: #FFF !important;
-    height: auto !important;
-    line-height: 1.5 !important;
-    margin: 0 !important;
-    float: none !important;
-    font-size: 15px !important;
-    width: 120px !important;
-    margin-left: -80px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  }
-}
-
-/* =========================================
- * 电脑端强制隐藏汉堡菜单按钮（终极保险）
- * ========================================= */
-@media screen and (min-width: 768px) {
-  .nav-toggle-btn {
-    display: none !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
-  }
 }
