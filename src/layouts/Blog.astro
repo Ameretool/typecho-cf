@@ -1,12 +1,7 @@
 ---
-// ============================================================
-// 全局布局 Base.astro
-// ============================================================
+import Base from './Base.astro';
 import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
-import type { UserRow } from '@/lib/context';
-import { getThemeStylesheets } from '@/lib/theme';
-import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
 
 interface Props {
   title?: string;
@@ -14,11 +9,17 @@ interface Props {
   keywords?: string;
   options: SiteOptions;
   urls: ReturnType<typeof computeUrls>;
-  user?: UserRow | null;
+  user?: any;
   isLoggedIn?: boolean;
-  bodyClass?: string;
-  pageContext?: PageContext;
-  pluginCtx?: HookContext;
+  pages?: Array<{ title: string; slug: string; permalink: string }>;
+  currentSlug?: string;
+  showSidebar?: boolean;
+  sidebarData?: {
+    recentPosts?: Array<{ title: string; permalink: string }>;
+    recentComments?: Array<{ author: string; excerpt: string; permalink: string }>;
+    categories?: Array<{ name: string; slug: string; count: number; permalink: string }>;
+    archives?: Array<{ date: string; permalink: string }>;
+  };
 }
 
 const {
@@ -29,109 +30,134 @@ const {
   urls,
   user,
   isLoggedIn = false,
-  bodyClass = '',
-  pageContext,
-  pluginCtx,
+  pages = [],
+  currentSlug,
+  showSidebar = true,
+  sidebarData,
 } = Astro.props;
 
-const pageTitle = title ? `${title} - ${options.title}` : options.title;
-const themeStylesheets = getThemeStylesheets(options.theme || 'typecho-theme-minimal');
-
-// 收集插件客户端片段
-const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: new Set<string>() }, options as Record<string, any>, pageContext);
+const currentPath = new URL(Astro.request.url).pathname;
+const isIndex = currentPath === '/';
 ---
-<!DOCTYPE html>
-<html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>
-<head>
-  <meta charset={options.charset || 'UTF-8'} />
-  <meta name="renderer" content="webkit" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>{pageTitle}</title>
-  {description && <meta name="description" content={description} />}
-  {keywords && <meta name="keywords" content={keywords} />}
-  {themeStylesheets.map((href) => (
-    <link rel="stylesheet" href={href} />
-  ))}
-  <link rel="alternate" type="application/rss+xml" title={`${options.title} RSS`} href={urls.feedUrl} />
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <slot name="head" />
-  <Fragment set:html={pluginSnippets.headHtml} />
+<Base
+  title={title}
+  description={description}
+  keywords={keywords}
+  options={options}
+  urls={urls}
+  user={user}
+  isLoggedIn={isLoggedIn}
+>
+  <header id="header" class="clearfix">
+    <div class="container">
+      <div class="row">
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        <div class="site-search col-3 kit-hidden-tb">
+          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+            <label for="s" class="sr-only">搜索关键字</label>
+            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+            <button type="submit" class="submit">搜索</button>
+          </form>
+        </div>
+        <div class="col-mb-12">
+          <nav id="nav-menu" class="clearfix" role="navigation">
+            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+            {pages.map((page) => (
+              <a
+                class:list={[{ current: currentSlug === page.slug }]}
+                href={page.permalink}
+                title={page.title}
+              >
+                {page.title}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  <!-- ============================================================
-       主题防闪烁脚本
-       ============================================================ -->
-  <script is:inline>
-    (function() {
-      const pref = localStorage.getItem('hbw-theme-pref') || 'system';
-      let mode = pref;
-      if (pref === 'system') {
-        mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      document.documentElement.setAttribute('data-pref', pref);
-      document.documentElement.setAttribute('data-mode', mode);
-    })();
-  </script>
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <slot />
 
-  <!-- ============================================================
-       全站外链新窗口打开脚本
-       ============================================================ -->
-  <script is:inline>
-    document.addEventListener('click', function(e) {
-      const link = e.target.closest('a');
-      if (
-        link &&
-        link.hostname &&
-        link.hostname !== window.location.hostname
-      ) {
-        link.setAttribute('target', '_blank');
-        link.setAttribute('rel', 'noopener noreferrer');
-      }
-    }, true);
-  </script>
+        {showSidebar && sidebarData && (
+          <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+            {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">最新文章</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentPosts.map((post) => (
+                    <li><a href={post.permalink}>{post.title}</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-  <!-- ============================================================
-       移动端导航汉堡菜单
-       ============================================================ -->
-  <script is:inline>
-    (function() {
-      function initNav() {
-        if (window.innerWidth > 767) return;
+            {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">最近回复</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentComments.map((comment) => (
+                    <li>
+                      <a href={comment.permalink}>{comment.author}</a>: {comment.excerpt}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-        const nav = document.getElementById('nav-menu');
-        if (!nav) return;
-        if (nav.querySelector('.nav-toggle-btn')) return;
+            {sidebarData.categories && sidebarData.categories.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">分类</h3>
+                <ul class="widget-list">
+                  {sidebarData.categories.map((cat) => (
+                    <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-        const btn = document.createElement('button');
-        btn.className = 'nav-toggle-btn';
-        btn.setAttribute('aria-label', '展开导航');
-        btn.innerHTML = '☰';
-        nav.insertBefore(btn, nav.firstChild);
+            {sidebarData.archives && sidebarData.archives.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">归档</h3>
+                <ul class="widget-list">
+                  {sidebarData.archives.map((archive) => (
+                    <li><a href={archive.permalink}>{archive.date}</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-        btn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          nav.classList.toggle('is-open');
-          btn.innerHTML = nav.classList.contains('is-open') ? '✕' : '☰';
-        });
+            <section class="widget">
+              <h3 class="widget-title">其它</h3>
+              <ul class="widget-list">
+                {isLoggedIn ? (
+                  <>
+                    <li class="last">
+                      <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
+                    </li>
+                    <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                  </>
+                ) : (
+                  <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                )}
+                <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+              </ul>
+            </section>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
 
-        document.addEventListener('click', function(e) {
-          if (!nav.classList.contains('is-open')) return;
-          if (nav.contains(e.target)) return;
-          nav.classList.remove('is-open');
-          btn.innerHTML = '☰';
-        });
-      }
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initNav);
-      } else {
-        initNav();
-      }
-    })();
-  </script>
-</head>
-<body class={bodyClass}>
-  <slot />
-  <Fragment set:html={pluginSnippets.bodyHtml} />
-</body>
-</html>
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+    由 <a href="https://github.com/eslizn/typecho-cf">Typecho</a> 强力驱动.
+  </footer>
+</Base>
