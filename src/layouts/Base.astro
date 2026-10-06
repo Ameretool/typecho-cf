@@ -54,10 +54,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <slot name="head" />
   <Fragment set:html={pluginSnippets.headHtml} />
 
-  <!-- ============================================================
-       全站外链新窗口打开脚本
-       作用：点击站外链接时，自动在新窗口打开，彻底解决慢半拍
-       ============================================================ -->
+  <!-- 全站外链新窗口打开脚本 -->
   <script is:inline>
     document.addEventListener('click', function(e) {
       const link = e.target.closest('a');
@@ -71,16 +68,46 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     }, true);
   </script>
+
+  <!-- ============================================================
+       移动端导航汉堡菜单开关
+       作用：在导航容器中动态插入一个 ☰ 按钮，点击展开/收起菜单
+       ============================================================ -->
+  <script is:inline>
+    (function() {
+      function initNav() {
+        const nav = document.getElementById('nav-menu');
+        if (!nav) return;
+        // 避免重复添加
+        if (nav.querySelector('.nav-toggle-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'nav-toggle-btn';
+        btn.setAttribute('aria-label', '展开导航');
+        btn.innerHTML = '☰';
+        nav.insertBefore(btn, nav.firstChild);
+
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          nav.classList.toggle('is-open');
+          btn.innerHTML = nav.classList.contains('is-open') ? '✕' : '☰';
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNav);
+      } else {
+        initNav();
+      }
+    })();
+  </script>
 </head>
 <body class={bodyClass}>
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
 
-  <!-- ============================================================
-       返回顶部按钮（全站生效）
-       作用：滚动超过 300px 后出现，点击平滑滚回顶部
-       配色：半透明白色 + 中性灰箭头，提前兼容未来的暗黑模式
-       ============================================================ -->
+  <!-- 返回顶部按钮 -->
   <button id="back-to-top" aria-label="返回顶部" style="display:none;">↑</button>
   <style is:global>
     #back-to-top {
@@ -115,7 +142,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     #back-to-top:hover {
       background: rgba(255, 255, 255, 0.7);
     }
-    /* 暗黑模式兼容（未来接入时自动生效） */
     html.dark #back-to-top {
       background: rgba(40, 40, 40, 0.45);
       color: #F0F0F0;
