@@ -51,7 +51,7 @@
  * ============================================================ */
 
 /*
-方案 ① GitHub Dark Dimmed（护眼暗色）
+方案 1 GitHub Dark Dimmed（护眼暗色）
 :root {
   --bg-color:     #22272e;   /* 页面背景：深蓝灰 */
   --text-color:   #adbac7;   /* 正文文字：柔白 */
@@ -69,7 +69,7 @@
 */
 
 /*
-方案 ② 深灰蓝·更冷（深夜模式）
+方案 2 深灰蓝·更冷（深夜模式）
 :root {
   --bg-color:     #1c2128;
   --text-color:   #a3b1c2;
@@ -85,7 +85,7 @@
 */
 
 /*
-方案 ③ 深灰蓝·更暖（暖调暗色）
+方案 3 深灰蓝·更暖（暖调暗色）
 :root {
   --bg-color:     #2b2f38;
   --text-color:   #c8d1dc;
@@ -101,7 +101,7 @@
 */
 
 /*
-方案 ④ 护眼暗蓝（深蓝底）
+方案 4 护眼暗蓝（深蓝底）
 :root {
   --bg-color:     #1e2633;
   --text-color:   #b8c6d9;
@@ -117,7 +117,7 @@
 */
 
 /*
-方案 ⑤ 护眼暗绿（墨绿底）
+方案 5 护眼暗绿（墨绿底）
 :root {
   --bg-color:     #1f2a24;
   --text-color:   #b8c8bd;
@@ -133,7 +133,7 @@
 */
 
 /*
-方案 ⑥ 护眼暗棕（咖啡底）
+方案 6 护眼暗棕（咖啡底）
 :root {
   --bg-color:     #2b2620;
   --text-color:   #d4c8b8;
@@ -149,7 +149,7 @@
 */
 
 /*
-方案 ⑦ 淡蓝护眼（清爽冷色）
+方案 7 淡蓝护眼（清爽冷色）
 :root {
   --bg-color:     #eaf2fb;
   --text-color:   #333a44;
@@ -165,7 +165,7 @@
 */
 
 /*
-方案 ⑧ 淡青护眼（冷色清新）
+方案 8 淡青护眼（冷色清新）
 :root {
   --bg-color:     #e8f4f4;
   --text-color:   #2f3e3e;
@@ -181,23 +181,7 @@
 */
 
 /*
-方案 ⑨ 米黄护眼（纸质感）
-:root {
-  --bg-color:     #faf6e9;
-  --text-color:   #3a3528;
-  --card-bg:      #f2ebd6;
-  --border-color: #c9bd99;
-  --accent-color: #7a8f3f;
-  --table-border:    #bdb088;
-  --table-header-bg: #f2ebd6;
-  --table-hover-bg:  #e6dbb9;
-  --code-bg:         #f2ebd6;
-  --code-text:       #3a3528;
-}
-*/
-
-/*
-方案 ⑩ 豆沙绿（最强护眼）
+方案 9 豆沙绿（最强护眼）
 :root {
   --bg-color:     #c7edcc;
   --text-color:   #2c3e35;
@@ -213,7 +197,7 @@
 */
 
 /*
-方案 ⑪ 浅灰极简（无彩色百搭）
+方案 10 浅灰极简（无彩色百搭）
 :root {
   --bg-color:     #f7f8fa;
   --text-color:   #333333;
@@ -229,7 +213,7 @@
 */
 
 /*
-方案 ⑫ 藕荷粉（柔和暖粉）
+方案 11 藕荷粉（柔和暖粉）
 :root {
   --bg-color:     #f5eef2;
   --text-color:   #3e3339;
