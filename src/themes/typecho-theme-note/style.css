@@ -88,7 +88,6 @@ button {
 
 /* =========================================
  * GitHub 风格表格与代码块样式 (终极修复版，用阴影画线)
- * (这部分是重点，已经替换了原有默认的旧样式，直接改这里就能控制表格)
  * ========================================= */
 
 /* 1. 表格整体外框 (用外阴影画出四周的灰色外框) */
@@ -98,7 +97,6 @@ table {
   width: 100% !important; /* 表格宽度占满父容器 */
   margin-bottom: 16px !important; /* 底部外边距 */
   border: none !important; /* 取消传统的实体边框 */
-  /* 用 box-shadow 模拟边框，完美替代 border，且支持圆角 */
   box-shadow: 0 0 0 2px #d0d7de !important; 
   border-radius: 6px !important; /* 表格整体圆角 */
   overflow: hidden !important; /* 隐藏超出圆角的部分 */
@@ -111,7 +109,6 @@ table td {
   padding: 12px 16px !important; /* 单元格内边距 */
   border: none !important; /* 取消所有实体边框 */
   vertical-align: middle !important; /* 垂直居中对齐 */
-  /* 用 1px 灰色阴影充当右边框和下边框，形成网格线 */
   box-shadow: 1px 0 0 0 #d0d7de, 0 1px 0 0 #d0d7de !important;
 }
 
@@ -310,7 +307,7 @@ textarea {
   border: none; /* 去除左侧分割线 */
 }
 .post-content {
-  line-height: 1.8; /* ✅ 已修改：正文行高 1.8，比原来更宽松，看着不累 */
+  line-height: 1.8; /* ✅ 已修改：正文行高 1.8 */
 }
 .post .tags {
   clear: both; /* 清除浮动，防止标签与上方内容重叠 */
@@ -754,4 +751,24 @@ img.alignright {
 /* 隐藏但保留布局空间 */
 .invisible {
   visibility: hidden; 
+}
+
+/* =========================================
+ * 【新增】强制正文段落字号（解决某些主题 <p> 标签过小的问题）
+ * ========================================= */
+.post-content p,
+.post-content li,
+.post-content blockquote,
+.post-content h2,
+.post-content h3 {
+  font-size: 16px !important;      /* 强制正文内容为 16px */
+  line-height: 1.8 !important;     /* 1.8 倍行高，阅读更舒服 */
+}
+
+/* 如果是手机端，确保这个字号也绝对生效 */
+@media (max-width: 767px) {
+  .post-content p,
+  .post-content li {
+    font-size: 16px !important;
+  }
 }
