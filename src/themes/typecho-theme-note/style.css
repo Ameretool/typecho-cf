@@ -9,6 +9,41 @@
 /* =========================================
  * 主题基础变量（只保留必要项）
  * ========================================= */
+
+/* =========================================
+ * 当前生效的配色（默认：淡蓝护眼）
+ * 想换配色：把下面【备选配色】里对应方案
+ * 的注释去掉，同时把当前这段注释掉即可
+ * ========================================= */
+:root {
+  --bg-color:     #eaf2fb;
+  --text-color:   #333a44;
+  --card-bg:      #dde8f5;
+  --border-color: #c5d5e8;
+  --accent-color: #3354AA;
+}
+
+/* =========================================
+ * 【备选配色方案】以下全部被注释掉
+ * 想用哪套：删掉那套前后的 /* 和 */ 即可
+ * ========================================= */
+
+/* ------------------------------------
+ * Typecho Default Theme
+ *
+ * @author  Typecho Team
+ * @link  http://typecho.org/
+ * @update  2013-10-28
+ * --------------------------------- */
+
+
+/* =========================================
+ * 【备选配色方案】以下全部被注释掉
+ * 想用哪套：删掉那套前后的 /* 和 */ 即可
+ * ========================================= */
+
+/*
+方案0 原主题的
 :root {
   --bg-color: #ffffff;
   --text-color: #444444;
@@ -16,10 +51,123 @@
   --border-color: #e0e0e0;
   --accent-color: #3354AA;
 }
+*/
+
+/*
+方案 ② 配色（默认：淡蓝护眼）
+:root {
+  --bg-color:     #eaf2fb;
+  --text-color:   #333a44;
+  --card-bg:      #dde8f5;
+  --border-color: #c5d5e8;
+  --accent-color: #3354AA;
+}
+*/
+
+/*
+方案 ② 米黄护眼（纸质感）
+:root {
+  --bg-color:     #faf6e9;
+  --text-color:   #3a3528;
+  --card-bg:      #f2ebd6;
+  --border-color: #e0d8c0;
+  --accent-color: #7a8f3f;
+}
+*/
+
+/*
+方案 ③ 豆沙绿（低蓝光最强护眼）
+:root {
+  --bg-color:     #c7edcc;
+  --text-color:   #2c3e35;
+  --card-bg:      #b8e2be;
+  --border-color: #9dd0a8;
+  --accent-color: #2e8b6f;
+}
+*/
+
+/*
+方案 ④ 浅灰极简（无彩色百搭）
+:root {
+  --bg-color:     #f7f8fa;
+  --text-color:   #333333;
+  --card-bg:      #eef0f3;
+  --border-color: #dcdfe4;
+  --accent-color: #555555;
+}
+*/
+
+/*
+方案 ⑤ 淡青护眼（冷色清新）
+:root {
+  --bg-color:     #e8f4f4;
+  --text-color:   #2f3e3e;
+  --card-bg:      #d8eaea;
+  --border-color: #bcd8d8;
+  --accent-color: #2a7a7a;
+}
+*/
+
+/*
+方案 ⑥ 藕荷粉（柔和暖色）
+:root {
+  --bg-color:     #f5eef2;
+  --text-color:   #3e3339;
+  --card-bg:      #ece0e7;
+  --border-color: #d9c4cf;
+  --accent-color: #9c4f7a;
+}
+*/
+
+/*
+方案 ⑦ 深色暗夜（柔黑底非纯黑）
+:root {
+  --bg-color:     #1e1e28;
+  --text-color:   #c8c8d0;
+  --card-bg:      #2a2a38;
+  --border-color: #3a3a4a;
+  --accent-color: #7aa2e8;
+}
+*/
+
+/*
+方案 ⑧ 咖啡棕（暖色暗调）
+:root {
+  --bg-color:     #2b2620;
+  --text-color:   #d4c8b8;
+  --card-bg:      #38322a;
+  --border-color: #4a4238;
+  --accent-color: #c8a878;
+}
+*/
+
+/*
+方案 ⑨ 墨绿森林（自然暗调）
+:root {
+  --bg-color:     #1a2620;
+  --text-color:   #c8ddd0;
+  --card-bg:      #243a30;
+  --border-color: #345040;
+  --accent-color: #5cc9a0;
+}
+*/
+
+/*
+方案 ⑩ 深海蓝（高级冷调）
+:root {
+  --bg-color:     #16223a;
+  --text-color:   #c8d4e8;
+  --card-bg:      #1e2c48;
+  --border-color: #2e3e60;
+  --accent-color: #64a0f0;
+}
+*/
 
 /* ==================
  * 全局基础样式 (Global style)
  * =============== */
+
+
 html {
   -webkit-tap-highlight-color: transparent;
 }
