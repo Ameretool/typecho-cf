@@ -31,20 +31,19 @@
  * ============================================================ */
 :root {
   /* 主配色 */
-  --bg-color:     #e8f6f3;   /* 页面背景：极淡薄荷绿 */
-  --text-color:   #2a3d3a;   /* 正文文字：深青灰 */
-  --card-bg:      #d5ede8;   /* 卡片/菜单：比背景深一档 */
-  --border-color: #a8d8d0;   /* 边框：中青绿，清晰可见 */
-  --accent-color: #2e8b7a;   /* 强调色：深青绿 */
+  --bg-color:     #f0f7fb;   /* 页面背景：极淡蓝，比 e8f6f3 更淡 */
+  --text-color:   #2a3a48;   /* 正文文字：深蓝灰 */
+  --card-bg:      #e4eff7;   /* 卡片/菜单：比背景略深 */
+  --border-color: #b8d0e0;   /* 边框：中淡蓝，清晰可见 */
+  --accent-color: #2e6b9a;   /* 强调色：深蓝 */
 
   /* 表格与代码块 */
-  --table-border:    #a8d8d0;
-  --table-header-bg: #d5ede8;
-  --table-hover-bg:  #c8e6e0;
-  --code-bg:         #d5ede8;
-  --code-text:       #2a3d3a;
+  --table-border:    #b8d0e0;
+  --table-header-bg: #e4eff7;
+  --table-hover-bg:  #d8e8f2;
+  --code-bg:         #e4eff7;
+  --code-text:       #2a3a48;
 }
-
 /* ============================================================
  * 【以下全部被注释掉，想用哪套就去掉注释】
  * ============================================================ */
