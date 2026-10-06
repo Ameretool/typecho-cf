@@ -6,225 +6,21 @@
  * @update  2013-10-28
  * --------------------------------- */
 
-/* ============================================================
- * 配色变量说明（重要，先看这里）
- * ------------------------------------------------------------
- * --bg-color         页面背景色
- * --text-color       正文文字色
- * --card-bg          卡片/菜单/高亮背景色
- * --border-color     边框/分隔线色
- * --accent-color     强调色（链接、按钮、高亮）
- *
- * 以下 5 个控制表格和代码块：
- * --table-border     表格边框色
- * --table-header-bg  表格表头背景色
- * --table-hover-bg   表格鼠标悬停背景色
- * --code-bg          代码块背景色
- * --code-text        代码块文字色
- *
- * 【怎么换配色】
- *   1. 找到下面「当前启用」那一段（默认：淡蓝护眼）
- *   2. 在它的最外层加上  /*  和  */  注释掉
- *   3. 找到你想用的那套，去掉它前后的  /*  和  */
- * ============================================================ */
-
-
-/* ============================================================
- * 【当前启用】方案 ① 淡蓝护眼（默认）
- * ============================================================ */
+/* =========================================
+ * 主题变量（只保留必要项）
+ * 想换配色：只改下面 :root 里的 5 个变量值即可
+ * ========================================= */
 :root {
-  --bg-color:     #eaf2fb;
-  --text-color:   #333a44;
-  --card-bg:      #dde8f5;
-  --border-color: #c5d5e8;
-  --accent-color: #3354AA;
-
-  --table-border:    #b8cce4;
-  --table-header-bg: #d5e2f2;
-  --table-hover-bg:  #c9d9ed;
-  --code-bg:         #d5e2f2;
-  --code-text:       #2a3a52;
+  --bg-color:     #eaf2fb;   /* 页面背景色（淡蓝色，护眼） */
+  --text-color:   #333a44;   /* 正文文字色 */
+  --card-bg:      #dde8f5;   /* 卡片/菜单背景色 */
+  --border-color: #c5d5e8;   /* 边框/分隔线颜色 */
+  --accent-color: #3354AA;   /* 强调色（链接高亮、按钮） */
 }
 
-
-/* ============================================================
- * 【以下全部被注释掉，想用哪套就去掉注释】
- * ============================================================ */
-
-/*
-方案 ⓪ 原主题（纯白）
-:root {
-  --bg-color:     #ffffff;
-  --text-color:   #444444;
-  --card-bg:      #f5f5f5;
-  --border-color: #e0e0e0;
-  --accent-color: #3354AA;
-
-  --table-border:    #d0d7de;
-  --table-header-bg: #f6f8fa;
-  --table-hover-bg:  #f6f8fa;
-  --code-bg:         #f6f8fa;
-  --code-text:       #24292f;
-}
-*/
-
-/*
-方案 ② 米黄护眼（纸质感）
-:root {
-  --bg-color:     #faf6e9;
-  --text-color:   #3a3528;
-  --card-bg:      #f2ebd6;
-  --border-color: #e0d8c0;
-  --accent-color: #7a8f3f;
-
-  --table-border:    #d6cdb0;
-  --table-header-bg: #f2ebd6;
-  --table-hover-bg:  #ebe3c8;
-  --code-bg:         #f2ebd6;
-  --code-text:       #3a3528;
-}
-*/
-
-/*
-方案 ③ 豆沙绿（低蓝光最强护眼）
-:root {
-  --bg-color:     #c7edcc;
-  --text-color:   #2c3e35;
-  --card-bg:      #b8e2be;
-  --border-color: #9dd0a8;
-  --accent-color: #2e8b6f;
-
-  --table-border:    #9dd0a8;
-  --table-header-bg: #b8e2be;
-  --table-hover-bg:  #a9d9b0;
-  --code-bg:         #b8e2be;
-  --code-text:       #2c3e35;
-}
-*/
-
-/*
-方案 ④ 浅灰极简（无彩色百搭）
-:root {
-  --bg-color:     #f7f8fa;
-  --text-color:   #333333;
-  --card-bg:      #eef0f3;
-  --border-color: #dcdfe4;
-  --accent-color: #555555;
-
-  --table-border:    #dcdfe4;
-  --table-header-bg: #eef0f3;
-  --table-hover-bg:  #e3e6ea;
-  --code-bg:         #eef0f3;
-  --code-text:       #333333;
-}
-*/
-
-/*
-方案 ⑤ 淡青护眼（冷色清新）
-:root {
-  --bg-color:     #e8f4f4;
-  --text-color:   #2f3e3e;
-  --card-bg:      #d8eaea;
-  --border-color: #bcd8d8;
-  --accent-color: #2a7a7a;
-
-  --table-border:    #bcd8d8;
-  --table-header-bg: #d8eaea;
-  --table-hover-bg:  #c8e0e0;
-  --code-bg:         #d8eaea;
-  --code-text:       #2f3e3e;
-}
-*/
-
-/*
-方案 ⑥ 藕荷粉（柔和暖色）
-:root {
-  --bg-color:     #f5eef2;
-  --text-color:   #3e3339;
-  --card-bg:      #ece0e7;
-  --border-color: #d9c4cf;
-  --accent-color: #9c4f7a;
-
-  --table-border:    #d9c4cf;
-  --table-header-bg: #ece0e7;
-  --table-hover-bg:  #e2d2dc;
-  --code-bg:         #ece0e7;
-  --code-text:       #3e3339;
-}
-*/
-
-/*
-方案 ⑦ 深色暗夜（柔黑底非纯黑）
-:root {
-  --bg-color:     #1e1e28;
-  --text-color:   #c8c8d0;
-  --card-bg:      #2a2a38;
-  --border-color: #3a3a4a;
-  --accent-color: #7aa2e8;
-
-  --table-border:    #3a3a4a;
-  --table-header-bg: #2a2a38;
-  --table-hover-bg:  #353545;
-  --code-bg:         #2a2a38;
-  --code-text:       #c8c8d0;
-}
-*/
-
-/*
-方案 ⑧ 咖啡棕（暖色暗调）
-:root {
-  --bg-color:     #2b2620;
-  --text-color:   #d4c8b8;
-  --card-bg:      #38322a;
-  --border-color: #4a4238;
-  --accent-color: #c8a878;
-
-  --table-border:    #4a4238;
-  --table-header-bg: #38322a;
-  --table-hover-bg:  #443d33;
-  --code-bg:         #38322a;
-  --code-text:       #d4c8b8;
-}
-*/
-
-/*
-方案 ⑨ 墨绿森林（自然暗调）
-:root {
-  --bg-color:     #1a2620;
-  --text-color:   #c8ddd0;
-  --card-bg:      #243a30;
-  --border-color: #345040;
-  --accent-color: #5cc9a0;
-
-  --table-border:    #345040;
-  --table-header-bg: #243a30;
-  --table-hover-bg:  #2c463a;
-  --code-bg:         #243a30;
-  --code-text:       #c8ddd0;
-}
-*/
-
-/*
-方案 ⑩ 深海蓝（高级冷调）
-:root {
-  --bg-color:     #16223a;
-  --text-color:   #c8d4e8;
-  --card-bg:      #1e2c48;
-  --border-color: #2e3e60;
-  --accent-color: #64a0f0;
-
-  --table-border:    #2e3e60;
-  --table-header-bg: #1e2c48;
-  --table-hover-bg:  #253452;
-  --code-bg:         #1e2c48;
-  --code-text:       #c8d4e8;
-}
-*/
-
-
-/* ============================================================
- * 全局基础样式
- * ============================================================ */
+/* ==================
+ * 全局基础样式 (Global style)
+ * =============== */
 html {
   -webkit-tap-highlight-color: transparent;
 }
@@ -251,7 +47,7 @@ body {
 }
 
 a {
-  color: var(--accent-color);
+  color: #3354AA;
   text-decoration: none;
 }
 a:hover, a:active {
@@ -260,7 +56,7 @@ a:hover, a:active {
 
 button {
   -webkit-appearance: button;
-  background-color: var(--accent-color);
+  background-color: #5973b9;
   border: none;
   color: #ffffff;
   padding: 5px 15px;
@@ -271,12 +67,12 @@ button {
 }
 
 .meta-tags {
-  background: var(--accent-color);
-  color: #fff;
-  font-size: 0.65rem;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-left: 8px;
+  background:#ffa5c2;
+  color:#fff;
+  font-size:0.65rem;
+  padding:2px 8px;
+  border-radius:4px;
+  margin-left:8px;
 }
 
 .logout-form {
@@ -288,7 +84,7 @@ button {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--accent-color);
+  color: #3354AA;
   font: inherit;
   cursor: pointer;
 }
@@ -298,7 +94,7 @@ button {
 }
 
 /* =========================================
- * GitHub 风格表格（全部使用变量）
+ * GitHub 风格表格与代码块样式
  * ========================================= */
 table {
   border-collapse: separate !important;
@@ -306,7 +102,7 @@ table {
   width: 100% !important;
   margin-bottom: 16px !important;
   border: none !important;
-  box-shadow: 0 0 0 2px var(--table-border) !important;
+  box-shadow: 0 0 0 2px #d0d7de !important;
   border-radius: 6px !important;
   overflow: hidden !important;
   font-size: 15px !important;
@@ -317,38 +113,35 @@ table td {
   padding: 12px 16px !important;
   border: none !important;
   vertical-align: middle !important;
-  box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important;
+  box-shadow: 1px 0 0 0 #d0d7de, 0 1px 0 0 #d0d7de !important;
 }
 
 table tr > *:last-child {
-  box-shadow: 0 1px 0 0 var(--table-border) !important;
+  box-shadow: 0 1px 0 0 #d0d7de !important;
 }
 
 table th {
-  background-color: var(--table-header-bg) !important;
+  background-color: #f6f8fa !important;
   font-weight: 600 !important;
   text-align: center !important;
-  color: var(--code-text) !important;
+  color: #24292f !important;
 }
 
 table tbody tr:hover {
-  background-color: var(--table-hover-bg) !important;
+  background-color: #f6f8fa !important;
 }
 
 table td code {
-  background-color: var(--table-hover-bg) !important;
-  color: var(--code-text) !important;
+  background-color: rgba(175, 184, 193, 0.2) !important;
+  color: #24292f !important;
   padding: 3px 6px !important;
   border-radius: 6px !important;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
   font-size: 85% !important;
 }
 
-/* =========================================
- * 代码块（全部使用变量）
- * ========================================= */
 pre {
-  background-color: var(--code-bg) !important;
+  background-color: #f6f8fa !important;
   padding: 16px !important;
   border-radius: 6px !important;
   overflow: auto !important;
@@ -358,7 +151,7 @@ pre {
 pre code {
   background-color: transparent !important;
   padding: 0 !important;
-  color: var(--code-text) !important;
+  color: #24292f !important;
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
   font-size: .92857em !important;
@@ -367,9 +160,8 @@ pre code {
 blockquote {
   margin: 1em 0;
   padding-left: 1.5em;
-  border-left: 4px solid var(--border-color);
-  color: var(--text-color);
-  opacity: 0.85;
+  border-left: 4px solid #eee;
+  color: #666;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -383,14 +175,12 @@ input[type="url"],
 input[type="password"],
 textarea {
   padding: 5px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #E9E9E9;
   width: 100%;
   border-radius: 2px;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
-  background: var(--bg-color);
-  color: var(--text-color);
 }
 textarea {
   resize: vertical;
@@ -403,7 +193,7 @@ textarea {
 .post-content a,
 .widget a,
 .comment-content a {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #EEE;
 }
 .post-meta a:hover,
 .post-content a:hover,
@@ -413,15 +203,15 @@ textarea {
 }
 
 /* ------------------
- * 头部区域
+ * 头部区域 (Header)
  * --------------- */
 #header {
   padding-top: 35px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #EEE;
 }
 
 #logo {
-  color: var(--text-color);
+  color: #333;
   font-size: 2.5em;
 }
 #logo img {
@@ -430,8 +220,7 @@ textarea {
 
 .description {
   margin: .5em 0 0;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
   font-style: italic;
 }
 
@@ -444,18 +233,16 @@ textarea {
   display: block;
   margin-right: -1px;
   padding: 0 20px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #EEE;
   border-bottom: none;
   height: 32px;
   line-height: 32px;
-  color: var(--text-color);
-  background: var(--bg-color);
+  color: #444;
   float: left;
-  transition: background 0.2s ease;
 }
 #nav-menu a:hover,
 #nav-menu .current {
-  background: var(--card-bg);
+  background: #F6F6F6;
 }
 
 /* 搜索框 */
@@ -465,9 +252,6 @@ textarea {
 }
 #search input {
   padding-right: 30px;
-  background: var(--bg-color);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
 }
 #search button {
   position: absolute;
@@ -486,34 +270,31 @@ textarea {
 #search button:before {
   content: "\1F50D";
   font-size: 14px;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
 }
 
 /* ------------------
- * 主内容区域
+ * 主内容区域 (Main)
  * --------------- */
 .post {
   padding: 15px 0 0 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #EEE;
 }
 .post-title {
   margin: .83em 0;
   font-size: 1.4em;
-  color: var(--text-color);
 }
 .post-meta {
   margin-top: -0.5em;
   padding: 0;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
   font-size: .92857em;
 }
 .post-meta li {
   display: inline-block;
   margin: 0 8px 0 0;
   padding-left: 12px;
-  border-left: 1px solid var(--border-color);
+  border-left: 1px solid #EEE;
 }
 .post-meta li:first-child {
   margin-left: 0;
@@ -522,7 +303,6 @@ textarea {
 }
 .post-content {
   line-height: 1.8;
-  color: var(--text-color);
 }
 .post .tags {
   clear: both;
@@ -532,8 +312,7 @@ textarea {
   list-style: none;
   margin: 30px 0;
   padding: 0;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
   font-size: 14px !important;
   line-height: 1.6 !important;
 }
@@ -541,18 +320,17 @@ textarea {
   margin: 10px 0;
 }
 .post-near a {
-  color: var(--accent-color) !important;
+  color: #3354AA !important;
   font-size: 14px !important;
 }
 .post-near a:hover {
-  color: var(--text-color) !important;
+  color: #444 !important;
 }
 
 .archive-title {
   margin: 1em 0 -1em;
   padding-top: 20px;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
   font-size: 1em;
 }
 .more {
@@ -581,15 +359,14 @@ textarea {
   padding: 0 10px;
   height: 30px;
   line-height: 30px;
-  color: var(--text-color);
 }
 .page-navigator a:hover {
-  background: var(--card-bg);
+  background: #EEE;
   text-decoration: none;
 }
 .page-navigator .current a {
-  color: var(--text-color);
-  background: var(--card-bg);
+  color: #444;
+  background: #EEE;
 }
 
 /* ------------------
@@ -606,30 +383,29 @@ textarea {
 .comment-list li {
   padding: 14px;
   margin-top: 10px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #EEE;
 }
 .comment-list li.comment-level-odd {
-  background: var(--card-bg);
+  background: #F6F6F3;
 }
 .comment-list li.comment-level-even {
-  background: var(--bg-color);
+  background: #FFF;
 }
 .comment-list li.comment-by-author {
-  background: var(--card-bg);
+  background: #FFF9E8;
 }
 .comment-list li .comment-reply {
   text-align: right;
   font-size: .92857em;
 }
 .comment-meta a {
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
   font-size: .92857em;
 }
 .comment-author {
   display: block;
   margin-bottom: 3px;
-  color: var(--text-color);
+  color: #444;
 }
 .comment-author .avatar {
   float: left;
@@ -657,7 +433,7 @@ textarea {
 /* 评论回复表单 */
 .comment-list .respond {
   margin-top: 15px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid #EEE;
 }
 .respond .cancel-comment-reply {
   float: right;
@@ -703,8 +479,7 @@ textarea {
   padding: 3em 0;
   line-height: 1.5;
   text-align: center;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: #999;
 }
 
 /* -----------------
@@ -721,7 +496,6 @@ textarea {
 .post-content, .comment-content {
   line-height: 1.8;
   word-wrap: break-word;
-  color: var(--text-color);
 }
 .post-content h2, .comment-content h2 {
   font-size: 1.28571em;
@@ -733,7 +507,7 @@ textarea {
 }
 .post-content a img,
 .comment-content a img {
-  background: var(--bg-color);
+  background: #FFF;
   position: relative;
   border-radius: 6px;
   bottom: -4px;
@@ -741,7 +515,7 @@ textarea {
 .post-content hr, .comment-content hr {
   margin: 2em auto;
   width: 100px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #E9E9E9;
   border-width: 2px 0 0 0;
 }
 
@@ -768,7 +542,7 @@ img.alignright {
 
 /* -----------------
  * 响应式布局
- *--------------- */
+ * --------------- */
 @media (max-width: 767px) {
   body {
     font-size: 100%;
@@ -962,12 +736,12 @@ img.alignright {
 #secondary {
   font-size: 14px !important;
   line-height: 1.8 !important;
-  color: var(--text-color) !important;
+  color: #444 !important;
 }
 #secondary .widget-title {
   font-size: 15px !important;
   font-weight: 600 !important;
-  color: var(--text-color) !important;
+  color: #333 !important;
   margin-bottom: 8px !important;
 }
 #secondary .widget-list li {
@@ -975,8 +749,80 @@ img.alignright {
   line-height: 1.8 !important;
 }
 #secondary .widget-list a {
-  color: var(--accent-color) !important;
+  color: #3354AA !important;
 }
 #secondary .widget-list a:hover {
-  color: var(--text-color) !important;
+  color: #444 !important;
+}
+
+/* =========================================
+ * 【A 方案】移动端导航：右上角小图标汉堡菜单
+ * ========================================= */
+@media (max-width: 767px) {
+  /* 导航容器变成绝对定位，固定在右上角 */
+  #nav-menu {
+    position: absolute !important;
+    top: 35px !important;
+    right: 20px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 9999 !important;
+    overflow: visible !important;
+  }
+
+  /* 默认隐藏所有菜单项 */
+  #nav-menu a {
+    display: none !important;
+  }
+
+  /* 汉堡按钮：40x40 小方块 */
+  .nav-toggle-btn {
+    display: block !important;
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    text-align: center !important;
+    font-size: 22px !important;
+    color: #444 !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid #EEE !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  /* 展开时：菜单在按钮下方弹出（向右对齐） */
+  #nav-menu.is-open a {
+    display: block !important;
+    position: relative !important;
+    text-align: center !important;
+    padding: 12px 0 !important;
+    border: 1px solid #EEE !important;
+    border-top: none !important;
+    background: #FFF !important;
+    height: auto !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    float: none !important;
+    font-size: 15px !important;
+    width: 120px !important;
+    margin-left: -80px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  }
+}
+
+/* =========================================
+ * 电脑端强制隐藏汉堡菜单按钮（终极保险）
+ * ========================================= */
+@media screen and (min-width: 768px) {
+  .nav-toggle-btn {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
 }
