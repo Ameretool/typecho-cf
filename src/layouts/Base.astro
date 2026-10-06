@@ -88,9 +88,113 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     }, true);
   </script>
+
+  <!-- ============================================================
+       回到顶部按钮样式（全局，Swup 切换后依然生效）
+       ============================================================ -->
+  <style is:global>
+    #back-to-top {
+      position: fixed !important;
+      right: 20px !important;
+      bottom: 30px !important;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--card-bg, #f5f5f5);
+      color: var(--text-color, #444);
+      border: 1px solid var(--border-color, #e0e0e0);
+      cursor: pointer;
+      z-index: 99999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
+      opacity: 0;
+      transform: translateY(10px);
+      visibility: hidden;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #back-to-top.show {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
+    }
+    #back-to-top:hover {
+      background: var(--border-color, #e0e0e0);
+      transform: translateY(-2px);
+    }
+    #back-to-top:active {
+      transform: scale(0.92);
+    }
+    /* 移动端：底部往上挪，避开手机浏览器工具栏和手势条 */
+    @media (max-width: 768px) {
+      #back-to-top {
+        right: 12px !important;
+        bottom: 80px !important;
+        bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+        width: 44px;
+        height: 44px;
+      }
+    }
+  </style>
 </head>
 <body class={bodyClass}>
   <slot />
   <Fragment set:html={pluginSnippets.bodyHtml} />
+
+  <!-- ============================================================
+       回到顶部按钮脚本（动态创建，Swup 切换后自动恢复）
+       ============================================================ -->
+  <script is:inline>
+    (function () {
+      function ensureButton() {
+        if (document.getElementById('back-to-top')) return;
+
+        var btn = document.createElement('button');
+        btn.id = 'back-to-top';
+        btn.setAttribute('aria-label', '返回顶部');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>';
+        document.body.appendChild(btn);
+
+        // 点击回到顶部
+        btn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      function onScroll() {
+        var b = document.getElementById('back-to-top');
+        if (!b) return;
+        var threshold = window.innerWidth <= 768 ? 200 : 300;
+        if (window.scrollY > threshold) {
+          b.classList.add('show');
+        } else {
+          b.classList.remove('show');
+        }
+      }
+
+      // 初始化
+      ensureButton();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      // Swup 页面切换后重新创建按钮
+      document.addEventListener('swup:contentReplaced', function () {
+        ensureButton();
+        onScroll();
+      });
+      document.addEventListener('swup:pageView', function () {
+        ensureButton();
+        onScroll();
+      });
+
+      // 保底：DOM 变化后检查
+      var observer = new MutationObserver(function () {
+        ensureButton();
+      });
+      observer.observe(document.body, { childList: true, subtree: false });
+    })();
+  </script>
 </body>
 </html>
