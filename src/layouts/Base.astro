@@ -1,3 +1,87 @@
+---
+import type { SiteOptions } from '@/lib/options';
+import type { computeUrls } from '@/lib/options';
+import type { UserRow } from '@/lib/context';
+import { getThemeStylesheets } from '@/lib/theme';
+import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
+
+interface Props {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  options: SiteOptions;
+  urls: ReturnType<typeof computeUrls>;
+  user?: UserRow | null;
+  isLoggedIn?: boolean;
+  bodyClass?: string;
+  pageContext?: PageContext;
+  pluginCtx?: HookContext;
+}
+
+const {
+  title,
+  description,
+  keywords,
+  options,
+  urls,
+  user,
+  isLoggedIn = false,
+  bodyClass = '',
+  pageContext,
+  pluginCtx,
+} = Astro.props;
+
+const pageTitle = title ? `${title} - ${options.title}` : options.title;
+const themeStylesheets = getThemeStylesheets(options.theme || 'typecho-theme-minimal');
+
+// Collect client-side snippets from all activated plugins
+const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: new Set<string>() }, options as Record<string, any>, pageContext);
+---
+<!DOCTYPE html>
+<html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>
+<head>
+  <meta charset={options.charset || 'UTF-8'} />
+  <meta name="renderer" content="webkit" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{pageTitle}</title>
+  {description && <meta name="description" content={description} />}
+  {keywords && <meta name="keywords" content={keywords} />}
+  {themeStylesheets.map((href) => (
+    <link rel="stylesheet" href={href} />
+  ))}
+  <link rel="alternate" type="application/rss+xml" title={`${options.title} RSS`} href={urls.feedUrl} />
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <slot name="head" />
+  <Fragment set:html={pluginSnippets.headHtml} />
+
+  <!-- ============================================================
+       全站外链新窗口打开脚本
+       作用：点击站外链接时，自动在新窗口打开，彻底解决慢半拍
+       ============================================================ -->
+  <script is:inline>
+    document.addEventListener('click', function(e) {
+      const link = e.target.closest('a');
+      if (
+        link &&
+        link.hostname &&
+        link.hostname !== window.location.hostname
+      ) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }, true);
+  </script>
+</head>
+<body class={bodyClass}>
+  <slot />
+  <Fragment set:html={pluginSnippets.bodyHtml} />
+
+  <!-- ============================================================
+       返回顶部按钮（全站生效）
+       作用：滚动超过 300px 后出现，点击平滑滚回顶部
+       配色：半透明白色 + 中性灰箭头，提前兼容未来的暗黑模式
+       ============================================================ -->
+  <button id="back-to-top" aria-label="返回顶部" style="display:none;">↑</button>
   <style is:global>
     #back-to-top {
       position: fixed;
@@ -6,19 +90,14 @@
       width: 44px;
       height: 44px;
       border-radius: 50%;
-
-      /* ✅ 背景更透明：0.45（原来 0.85） */
       background: rgba(255, 255, 255, 0.45);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-
-      /* ✅ 箭头加粗：字体加粗 + 字号加大 */
       color: #333;
       font-size: 26px;
       font-weight: 900;
       line-height: 42px;
       text-align: center;
-
       border: 1px solid rgba(0, 0, 0, 0.08);
       cursor: pointer;
       z-index: 9998;
@@ -28,22 +107,15 @@
       transform: translateY(10px);
       padding: 0;
     }
-
-    /* 按钮出现时 */
     #back-to-top.show {
       display: block !important;
       opacity: 1;
       transform: translateY(0);
     }
-
-    /* 悬停时背景稍微加深一点（但依然透） */
     #back-to-top:hover {
       background: rgba(255, 255, 255, 0.7);
     }
-
-    /* ==================================================
-       未来暗黑模式：在 <html> 加 class="dark" 后自动生效
-       ================================================== */
+    /* 暗黑模式兼容（未来接入时自动生效） */
     html.dark #back-to-top {
       background: rgba(40, 40, 40, 0.45);
       color: #F0F0F0;
@@ -53,3 +125,21 @@
       background: rgba(60, 60, 60, 0.65);
     }
   </style>
+  <script is:inline>
+    (function() {
+      const btn = document.getElementById('back-to-top');
+      if (!btn) return;
+      window.addEventListener('scroll', function() {
+        if (window.scrollY > 300) {
+          btn.classList.add('show');
+        } else {
+          btn.classList.remove('show');
+        }
+      }, { passive: true });
+      btn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    })();
+  </script>
+</body>
+</html>
