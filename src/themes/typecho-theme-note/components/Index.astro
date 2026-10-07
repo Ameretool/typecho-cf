@@ -5,7 +5,7 @@
 import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
-// ⚠️ 唯一新增：引入截取100字的函数
+// ⚠️ 新增：用于自动截取100字并附加“阅读更多”
 import { renderContentExcerpt } from '@/lib/markdown';
 
 type Props = ThemeIndexProps;
@@ -18,10 +18,14 @@ const {
 const isIndex = currentPath === '/';
 
 const processPost = (post: any) => {
-  // ⚠️ 唯一修改的地方：原先这里只有 `let excerpt = post.excerpt || '';`
-  // 现在改为：优先尝试拿全文(post.content)截取100字，拿不到就用原摘要，且绝不改动颜色
-  const rawContent = post.content || post.excerpt || '';
-  let excerpt = rawContent ? renderContentExcerpt(rawContent, '- 阅读剩余部分 -', post.permalink) : '';
+  // ⚠️ 唯一修改的地方：修复重复与标题问题
+  // 优先使用 post.content 去截取100字，如果 API 没给 content，就原样保留后端的 excerpt
+  let excerpt = '';
+  if (post.content) {
+    excerpt = renderContentExcerpt(post.content, '- 阅读剩余部分 -', post.permalink);
+  } else {
+    excerpt = post.excerpt || '';
+  }
 
   const mediaItems: { type: 'image' | 'livephoto'; html: string; src?: string; videoSrc?: string }[] = [];
 
