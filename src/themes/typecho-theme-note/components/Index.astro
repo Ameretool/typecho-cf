@@ -5,7 +5,7 @@
 import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
-// ⚠️ 新增：用于自动截取100字并附加“阅读更多”
+// ⚠️ 新增：导入截取100字的函数
 import { renderContentExcerpt } from '@/lib/markdown';
 
 type Props = ThemeIndexProps;
@@ -18,13 +18,19 @@ const {
 const isIndex = currentPath === '/';
 
 const processPost = (post: any) => {
-  // ⚠️ 唯一修改的地方：修复重复与标题问题
-  // 优先使用 post.content 去截取100字，如果 API 没给 content，就原样保留后端的 excerpt
+  // ⚠️ 唯一修改的地方：强制获取正文，截取100字，并清洗原有链接防止重复
   let excerpt = '';
-  if (post.content) {
-    excerpt = renderContentExcerpt(post.content, '- 阅读剩余部分 -', post.permalink);
-  } else {
-    excerpt = post.excerpt || '';
+  const rawContent = post.content || post.excerpt || '';
+  
+  if (rawContent) {
+    // 先清除掉系统可能自带的“阅读更多”标签，防止重复
+    const cleanContent = rawContent
+      .replace(/<p class="more">.*?<\/p>/g, '')
+      .replace(/- 阅读剩余部分 -/g, '')
+      .trim();
+      
+    // 强制截取前100个纯文本字符，并附加阅读更多
+    excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
   }
 
   const mediaItems: { type: 'image' | 'livephoto'; html: string; src?: string; videoSrc?: string }[] = [];
@@ -68,7 +74,7 @@ const processPost = (post: any) => {
 
 const processedPosts = posts.map(processPost);
 
-// 辅助：生成正方形 LivePhoto 容器（未改动）
+// 辅助：生成正方形 LivePhoto 容器（多图使用，未改动）
 function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   return `<div style="position:relative; width:100%; padding-top:100%;border-radius: 0px;" class="live-photo">
     <img class="live-photo-img" src="${src}" alt="Live Photo" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;border-radius: 0px;">
