@@ -1,0 +1,612 @@
+/* ------------------------------------
+ * Typecho 默认主题
+ *
+ * @author  Typecho Team
+ * @link  http://typecho.org/
+ * @update  2013-10-28
+ * --------------------------------- */
+
+/* ============================================================
+ * 【当前启用】方案 ① 淡蓝护眼
+ * ============================================================ */
+:root {
+  --bg-color:     #eaf2fb;
+  --text-color:   #333a44;
+  --card-bg:      #dde8f5;
+  --border-color: #c5d5e8;
+  --accent-color: #3354AA;
+}
+
+/* ------------------
+ * 全局样式
+ * --------------- */
+body {
+  background-color: #FFF;                /* 页面背景白色 */
+  color: #444;                           /* 默认文字颜色深灰 */
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif; /* 字体栈，优先衬线字体，中文回退到苹方/思源黑体/微软雅黑 */
+  font-size: 100%;                       /* 基础字号：16px（已从 87.5% 修改） */
+}
+
+a {
+  color: #3354AA;                        /* 链接颜色蓝色 */
+  text-decoration: none;                 /* 去掉下划线 */
+}
+a:hover, a:active {
+  color: #444;                           /* 悬停/激活时文字变深灰 */
+}
+.logout-form {
+  display: inline;                       /* 登出表单行内显示 */
+  margin: 0;
+  padding: 0;
+}
+.logout-form button {
+  padding: 0;                            /* 按钮无内边距 */
+  border: 0;                             /* 无边框 */
+  background: transparent;               /* 透明背景 */
+  color: #3354AA;                        /* 按钮文字蓝色，与链接一致 */
+  font: inherit;                         /* 继承父级字体 */
+  cursor: pointer;                       /* 鼠标手型 */
+}
+.logout-form button:hover,
+.logout-form button:active {
+  color: #444;                           /* 按钮悬停/激活变深灰 */
+}
+
+/* =========================================
+ * GitHub 风格表格与代码块样式
+ * (已合并代码2中的终极修复版，用阴影画线)
+ * ========================================= */
+
+/* 1. 表格整体外框 (用外阴影画出四周的灰色外框) */
+table {
+  border-collapse: separate !important; /* 边框分离模式，配合阴影画线 */
+  border-spacing: 0 !important;         /* 单元格间距为 0 */
+  width: 100% !important;               /* 表格宽度占满父容器 */
+  margin-bottom: 16px !important;       /* 底部外边距 */
+  border: none !important;              /* 取消传统的实体边框 */
+  /* 用 box-shadow 模拟边框，完美替代 border，且支持圆角 */
+  box-shadow: 0 0 0 2px #d0d7de !important; 
+  border-radius: 6px !important;        /* 表格整体圆角 */
+  overflow: hidden !important;          /* 隐藏超出圆角的部分 */
+  font-size: 15px !important;           /* 表格字号：15px（已从 14px 修改） */
+}
+
+/* 2. 表头与单元格 (强行用右侧和底部的阴影画出竖线和横线) */
+table th,
+table td {
+  padding: 12px 16px !important;        /* 单元格内边距 */
+  border: none !important;              /* 取消所有实体边框 */
+  vertical-align: middle !important;    /* 垂直居中对齐 */
+  /* 用 1px 灰色阴影充当右边框和下边框，形成网格线 */
+  box-shadow: 1px 0 0 0 #d0d7de, 0 1px 0 0 #d0d7de !important;
+}
+
+/* 3. 去除表格最右侧多余的阴影线 (防止双线) */
+table tr > *:last-child {
+  box-shadow: 0 1px 0 0 #d0d7de !important; /* 最后一列只保留底部阴影，去掉右侧阴影 */
+}
+
+/* 4. 表头专属样式 (浅灰背景 + 文字居中加粗) */
+table th {
+  background-color: #f6f8fa !important; /* 表头浅灰背景 */
+  font-weight: 600 !important;          /* 字体加粗 */
+  text-align: center !important;        /* 表头文字居中 */
+  color: #24292f !important;            /* 深灰文字色 */
+}
+
+/* 5. 表格内容行鼠标悬停效果 */
+table tbody tr:hover {
+  background-color: #f6f8fa !important; /* 鼠标滑过时整行变浅灰 */
+}
+
+/* 6. 表格内代码块 (比如命令列的代码) 专属样式 */
+table td code {
+  background-color: rgba(175, 184, 193, 0.2) !important; /* 半透明浅灰背景 */
+  color: #24292f !important;            /* 深灰色字体 */
+  padding: 3px 6px !important;          /* 代码块内边距 */
+  border-radius: 6px !important;        /* 代码块圆角 */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
+  font-size: 85% !important;            /* 代码字体稍微小一点点 */
+}
+
+/* 7. 普通代码块 (如 pre 标签) 修复红字和红底问题 */
+pre {
+  background-color: #f6f8fa !important; /* 代码块背景色：浅灰 */
+  padding: 16px !important;             /* 内边距 */
+  border-radius: 6px !important;        /* 圆角 */
+  overflow: auto !important;            /* 代码太长时允许横向滚动 */
+  white-space: pre-wrap !important;     /* 保留换行和空格，允许自动折行 */
+  word-wrap: break-word !important;     /* 长单词换行 */
+}
+pre code {
+  background-color: transparent !important; /* 清除嵌套的代码背景色，避免双重背景 */
+  padding: 0 !important;
+  color: #24292f !important;            /* 强制深灰色文字 */
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  font-size: .92857em !important;       /* 代码字体大小 */
+}
+
+/* 引用块样式 */
+blockquote {
+  margin: 1em 0;                         /* 上下外边距 1em */
+  padding-left: 1.5em;                   /* 左内边距为引用竖线留空间 */
+  border-left: 4px solid #eee;           /* 左侧浅灰竖线 */
+  color: #666;                           /* 引用文字中灰 */
+}
+
+/* 标题字体族 (与正文衬线体不同，标题使用无衬线体更清爽) */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "WenQuanYi Micro Hei","Microsoft Yahei", sans-serif;
+}
+
+/* 表单输入框基础样式 */
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+textarea {
+  padding: 5px;                          /* 输入框内边距 */
+  border: 1px solid #E9E9E9;             /* 极浅灰边框 */
+  width: 100%;                           /* 宽度占满容器 */
+  border-radius: 2px;                    /* 圆角 2px */
+  -webkit-box-sizing: border-box;        /* WebKit 盒模型包含边框和内边距 */
+  -moz-box-sizing: border-box;           /* Firefox 盒模型 */
+  box-sizing: border-box;                /* 标准盒模型 */
+}
+textarea {
+  resize: vertical;                      /* 只允许垂直方向调整大小 */
+}
+
+
+/* 特殊链接样式 */
+.post-meta a,
+.post-content a,
+.widget a,
+.comment-content a {
+  border-bottom: 1px solid #EEE;         /* 正文/元信息/侧栏/评论中的链接加浅灰下划线 */
+}
+
+.post-meta a:hover,
+.post-content a:hover,
+.widget a:hover,
+.comment-content a:hover {
+  border-bottom-color: transparent;      /* 悬停时下划线透明，形成淡出效果 */
+}
+
+/* ------------------
+ * 页头
+ * --------------- */
+
+#header {
+  padding-top: 35px;                     /* 页头顶部内边距 */
+  border-bottom: 1px solid #EEE;         /* 页头底部浅灰分割线 */
+}
+
+#logo {
+  color: #333;                           /* Logo 文字深灰 */
+  font-size: 2.5em;                      /* Logo 字号较大 */
+}
+#logo img {
+    max-height: 64px;                    /* Logo 图片最大高度 64px */
+}
+
+.description {
+  margin: .5em 0 0;                      /* 站点描述上外边距 0.5em */
+  color: #999;                           /* 描述文字浅灰 */
+  font-style: italic;                    /* 斜体 */
+}
+
+/* 导航菜单 */
+#nav-menu {
+  margin: 25px 0 0;                      /* 导航上外边距 25px */
+  padding: 0;
+}
+#nav-menu a {
+  display: block;                        /* 块级显示 */
+  margin-right: -1px;                    /* 负右边距使相邻边框重叠 */
+  padding: 0 20px;                       /* 左右内边距 20px */
+  border: 1px solid #EEE;                /* 浅灰边框 */
+  border-bottom: none;                   /* 去掉底边框，与下方分割线融合 */
+  height: 32px;                          /* 固定高度 32px */
+  line-height: 32px;                     /* 行高与高度一致，垂直居中 */
+  color: #444;                           /* 导航文字深灰 */
+  float: left;                           /* 左浮动，横向排列 */
+}
+#nav-menu a:hover,
+#nav-menu .current {
+  background: #F6F6F6;                   /* 悬停/当前项浅灰背景 */
+}
+
+/* 搜索框 */
+#search {
+  position: relative;                    /* 相对定位，作为按钮绝对定位的参照 */
+  margin-top: 15px;                      /* 上外边距 15px */
+}
+#search input {
+  padding-right: 30px;                   /* 右侧留出按钮空间 */
+}
+#search button {
+  position: absolute;                    /* 绝对定位到输入框右侧 */
+  right: 4px;
+  top: 2px;
+  border: none;                          /* 无边框 */
+  padding: 0;
+  width: 24px;                           /* 按钮宽 24px */
+  height: 24px;                          /* 按钮高 24px */
+  background: transparent;               /* 透明背景 */
+  cursor: pointer;                       /* 手型光标 */
+  direction: ltr;                        /* 文字方向从左到右 */
+  font-size: 0;                          /* 隐藏文字 */
+  color: transparent;                    /* 文字透明 */
+}
+#search button:before {
+  content: "\1F50D";                     /* 使用 Unicode 放大镜符号作为按钮图标 */
+  font-size: 14px;                       /* 图标字号 14px */
+  color: #999;                           /* 图标浅灰 */
+}
+
+
+/* ------------------
+ * 主内容区
+ * --------------- */
+
+.post {
+  padding: 15px 0 20px;                  /* 文章上下内边距 */
+  border-bottom: 1px solid #EEE;         /* 文章底部浅灰分割线 */
+}
+.post-title {
+  margin: .83em 0;                       /* 标题上下外边距 */
+  font-size: 1.4em;                      /* 标题字号 1.4em */
+}
+.post-meta {
+  margin-top: -0.5em;                    /* 负上外边距，靠近标题 */
+  padding: 0;
+  color: #999;                           /* 元信息浅灰 */
+  font-size: .92857em;                   /* 字号约 13px */
+}
+.post-meta li {
+  display: inline-block;                 /* 行内块，横向排列 */
+  margin: 0 8px 0 0;                     /* 右侧外边距 8px */
+  padding-left: 12px;                    /* 左侧内边距为分隔线留空间 */
+  border-left: 1px solid #EEE;           /* 左侧浅灰分隔线 */
+}
+.post-meta li:first-child {
+  margin-left: 0;                        /* 第一个元素无左边距 */
+  padding-left: 0;                       /* 无左内边距 */
+  border: none;                          /* 无分隔线 */
+}
+.post-content {
+  font-size: 16px;                       /* 正文字号 16px（已修改） */
+  line-height: 1.8;                      /* 正文行高 1.8（已修改） */
+}
+.post .tags {
+  clear: both;                           /* 清除浮动 */
+}
+
+.post-near {
+  list-style: none;                      /* 去掉列表符号 */
+  margin: 30px 0;                        /* 上下外边距 30px */
+  padding: 0;
+  color: #999;                           /* 浅灰色 */
+}
+.post-near li {
+  margin: 10px 0;                        /* 每项上下外边距 10px */
+}
+
+.archive-title {
+  margin: 1em 0 -1em;                    /* 上 1em，下 -1em，抵消下方间距 */
+  padding-top: 20px;                     /* 上内边距 20px */
+  color: #999;                           /* 浅灰色 */
+  font-size: 1em;                        /* 字号 1em */
+}
+.more {
+  text-align: center;                    /* 居中对齐 */
+}
+.more a {
+  border: none;                          /* “更多”链接无下划线 */
+}
+.protected .text {
+  width: 50%;                            /* 密码保护文章输入框宽度 50% */
+}
+
+/* 分页导航 */
+
+.page-navigator {
+  list-style: none;                      /* 去掉列表符号 */
+  margin: 25px 0;                        /* 上下外边距 25px */
+  padding: 0;
+  text-align: center;                    /* 居中对齐 */
+}
+.page-navigator li {
+  display: inline-block;                 /* 行内块排列 */
+  margin: 0 4px;                         /* 左右外边距 4px */
+}
+.page-navigator a {
+  display: inline-block;                 /* 行内块 */
+  padding: 0 10px;                       /* 左右内边距 10px */
+  height: 30px;                          /* 高度 30px */
+  line-height: 30px;                     /* 行高与高度一致，垂直居中 */
+}
+.page-navigator a:hover {
+  background: #EEE;                      /* 悬停浅灰背景 */
+  text-decoration: none;                 /* 无下划线 */
+}
+
+.page-navigator .current a {
+  color: #444;                           /* 当前页文字深灰 */
+  background: #EEE;                      /* 当前页浅灰背景 */
+}
+
+/* ------------------
+ * 评论列表
+ * --------------- */
+#comments {
+  padding-top: 15px;                     /* 评论区上内边距 15px */
+}
+.comment-list, .comment-list ol {
+  list-style: none;                      /* 去掉列表符号 */
+  margin: 0;
+  padding: 0;
+}
+.comment-list li {
+  padding: 14px;                         /* 每条评论内边距 14px */
+  margin-top: 10px;                      /* 评论之间上外边距 10px */
+  border: 1px solid #EEE;                /* 浅灰边框 */
+}
+.comment-list li.comment-level-odd {
+  background: #F6F6F3;                   /* 奇数层级评论浅灰背景 */
+}
+.comment-list li.comment-level-even {
+  background: #FFF;                      /* 偶数层级评论白色背景 */
+}
+.comment-list li.comment-by-author {
+  background: #FFF9E8;                   /* 作者评论淡黄色背景 */
+}
+.comment-list li .comment-reply {
+  text-align: right;                     /* 回复按钮右对齐 */
+  font-size: .92857em;                   /* 字号约 13px */
+}
+.comment-meta a {
+  color: #999;                           /* 评论元信息链接浅灰 */
+  font-size: .92857em;                   /* 字号约 13px */
+}
+.comment-author {
+  display: block;                        /* 块级显示 */
+  margin-bottom: 3px;                    /* 下外边距 3px */
+  color: #444;                           /* 评论者文字深灰 */
+}
+.comment-author .avatar {
+  float: left;                           /* 头像左浮动 */
+  margin-right: 10px;                    /* 头像右侧外边距 10px */
+}
+.comment-author cite {
+  font-weight: bold;                     /* 评论者名字加粗 */
+  font-style: normal;                    /* 取消斜体 */
+}
+
+/* 评论回复表单 */
+.comment-list .respond {
+  margin-top: 15px;                      /* 回复表单上外边距 15px */
+  border-top: 1px solid #EEE;            /* 顶部浅灰分割线 */
+}
+.respond .cancel-comment-reply {
+  float: right;                          /* 取消回复按钮右浮动 */
+  margin-top: 15px;                      /* 上外边距 15px */
+  font-size: .92857em;                   /* 字号约 13px */
+}
+#comment-form label {
+  display: block;                        /* 标签块级显示 */
+  margin-bottom: .5em;                   /* 下外边距 0.5em */
+  font-weight: bold;                     /* 加粗 */
+}
+#comment-form .required:after {
+  content: " *";                         /* 必填项后加红色星号 */
+  color: #C00;
+}
+
+/* ------------------
+ * 侧栏
+ * --------------- */
+#secondary {
+  padding-top: 15px;                     /* 侧栏上内边距 15px */
+  word-wrap: break-word;                 /* 长单词强制换行 */
+}
+.widget {
+  margin-bottom: 30px;                   /* 每个小工具下外边距 30px */
+}
+.widget-list {
+  list-style: none;                      /* 去掉列表符号 */
+  padding: 0;
+}
+.widget-list li {
+  margin: 5px 0;                         /* 每项上下外边距 5px */
+  line-height: 1.6;                      /* 行高 1.6 */
+}
+
+.widget-list li ul {
+  margin-left: 15px;                     /* 嵌套列表左外边距 15px */
+}
+
+
+/* ------------------
+ * 页脚
+ * --------------- */
+#footer {
+  padding: 3em 0;                        /* 上下内边距 3em */
+  line-height: 1.5;                      /* 行高 1.5 */
+  text-align: center;                    /* 居中对齐 */
+  color: #999;                           /* 浅灰色文字 */
+}
+
+
+/* -----------------
+ * 错误页面
+ * -------------- */
+.error-page {
+  margin-top: 100px;                     /* 上外边距 100px */
+  margin-bottom: 100px;                  /* 下外边距 100px */
+}
+
+
+/* -----------------
+ * 内容格式
+ *--------------- */
+.post-content, .comment-content {
+  line-height: 1.8;                      /* 行高 1.8（已修改） */
+  word-wrap: break-word;                 /* 长单词强制换行 */
+}
+.post-content h2, .comment-content h2 {
+  font-size: 1.28571em;                  /* 二级标题字号约 18px */
+}
+.post-content img, .comment-content img,
+.post-content video, .comment-content video {
+  max-width: 100%;                       /* 图片/视频最大宽度 100%，自适应 */
+  border-radius: 6px;                    /* 给媒体文件加圆角 */
+}
+.post-content a img,
+.comment-content a img {
+  background: #FFF;                      /* 图片链接背景白色 */
+  position: relative;
+  border-radius: 6px;
+  bottom: -4px;  /* 隐藏图片父链接的下边框 */
+}
+.post-content hr, .comment-content hr {
+  margin: 2em auto;                      /* 上下外边距 2em，水平居中 */
+  width: 100px;                          /* 宽度 100px */
+  border: 1px solid #E9E9E9;             /* 浅灰边框 */
+  border-width: 2px 0 0 0;               /* 只保留上边框，形成细横线 */
+}
+
+
+/* -----------------
+ * 杂项
+ *--------------- */
+.aligncenter, div.aligncenter {
+  display: block;                        /* 块级显示 */
+  margin-left: auto;                     /* 左边距自动，水平居中 */
+  margin-right: auto;                    /* 右边距自动 */
+}
+.alignleft {
+  float: left;                           /* 左浮动 */
+}
+.alignright {
+  float: right;                          /* 右浮动 */
+}
+img.alignleft {
+  margin: 0 15px 0 0;                    /* 左对齐图片右侧外边距 15px */
+}
+img.alignright {
+  margin: 0 0 0 15px;                    /* 右对齐图片左侧外边距 15px */
+}
+
+
+/* -----------------
+ * 响应式
+ *--------------- */
+@media (max-width: 767px) {
+  body {
+    font-size: 100%;                     /* 小屏幕基础字号改为 16px（已修改） */
+  }
+  #nav-menu a {
+    float: none;                         /* 取消浮动 */
+    display: inline-block;               /* 行内块排列 */
+    margin: 0 -2px;                      /* 左右负外边距，使边框重叠 */
+  }
+  .container {
+    padding-left: 16px;                  /* 增加左右内边距，防止内容贴边 */
+    padding-right: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  #header,
+  .post-title,
+  .post-meta {
+    text-align: center;                  /* 小屏幕页头、标题、元信息居中 */
+  }
+  #header {
+    padding-left: 30px;                  /* 头部增加左内边距 */
+  }
+  #nav-menu {
+    margin: 25px 0 0 -10px;
+  }
+}
+
+@media (min-width: 992px) {
+  /* 这里原本是空的，可以用于设置中等屏幕样式 */
+}
+
+/* =========================================
+ * 【已修改】1200px 屏幕下的容器宽度设置
+ * ========================================= */
+/* 当屏幕宽度大于等于 1200px 时（大屏电脑） */
+@media (min-width: 1200px) {
+  .container {
+    width: 80%;            /* 占据屏幕宽度的 80% */
+    max-width: 1280px;     /* 最大宽度限制在 1280px，防止超宽屏幕拉得太长 */
+    margin: 0 auto;        /* 确保内容居中 */
+  }
+}
+
+
+/* =========================================
+ * 辅助类 (隐藏、无障碍)
+ * ========================================= */
+/* 完全隐藏 (屏幕阅读器和浏览器都不显示) */
+.hidden {
+  display: none !important;              /* 强制隐藏 */
+  visibility: hidden; 
+}
+
+/* 仅供屏幕阅读器 (视觉上隐藏，但仍可被阅读器读取) */
+.sr-only {
+  border: 0;                             /* 无边框 */
+  height: 1px;                           /* 高度 1px */
+  margin: -1px;                          /* 负外边距，移出视口 */
+  overflow: hidden;                      /* 隐藏溢出 */
+  padding: 0;
+  position: absolute;                    /* 绝对定位 */
+  width: 1px;                            /* 宽度 1px */
+}
+
+/* 扩展 .sr-only，允许键盘聚焦时显示 */
+.sr-only.focusable:active,
+.sr-only.focusable:focus {
+  clip: auto;                            /* 取消裁剪 */
+  height: auto;                          /* 高度自动 */
+  margin: 0;                             /* 外边距归零 */
+  overflow: visible;                     /* 溢出可见 */
+  position: static;                      /* 静态定位 */
+  width: auto;                           /* 宽度自动 */
+}
+
+/* 隐藏但保留布局空间 */
+.invisible {
+  visibility: hidden;                    /* 不可见但占位 */
+}
+
+/* ============================================================
+ * 【补充】侧边栏字体优化（与正文体验保持一致）
+ * ============================================================ */
+#secondary {
+  font-size: 14px !important;            /* 侧边栏字号 14px */
+  line-height: 1.8 !important;           /* 侧边栏行高 1.8 */
+  color: #444 !important;                /* 保持原有深灰色 */
+}
+#secondary .widget-title {
+  font-size: 15px !important;            /* 小工具标题 15px */
+  font-weight: 600 !important;           /* 加粗 */
+  color: #444 !important;
+  margin-bottom: 8px !important;
+}
+#secondary .widget-list li {
+  margin: 6px 0 !important;
+  line-height: 1.8 !important;
+}
+#secondary .widget-list a {
+  color: #3354AA !important;             /* 保持原链接蓝色 */
+}
+#secondary .widget-list a:hover {
+  color: #444 !important;                /* 悬停变深灰 */
+}
