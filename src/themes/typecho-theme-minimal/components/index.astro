@@ -8,7 +8,7 @@
 import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink, buildCategoryLink } from '@/lib/content';
-// ⚠️ 唯一新增：导入摘要截取函数
+// ⚠️ 唯一新增：导入截取100字函数
 import { renderContentExcerpt } from '@/lib/markdown';
 
 type Props = ThemeIndexProps;
@@ -19,20 +19,6 @@ const {
 } = Astro.props;
 
 const isIndex = currentPath === '/';
-
-// ⚠️ 唯一新增：在渲染前处理首页摘要（100字截断 + 阅读更多）
-const processedPosts = posts.map((post: any) => {
-  const rawContent = post.content || post.excerpt || '';
-  let excerpt = rawContent;
-  if (rawContent) {
-    const cleanContent = rawContent
-      .replace(/<p class="more">.*?<\/p>/g, '')
-      .replace(/- 阅读剩余部分 -/g, '')
-      .trim();
-    excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
-  }
-  return { ...post, excerpt };
-});
 ---
 <Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
   <header id="header" class="clearfix">
@@ -65,7 +51,7 @@ const processedPosts = posts.map((post: any) => {
     <div class="container">
       <div class="row">
         <div class="col-mb-12 col-8" id="main" role="main">
-          {processedPosts.length === 0 ? (
+          {posts.length === 0 ? (
             <article class="post">
               <h2 class="post-title">暂时没有文章</h2>
               <div class="post-content">
@@ -73,42 +59,56 @@ const processedPosts = posts.map((post: any) => {
               </div>
             </article>
           ) : (
-            processedPosts.map((post) => (
-              <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
-                <h2 class="post-title" itemprop="name headline">
-                  <a itemprop="url" href={post.permalink}>{post.title}</a>
-                </h2>
-                <ul class="post-meta">
-                  <li itemprop="author" itemscope itemtype="http://schema.org/Person">
-                    作者: <a
-                      itemprop="name"
-                      href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'}
-                      rel="author"
-                    >
-                      {post.author?.screenName || post.author?.name || '未知'}
-                    </a>
-                  </li>
-                  <li>
-                    时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
-                      {formatDate(post.created, 'Y-m-d', options.timezone)}
-                    </time>
-                  </li>
-                  {post.categories.length > 0 && (
-                    <li>
-                      分类: {post.categories.map((c, i) => (
-                        <>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a></>
-                      ))}
+            posts.map((post) => {
+              // ⚠️ 只在这里处理摘要，不影响其他任何结构
+              let excerpt = post.excerpt || '';
+              const rawContent = post.content || post.excerpt || '';
+              if (rawContent) {
+                const cleanContent = rawContent
+                  .replace(/<p class="more">.*?<\/p>/g, '')
+                  .replace(/- 阅读剩余部分 -/g, '')
+                  .trim();
+                excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
+              }
+              
+              return (
+                <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+                  <h2 class="post-title" itemprop="name headline">
+                    <a itemprop="url" href={post.permalink}>{post.title}</a>
+                  </h2>
+                  <ul class="post-meta">
+                    <li itemprop="author" itemscope itemtype="http://schema.org/Person">
+                      作者: <a
+                        itemprop="name"
+                        href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'}
+                        rel="author"
+                      >
+                        {post.author?.screenName || post.author?.name || '未知'}
+                      </a>
                     </li>
-                  )}
-                  <li itemprop="interactionCount">
-                    <a itemprop="discussionUrl" href={`${post.permalink}#comments`}>
-                      {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
-                    </a>
-                  </li>
-                </ul>
-                <div class="post-content" itemprop="articleBody" set:html={post.excerpt} />
-              </article>
-            ))
+                    <li>
+                      时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
+                        {formatDate(post.created, 'Y-m-d', options.timezone)}
+                      </time>
+                    </li>
+                    {post.categories.length > 0 && (
+                      <li>
+                        分类: {post.categories.map((c, i) => (
+                          <>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a></>
+                        ))}
+                      </li>
+                    )}
+                    <li itemprop="interactionCount">
+                      <a itemprop="discussionUrl" href={`${post.permalink}#comments`}>
+                        {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
+                      </a>
+                    </li>
+                  </ul>
+                  {/* ⚠️ 这里用处理后的 excerpt，其他属性完全没动 */}
+                  <div class="post-content" itemprop="articleBody" set:html={excerpt} />
+                </article>
+              );
+            })
           )}
 
           {pagination.totalPages > 1 && (
