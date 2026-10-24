@@ -28,12 +28,70 @@ const isIndex = currentPath === '/';
           <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
           <p class="description">{options.description}</p>
         </div>
-        <div class="site-search col-3 kit-hidden-tb">
+        
+        <!-- 🌟 增加了一点点样式，让设置面板相对这个区域绝对定位 -->
+        <div class="site-search col-3 kit-hidden-tb" style="position: relative;">
           <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
             <label for="s" class="sr-only">搜索关键字</label>
             <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
             <button type="submit" class="submit">搜索</button>
           </form>
+
+          <!-- ========================================== -->
+          <!-- 🌟 主题设置面板 UI 开始 🌟 -->
+          <!-- ========================================== -->
+          <div class="theme-settings-wrapper">
+            <!-- 触发按钮 -->
+            <button class="theme-settings-toggle" aria-label="主题设置">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </button>
+
+            <!-- 弹出的面板 -->
+            <div class="theme-settings-panel">
+              <!-- 1. 界面模式 -->
+              <div class="setting-group">
+                <div class="setting-title">界面模式</div>
+                <div class="setting-options">
+                  <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
+                  <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
+                  <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
+                </div>
+              </div>
+              <!-- 2. 主题预设 -->
+              <div class="setting-group">
+                <div class="setting-title">主题预设</div>
+                <div class="setting-options color-options">
+                  <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
+                  <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
+                  <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
+                  <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
+                </div>
+              </div>
+              <!-- 3. 字号预设 -->
+              <div class="setting-group">
+                <div class="setting-title">字号预设</div>
+                <div class="setting-options">
+                  <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
+                  <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
+                  <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ========================================== -->
+          <!-- 🌟 主题设置面板 UI 结束 🌟 -->
+          <!-- ========================================== -->
+
         </div>
         <div class="col-mb-12">
           <nav id="nav-menu" class="clearfix" role="navigation">
