@@ -1,0 +1,253 @@
+---
+// ============================================================
+// 全局布局 Base.astro
+// ============================================================
+import type { SiteOptions } from '@/lib/options';
+import type { computeUrls } from '@/lib/options';
+import type { UserRow } from '@/lib/context';
+import { getThemeStylesheets } from '@/lib/theme';
+import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
+
+interface Props {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  options: SiteOptions;
+  urls: ReturnType<typeof computeUrls>;
+  user?: UserRow | null;
+  isLoggedIn?: boolean;
+  bodyClass?: string;
+  pageContext?: PageContext;
+  pluginCtx?: HookContext;
+}
+
+const {
+  title,
+  description,
+  keywords,
+  options,
+  urls,
+  user,
+  isLoggedIn = false,
+  bodyClass = '',
+  pageContext,
+  pluginCtx,
+} = Astro.props;
+
+const pageTitle = title ? `${title} - ${options.title}` : options.title;
+const themeStylesheets = getThemeStylesheets(options.theme || 'typecho-theme-minimal');
+
+// 收集插件客户端片段
+const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: new Set<string>() }, options as Record<string, any>, pageContext);
+---
+<!DOCTYPE html>
+<html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>
+<head>
+  <meta charset={options.charset || 'UTF-8'} />
+  <meta name="renderer" content="webkit" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{pageTitle}</title>
+  {description && <meta name="description" content={description} />}
+  {keywords && <meta name="keywords" content={keywords} />}
+  {themeStylesheets.map((href) => (
+    <link rel="stylesheet" href={href} />
+  ))}
+  <link rel="alternate" type="application/rss+xml" title={`${options.title} RSS`} href={urls.feedUrl} />
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <slot name="head" />
+  <Fragment set:html={pluginSnippets.headHtml} />
+
+  <!-- ============================================================
+       主题防闪烁及设置初始化脚本 (更新版)
+       ============================================================ -->
+  <script is:inline>
+    (function() {
+      // 1. 模式初始化
+      const pref = localStorage.getItem('hbw-theme-pref') || 'system';
+      let mode = pref;
+      if (pref === 'system') {
+        mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-pref', pref);
+      document.documentElement.setAttribute('data-mode', mode);
+
+      // 2. 配色初始化
+      const color = localStorage.getItem('hbw-theme-color') || 'blue';
+      document.documentElement.setAttribute('data-color', color);
+
+      // 3. 字号初始化
+      const font = localStorage.getItem('hbw-theme-font') || 'medium';
+      document.documentElement.setAttribute('data-font', font);
+    })();
+  </script>
+
+  <!-- ============================================================
+       全站外链新窗口打开脚本
+       ============================================================ -->
+  <script is:inline>
+    document.addEventListener('click', function(e) {
+      const link = e.target.closest('a');
+      if (
+        link &&
+        link.hostname &&
+        link.hostname !== window.location.hostname
+      ) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }, true);
+  </script>
+
+  <!-- ============================================================
+       回到顶部按钮样式（全局，Swup 切换后依然生效）
+       ============================================================ -->
+  <style is:global>
+    #back-to-top {
+      position: fixed !important;
+      right: 20px !important;
+      bottom: 30px !important;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--card-bg, #f5f5f5);
+      color: var(--text-color, #444);
+      border: 1px solid var(--border-color, #e0e0e0);
+      cursor: pointer;
+      z-index: 99999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
+      opacity: 0;
+      transform: translateY(10px);
+      visibility: hidden;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #back-to-top.show {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
+    }
+    #back-to-top:hover {
+      background: var(--border-color, #e0e0e0);
+      transform: translateY(-2px);
+    }
+    #back-to-top:active {
+      transform: scale(0.92);
+    }
+    /* 移动端：底部往上挪，避开手机浏览器工具栏和手势条 */
+    @media (max-width: 768px) {
+      #back-to-top {
+        right: 12px !important;
+        bottom: 80px !important;
+        bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+        width: 44px;
+        height: 44px;
+      }
+    }
+  </style>
+</head>
+<body class={bodyClass}>
+  <slot />
+  <Fragment set:html={pluginSnippets.bodyHtml} />
+
+  <!-- ============================================================
+       回到顶部按钮脚本（动态创建，Swup 切换后自动恢复）
+       ============================================================ -->
+  <script is:inline>
+    (function () {
+      function ensureButton() {
+        if (document.getElementById('back-to-top')) return;
+
+        var btn = document.createElement('button');
+        btn.id = 'back-to-top';
+        btn.setAttribute('aria-label', '返回顶部');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>';
+        document.body.appendChild(btn);
+
+        btn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      function onScroll() {
+        var b = document.getElementById('back-to-top');
+        if (!b) return;
+        var threshold = window.innerWidth <= 768 ? 200 : 300;
+        if (window.scrollY > threshold) {
+          b.classList.add('show');
+        } else {
+          b.classList.remove('show');
+        }
+      }
+
+      ensureButton();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      document.addEventListener('swup:contentReplaced', function () {
+        ensureButton();
+        onScroll();
+      });
+      document.addEventListener('swup:pageView', function () {
+        ensureButton();
+        onScroll();
+      });
+
+      var observer = new MutationObserver(function () {
+        ensureButton();
+      });
+      observer.observe(document.body, { childList: true, subtree: false });
+    })();
+  </script>
+
+  <!-- ============================================================
+       全局切换函数与事件委托 (加在 </body> 前)
+       ============================================================ -->
+  <script is:inline>
+    // 1. 监听系统主题变化 (如果用户选了"跟随系统")
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (localStorage.getItem('hbw-theme-pref') === 'system') {
+        document.documentElement.setAttribute('data-mode', e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // 2. 定义全局切换函数
+    window.setThemeMode = function(mode) {
+      localStorage.setItem('hbw-theme-pref', mode);
+      let actualMode = mode;
+      if (mode === 'system') {
+        actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-pref', mode);
+      document.documentElement.setAttribute('data-mode', actualMode);
+    };
+
+    window.setThemeColor = function(color) {
+      localStorage.setItem('hbw-theme-color', color);
+      document.documentElement.setAttribute('data-color', color);
+    };
+
+    window.setThemeFont = function(size) {
+      localStorage.setItem('hbw-theme-font', size);
+      document.documentElement.setAttribute('data-font', size);
+    };
+
+    // 3. 使用事件委托，完美兼容 Swup 切页
+    // 前端 HTML 只需这样写: <button data-theme-action="mode" data-theme-value="dark">
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-theme-action]');
+      if (!btn) return;
+      
+      const action = btn.getAttribute('data-theme-action');
+      const value = btn.getAttribute('data-theme-value');
+      
+      if (action === 'mode') window.setThemeMode(value);
+      if (action === 'color') window.setThemeColor(value);
+      if (action === 'font') window.setThemeFont(value);
+    });
+  </script>
+
+</body>
+</html>
