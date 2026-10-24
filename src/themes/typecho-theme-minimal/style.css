@@ -1,5 +1,5 @@
 /* ------------------------------------
- * Typecho 3 默认主题 (支持暗黑模式/多配色/字号调整)
+ * Typecho 4 默认主题 (支持暗黑模式/多配色/字号调整)
  * --------------------------------- */
 
 :root {
@@ -196,22 +196,22 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn.purple { background: #8b5cf6; }
 
 /* ============================================================
- * 🌟 终极强制覆盖：修复夜间模式主体颜色 🌟
+ * 🌟 终极强制覆盖：直接写死颜色值，无视一切变量！
  * ============================================================ */
 html[data-mode="dark"] .post-title, 
 html[data-mode="dark"] .post-title a,
 html[data-mode="dark"] .post-title a:visited {
-  color: #4a9eff !important;
+  color: #4a9eff !important; /* 直接写死亮蓝色 */
 }
 
 html[data-mode="dark"] .post-meta,
 html[data-mode="dark"] .post-meta li,
 html[data-mode="dark"] .post-meta a,
 html[data-mode="dark"] .post-meta time {
-  color: #a0a0a0 !important; 
+  color: #a0a0a0 !important; /* 直接写死浅灰色 */
 }
 
 html[data-mode="dark"] .post-content,
 html[data-mode="dark"] .post-content p {
-  color: #e0e0e0 !important;
+  color: #e0e0e0 !important; /* 直接写死亮灰色 */
 }
