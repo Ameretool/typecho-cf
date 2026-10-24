@@ -315,3 +315,16 @@ html[data-mode="dark"] .post-content,
 html[data-mode="dark"] .post-content p {
   color: var(--text-color) !important; 
 }
+
+/* ============================================================
+ * 侧边栏竖线（电脑端显示，手机端隐藏，颜色自动跟随主题）
+ * ============================================================ */
+@media (min-width: 992px) {
+  /* 给侧边栏的左侧画一条线，并增加内边距防止文字贴线 */
+  #secondary {
+    border-left: 1px solid var(--border-color) !important;
+    padding-left: 24px !important;
+    
+    /* 可选：如果你觉得贴得太紧，可以用 margin-left 调整侧边栏的左边距，或者调整 padding-left 的数字 */
+  }
+}
