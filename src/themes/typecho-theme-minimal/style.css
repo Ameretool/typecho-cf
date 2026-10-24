@@ -1,0 +1,637 @@
+/* ------------------------------------
+ * Typecho 默认主题 (支持暗黑模式/多配色/字号调整)
+ *
+ * @author  Typecho Team
+ * @link  http://typecho.org/
+ * @update  2013-10-28 (Dark Mode Modified)
+ * --------------------------------- */
+
+/* ============================================================
+ * 1. 基础变量定义 (:root)
+ * 说明：这里定义了全站通用的颜色和字号，方便下方全局调用
+ * ============================================================ */
+:root {
+  --bg-color:     #eaf2fb; /* 页面背景色（默认淡蓝护眼） */
+  --text-color:   #333a44; /* 主要文字颜色 */
+  --card-bg:      #dde8f5; /* 卡片/代码块/表头背景色 */
+  --border-color: #c5d5e8; /* 边框颜色（如分割线、表格边框） */
+  --accent-color: #3354AA; /* 强调色（链接、按钮等，默认蓝色） */
+  
+  --font-size-base: 16px;  /* 基础字号（正文大小） */
+}
+
+/* ============================================================
+ * 2. 配色预设 (对应截图中的颜色圆点)
+ * 说明：前端切换 data-color 属性时，这里的强调色会自动切换
+ * ============================================================ */
+[data-color="blue"]   { --accent-color: #3354AA; } /* 蓝色 */
+[data-color="green"]  { --accent-color: #10b981; } /* 绿色 */
+[data-color="orange"] { --accent-color: #f59e0b; } /* 橙色 */
+[data-color="purple"] { --accent-color: #8b5cf6; } /* 紫色 */
+
+/* ============================================================
+ * 3. 字号预设 (对应截图中的字号 A)
+ * 说明：前端切换 data-font 属性时，正文字号会自动调整
+ * ============================================================ */
+[data-font="small"]  { --font-size-base: 14px; } /* 小号字 */
+[data-font="medium"] { --font-size-base: 16px; } /* 中号字（默认） */
+[data-font="large"]  { --font-size-base: 18px; } /* 大号字 */
+
+/* ============================================================
+ * 4. 暗黑模式变量覆盖 (对应截图中的月亮图标)
+ * 说明：开启深色模式时，覆盖上方 :root 中的浅色变量
+ * ============================================================ */
+[data-theme="dark"] {
+  --bg-color:     #121212; /* 护眼深灰背景（避免纯黑） */
+  --text-color:   #e0e0e0; /* 浅灰文字（避免纯白刺眼） */
+  --card-bg:      #1e1e1e; /* 深色卡片背景 */
+  --border-color: #333333; /* 深色边框 */
+  
+  /* 针对暗黑模式提亮强调色，保证阅读对比度 */
+  --accent-color-dark: #4a9eff; 
+}
+
+/* ------------------
+ * 全局样式
+ * --------------- */
+body {
+  background-color: var(--bg-color);     /* 应用背景变量 */
+  color: var(--text-color);              /* 应用文字变量 */
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
+  font-size: var(--font-size-base);      /* 应用字号变量 */
+  transition: background-color 0.3s, color 0.3s; /* 切换模式时的平滑过渡动画 */
+}
+
+/* 链接基础样式 */
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+a:hover, a:active {
+  color: var(--text-color);
+}
+
+/* 登出表单样式 */
+.logout-form {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+.logout-form button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-color);
+  font: inherit;
+  cursor: pointer;
+}
+.logout-form button:hover,
+.logout-form button:active {
+  color: var(--text-color);
+}
+
+/* =========================================
+ * GitHub 风格表格与代码块样式
+ * ========================================= */
+
+/* 1. 表格整体外框 */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+  margin-bottom: 16px !important;
+  border: none !important;
+  box-shadow: 0 0 0 2px var(--border-color) !important; /* 用阴影画外框，适配暗黑模式 */
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  font-size: 15px !important;
+}
+
+/* 2. 单元格内阴影画线 */
+table th,
+table td {
+  padding: 12px 16px !important;
+  border: none !important;
+  vertical-align: middle !important;
+  box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important;
+}
+
+/* 3. 去除表格最右侧多余的阴影线 */
+table tr > *:last-child {
+  box-shadow: 0 1px 0 0 var(--border-color) !important;
+}
+
+/* 4. 表头背景与文字 */
+table th {
+  background-color: var(--card-bg) !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  color: var(--text-color) !important;
+}
+
+/* 5. 表格内容行悬停效果 */
+table tbody tr:hover {
+  background-color: var(--card-bg) !important;
+}
+
+/* 6. 表格内代码块 */
+table td code {
+  background-color: rgba(175, 184, 193, 0.2) !important; /* 半透明背景，亮暗皆宜 */
+  color: var(--text-color) !important;
+  padding: 3px 6px !important;
+  border-radius: 6px !important;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
+  font-size: 85% !important;
+}
+
+/* 7. 普通代码块 (pre) */
+pre {
+  background-color: var(--card-bg) !important;
+  padding: 16px !important;
+  border-radius: 6px !important;
+  overflow: auto !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  color: var(--text-color) !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  font-size: .92857em !important;
+}
+
+/* 引用块样式 */
+blockquote {
+  margin: 1em 0;
+  padding-left: 1.5em;
+  border-left: 4px solid var(--border-color);
+  color: var(--text-color);
+  opacity: 0.8; /* 用透明度降低亮度，适配亮暗模式 */
+}
+
+/* 标题字体族 (无衬线体) */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "WenQuanYi Micro Hei","Microsoft Yahei", sans-serif;
+}
+
+/* 表单输入框基础样式 */
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+textarea {
+  padding: 5px;
+  border: 1px solid var(--border-color);
+  width: 100%;
+  border-radius: 2px;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  background-color: var(--bg-color); /* 适配深色输入框背景 */
+  color: var(--text-color);          /* 适配深色输入框文字 */
+}
+textarea {
+  resize: vertical;
+}
+
+/* 特殊链接样式（底部下划线） */
+.post-meta a,
+.post-content a,
+.widget a,
+.comment-content a {
+  border-bottom: 1px solid var(--border-color);
+}
+.post-meta a:hover,
+.post-content a:hover,
+.widget a:hover,
+.comment-content a:hover {
+  border-bottom-color: transparent;
+}
+
+/* ------------------
+ * 页头
+ * --------------- */
+#header {
+  padding-top: 35px;
+  border-bottom: 1px solid var(--border-color);
+}
+#logo {
+  color: var(--text-color);
+  font-size: 2.5em;
+}
+#logo img {
+    max-height: 64px;
+}
+.description {
+  margin: .5em 0 0;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* 导航菜单 */
+#nav-menu {
+  margin: 25px 0 0;
+  padding: 0;
+}
+#nav-menu a {
+  display: block;
+  margin-right: -1px;
+  padding: 0 20px;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  height: 32px;
+  line-height: 32px;
+  color: var(--text-color);
+  float: left;
+}
+#nav-menu a:hover,
+#nav-menu .current {
+  background: var(--card-bg);
+}
+
+/* 搜索框 */
+#search {
+  position: relative;
+  margin-top: 15px;
+}
+#search input {
+  padding-right: 30px;
+}
+#search button {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  border: none;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+  direction: ltr;
+  font-size: 0;
+  color: transparent;
+}
+#search button:before {
+  content: "\1F50D";
+  font-size: 14px;
+  color: var(--text-color);
+  opacity: 0.5;
+}
+
+/* ------------------
+ * 主内容区
+ * --------------- */
+.post {
+  padding: 15px 0 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.post-title {
+  margin: .83em 0;
+  font-size: 1.4em;
+}
+.post-meta {
+  margin-top: -0.5em;
+  padding: 0;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: .92857em;
+}
+.post-meta li {
+  display: inline-block;
+  margin: 0 8px 0 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-color);
+}
+.post-meta li:first-child {
+  margin-left: 0;
+  padding-left: 0;
+  border: none;
+}
+.post-content {
+  font-size: var(--font-size-base); /* 文章正文应用字号变量 */
+  line-height: 1.8;
+}
+.post .tags {
+  clear: both;
+}
+.post-near {
+  list-style: none;
+  margin: 30px 0;
+  padding: 0;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+.post-near li {
+  margin: 10px 0;
+}
+.archive-title {
+  margin: 1em 0 -1em;
+  padding-top: 20px;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: 1em;
+}
+.more {
+  text-align: center;
+}
+.more a {
+  border: none;
+}
+.protected .text {
+  width: 50%;
+}
+
+/* 分页导航 */
+.page-navigator {
+  list-style: none;
+  margin: 25px 0;
+  padding: 0;
+  text-align: center;
+}
+.page-navigator li {
+  display: inline-block;
+  margin: 0 4px;
+}
+.page-navigator a {
+  display: inline-block;
+  padding: 0 10px;
+  height: 30px;
+  line-height: 30px;
+}
+.page-navigator a:hover {
+  background: var(--card-bg);
+  text-decoration: none;
+}
+.page-navigator .current a {
+  color: var(--text-color);
+  background: var(--card-bg);
+}
+
+/* ------------------
+ * 评论列表
+ * --------------- */
+#comments {
+  padding-top: 15px;
+}
+.comment-list, .comment-list ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.comment-list li {
+  padding: 14px;
+  margin-top: 10px;
+  border: 1px solid var(--border-color);
+}
+.comment-list li.comment-level-odd {
+  background: var(--card-bg); /* 奇数层背景应用变量 */
+}
+.comment-list li.comment-level-even {
+  background: var(--bg-color); /* 偶数层背景应用变量 */
+}
+.comment-list li.comment-by-author {
+  background: rgba(255, 235, 59, 0.1); /* 作者评论：半透明黄色，亮暗模式下都柔和 */
+}
+.comment-list li .comment-reply {
+  text-align: right;
+  font-size: .92857em;
+}
+.comment-meta a {
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: .92857em;
+}
+.comment-author {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-color);
+}
+.comment-author .avatar {
+  float: left;
+  margin-right: 10px;
+}
+.comment-author cite {
+  font-weight: bold;
+  font-style: normal;
+}
+
+/* 评论回复表单 */
+.comment-list .respond {
+  margin-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+.respond .cancel-comment-reply {
+  float: right;
+  margin-top: 15px;
+  font-size: .92857em;
+}
+#comment-form label {
+  display: block;
+  margin-bottom: .5em;
+  font-weight: bold;
+}
+#comment-form .required:after {
+  content: " *";
+  color: #C00; /* 必填红星保持原样 */
+}
+
+/* ------------------
+ * 侧栏
+ * --------------- */
+#secondary {
+  padding-top: 15px;
+  word-wrap: break-word;
+}
+.widget {
+  margin-bottom: 30px;
+}
+.widget-list {
+  list-style: none;
+  padding: 0;
+}
+.widget-list li {
+  margin: 5px 0;
+  line-height: 1.6;
+}
+.widget-list li ul {
+  margin-left: 15px;
+}
+
+/* ------------------
+ * 页脚
+ * --------------- */
+#footer {
+  padding: 3em 0;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+/* -----------------
+ * 错误页面
+ * -------------- */
+.error-page {
+  margin-top: 100px;
+  margin-bottom: 100px;
+}
+
+/* -----------------
+ * 内容格式
+ *--------------- */
+.post-content, .comment-content {
+  line-height: 1.8;
+  word-wrap: break-word;
+}
+.post-content h2, .comment-content h2 {
+  font-size: 1.28571em;
+}
+.post-content img, .comment-content img,
+.post-content video, .comment-content video {
+  max-width: 100%;
+  border-radius: 6px;
+}
+.post-content a img,
+.comment-content a img {
+  background: var(--bg-color); /* 图片链接背景跟随主题色 */
+  position: relative;
+  border-radius: 6px;
+  bottom: -4px;
+}
+.post-content hr, .comment-content hr {
+  margin: 2em auto;
+  width: 100px;
+  border: 1px solid var(--border-color);
+  border-width: 2px 0 0 0;
+}
+
+/* -----------------
+ * 杂项
+ *--------------- */
+.aligncenter, div.aligncenter {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+.alignleft {
+  float: left;
+}
+.alignright {
+  float: right;
+}
+img.alignleft {
+  margin: 0 15px 0 0;
+}
+img.alignright {
+  margin: 0 0 0 15px;
+}
+
+/* -----------------
+ * 响应式 (移动端适配)
+ *--------------- */
+@media (max-width: 767px) {
+  body {
+    font-size: var(--font-size-base); /* 移动端基础字号同步变量 */
+  }
+  #nav-menu a {
+    float: none;
+    display: inline-block;
+    margin: 0 -2px;
+  }
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  #header,
+  .post-title,
+  .post-meta {
+    text-align: center;
+  }
+  #header {
+    padding-left: 30px;
+  }
+  #nav-menu {
+    margin: 25px 0 0 -10px;
+  }
+}
+
+@media (min-width: 992px) {}
+
+@media (min-width: 1200px) {
+  .container {
+    width: 80%;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+}
+
+/* =========================================
+ * 辅助类 (隐藏、无障碍)
+ * ========================================= */
+.hidden {
+  display: none !important;
+  visibility: hidden; 
+}
+.sr-only {
+  border: 0;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+.sr-only.focusable:active,
+.sr-only.focusable:focus {
+  clip: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  position: static;
+  width: auto;
+}
+.invisible {
+  visibility: hidden;
+}
+
+/* ============================================================
+ * 侧边栏字体优化
+ * ============================================================ */
+#secondary {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+  color: var(--text-color) !important;
+}
+#secondary .widget-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--text-color) !important;
+  margin-bottom: 8px !important;
+}
+#secondary .widget-list li {
+  margin: 6px 0 !important;
+  line-height: 1.8 !important;
+}
+#secondary .widget-list a {
+  color: var(--accent-color) !important;
+}
+#secondary .widget-list a:hover {
+  color: var(--text-color) !important;
+}
+
+/* ============================================================
+ * 暗黑模式特殊修正 (微调暗黑模式下的强调色)
+ * ============================================================ */
+[data-theme="dark"] a,
+[data-theme="dark"] #secondary .widget-list a {
+  color: var(--accent-color-dark, var(--accent-color)); /* 暗黑模式下使用略亮的强调色 */
+}
+[data-theme="dark"] .comment-list li.comment-level-odd {
+  background: #1e1e1e; /* 暗黑模式下评论背景微调，与背景色区分 */
+}
