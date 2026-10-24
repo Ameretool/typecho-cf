@@ -29,7 +29,7 @@ const isIndex = currentPath === '/';
           <p class="description">{options.description}</p>
         </div>
 
-        <!-- 搜索框区域：移除了设置面板，恢复纯净搜索 -->
+        <!-- 搜索框区域 -->
         <div class="site-search col-3 kit-hidden-tb">
           <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
             <label for="s" class="sr-only">搜索关键字</label>
@@ -38,9 +38,8 @@ const isIndex = currentPath === '/';
           </form>
         </div>
 
-        <!-- 导航栏区域：包含设置面板 -->
+        <!-- 导航栏区域 -->
         <div class="col-mb-12">
-          <!-- 使用 flex 布局让导航靠左，设置按钮靠右 -->
           <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 25px;">
             
             <!-- 左侧导航菜单 -->
@@ -68,8 +67,8 @@ const isIndex = currentPath === '/';
                 </svg>
               </button>
 
-              <!-- 弹出的面板：使用 bottom 让它向上弹出 -->
-             <div class="theme-settings-panel" style="top: 35px; bottom: auto;">
+              <!-- 弹出的面板：改为向下弹出 (top: 35px) -->
+              <div class="theme-settings-panel" style="top: 35px; bottom: auto;">
                 <!-- 1. 界面模式 -->
                 <div class="setting-group">
                   <div class="setting-title">界面模式</div>
@@ -121,7 +120,6 @@ const isIndex = currentPath === '/';
             </article>
           ) : (
             posts.map((post) => {
-              // ⚠️ 只在这里处理摘要，不影响其他任何结构
               let excerpt = post.excerpt || '';
               const rawContent = post.content || post.excerpt || '';
               if (rawContent) {
@@ -165,7 +163,6 @@ const isIndex = currentPath === '/';
                       </a>
                     </li>
                   </ul>
-                  {/* ⚠️ 这里用处理后的 excerpt，其他属性完全没动 */}
                   <div class="post-content" itemprop="articleBody" set:html={excerpt} />
                 </article>
               );
@@ -216,20 +213,6 @@ const isIndex = currentPath === '/';
                 </ul>
               </section>
             )}
-
-                 {/* 隐藏 归档 */}
-              {/* 
-            {sidebarData.archives && sidebarData.archives.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">归档</h3>
-                <ul class="widget-list">
-                  {sidebarData.archives.map((archive) => (
-                    <li><a href={archive.permalink}>{archive.date}</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            */}
 
             <section class="widget">
               <h3 class="widget-title">其它</h3>
