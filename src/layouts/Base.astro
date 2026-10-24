@@ -58,7 +58,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <Fragment set:html={pluginSnippets.headHtml} />
 
   <!-- ============================================================
-       主题防闪烁及设置初始化脚本 (更新版)
+       主题防闪烁及设置初始化脚本
        ============================================================ -->
   <script is:inline>
     (function() {
@@ -99,7 +99,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
   <!-- ============================================================
-       回到顶部按钮样式（全局，Swup 切换后依然生效）
+       回到顶部按钮样式
        ============================================================ -->
   <style is:global>
     #back-to-top {
@@ -137,7 +137,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     #back-to-top:active {
       transform: scale(0.92);
     }
-    /* 移动端：底部往上挪，避开手机浏览器工具栏和手势条 */
     @media (max-width: 768px) {
       #back-to-top {
         right: 12px !important;
@@ -154,7 +153,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   <Fragment set:html={pluginSnippets.bodyHtml} />
 
   <!-- ============================================================
-       回到顶部按钮脚本（动态创建，Swup 切换后自动恢复）
+       回到顶部按钮脚本
        ============================================================ -->
   <script is:inline>
     (function () {
@@ -203,17 +202,17 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
   <!-- ============================================================
-       全局切换函数与事件委托 (加在 </body> 前)
+       全局主题切换与面板控制逻辑
        ============================================================ -->
   <script is:inline>
-    // 1. 监听系统主题变化 (如果用户选了"跟随系统")
+    // 1. 监听系统主题变化
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
       if (localStorage.getItem('hbw-theme-pref') === 'system') {
         document.documentElement.setAttribute('data-mode', e.matches ? 'dark' : 'light');
       }
     });
 
-    // 2. 定义全局切换函数
+    // 2. 切换函数
     window.setThemeMode = function(mode) {
       localStorage.setItem('hbw-theme-pref', mode);
       let actualMode = mode;
@@ -234,9 +233,22 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       document.documentElement.setAttribute('data-font', size);
     };
 
-    // 3. 使用事件委托，完美兼容 Swup 切页
-    // 前端 HTML 只需这样写: <button data-theme-action="mode" data-theme-value="dark">
+    // 3. 事件委托
     document.addEventListener('click', function(e) {
+      // 处理面板开关
+      const toggleBtn = e.target.closest('.theme-settings-toggle');
+      if (toggleBtn) {
+        toggleBtn.parentElement.classList.toggle('active');
+        return; 
+      }
+
+      // 点击外部关闭面板
+      const wrapper = document.querySelector('.theme-settings-wrapper');
+      if (wrapper && !e.target.closest('.theme-settings-wrapper')) {
+        wrapper.classList.remove('active');
+      }
+
+      // 处理设置切换
       const btn = e.target.closest('[data-theme-action]');
       if (!btn) return;
       
