@@ -1,5 +1,5 @@
 /* ------------------------------------
- * Typecho 默认主题 (全屏换肤终极版 - 圆点完美修复)
+ * Typecho 默认主题 (全屏换肤终极版)
  * --------------------------------- */
 
 /* ============================================================
@@ -7,20 +7,29 @@
  * ============================================================ */
 :root {
   --font-size-base: 16px;
-  /* 默认兜底亮色 (GitHub 浅色) */
-  --bg-color:     #f6f8fa;
-  --text-color:   #24292f;
-  --card-bg:      #eaeef2;
-  --border-color: #d0d7de;
-  --accent-color: #0969da;
+  /* 默认兜底亮色 */
+  --bg-color:     #e8f6f3;
+  --text-color:   #333333;
+  --card-bg:      #d8f0eb;
+  --border-color: #bce3dc;
+  --accent-color: #1b7a6c;
 }
 
 /* ============================================================
- * 2. 亮色模式预设 (对应面板 4 个圆点)
+ * 2. 亮色模式预设 (第 1 个圆点为你截图里的淡蓝)
  * ============================================================ */
 
-/* ☀️ 亮色 1：GitHub 浅色 (默认主色，对应面板第 1 个圆点) */
+/* ☀️ 亮色 1：清新淡青护眼 (放在第一位) */
 [data-color="blue"] { 
+  --accent-color: #1b7a6c; /* 深青色链接 */
+  --bg-color: #e8f6f3;     /* 极淡青蓝背景 */
+  --text-color: #333333;   /* 深灰文字 */
+  --border-color: #bce3dc; /* 浅青边框 */
+  --card-bg: #d8f0eb;      /* 浅青卡片 */
+}
+
+/* ☀️ 亮色 2：GitHub 浅色极简 */
+[data-color="green"] { 
   --accent-color: #0969da; 
   --bg-color: #f6f8fa; 
   --text-color: #24292f; 
@@ -28,16 +37,7 @@
   --card-bg: #eaeef2; 
 }
 
-/* ☀️ 亮色 2：淡蓝护眼 (对应面板第 2 个圆点) */
-[data-color="green"] { 
-  --accent-color: #3354AA; 
-  --bg-color: #eaf2fb; 
-  --text-color: #333a44; 
-  --border-color: #c5d5e8; 
-  --card-bg: #dde8f5; 
-}
-
-/* ☀️ 亮色 3：浅灰极简 (对应面板第 3 个圆点) */
+/* ☀️ 亮色 3：浅灰极简 */
 [data-color="orange"] { 
   --accent-color: #555555; 
   --bg-color: #f7f8fa; 
@@ -46,7 +46,7 @@
   --card-bg: #eef0f3; 
 }
 
-/* ☀️ 亮色 4：藕荷粉 (对应面板第 4 个圆点) */
+/* ☀️ 亮色 4：藕荷粉 */
 [data-color="purple"] { 
   --accent-color: #9c4f7a; 
   --bg-color: #f5eef2; 
@@ -56,10 +56,10 @@
 }
 
 /* ============================================================
- * 3. 暗黑模式预设 (对应面板 4 个圆点)
+ * 3. 暗黑模式预设 (第 1 个圆点为 GitHub 暗色)
  * ============================================================ */
 
-/* 🌙 暗色 1：GitHub 暗色 (对应面板第 1 个圆点) */
+/* 🌙 暗色 1：GitHub 暗色 (放在第一位) */
 html[data-mode="dark"][data-color="blue"] {
   --accent-color: #539bf5; 
   --bg-color: #22272e; 
@@ -68,16 +68,16 @@ html[data-mode="dark"][data-color="blue"] {
   --card-bg: #2d333b;
 }
 
-/* 🌙 暗色 2：深蓝底 (对应面板第 2 个圆点) */
+/* 🌙 暗色 2：极光深青 (配合亮色1的暗色版) */
 html[data-mode="dark"][data-color="green"] {
-  --accent-color: #5b9bd5; 
-  --bg-color: #1a2230; 
-  --text-color: #b8c6d9; 
-  --border-color: #38445c; 
-  --card-bg: #232d3f;
+  --accent-color: #34d399; 
+  --bg-color: #0f172a; 
+  --text-color: #ccfbf1; 
+  --border-color: #134e4a; 
+  --card-bg: #1e293b;
 }
 
-/* 🌙 暗色 3：护眼暗蓝 (对应面板第 3 个圆点) */
+/* 🌙 暗色 3：护眼暗蓝 */
 html[data-mode="dark"][data-color="orange"] {
   --accent-color: #5b9bd5; 
   --bg-color: #1e2633; 
@@ -86,7 +86,7 @@ html[data-mode="dark"][data-color="orange"] {
   --card-bg: #2a3446;
 }
 
-/* 🌙 暗色 4：护眼暗棕 (对应面板第 4 个圆点) */
+/* 🌙 暗色 4：护眼暗棕 */
 html[data-mode="dark"][data-color="purple"] {
   --accent-color: #c8a878; 
   --bg-color: #2b2620; 
@@ -285,17 +285,17 @@ img.alignright { margin: 0 0 0 15px; }
  * 🌟 核心：让圆点颜色根据模式自动变化
  * ============================================================ */
 
-/* 亮色模式下的圆点颜色 (取自对应主题的链接色) */
-.color-btn.blue { background: #0969da !important; }   /* 蓝 */
-.color-btn.green { background: #3354AA !important; }  /* 深蓝 */
-.color-btn.orange { background: #555555 !important; } /* 灰 */
-.color-btn.purple { background: #9c4f7a !important; } /* 粉 */
+/* 亮色模式下的圆点颜色 */
+.color-btn.blue { background: #1b7a6c !important; }   /* 第1个：清新深青 */
+.color-btn.green { background: #0969da !important; }  /* 第2个：GitHub 蓝 */
+.color-btn.orange { background: #555555 !important; } /* 第3个：浅灰 */
+.color-btn.purple { background: #9c4f7a !important; } /* 第4个：藕荷粉 */
 
-/* 暗色模式下的圆点颜色 (使用亮色高亮，在深色面板上极其明显) */
-html[data-mode="dark"] .color-btn.blue { background: #539bf5 !important; }   /* GitHub亮蓝 */
-html[data-mode="dark"] .color-btn.green { background: #5b9bd5 !important; }  /* 柔和蓝 */
-html[data-mode="dark"] .color-btn.orange { background: #7ba4d9 !important; } /* 护眼蓝 (为了区分加亮) */
-html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; } /* 咖啡棕 */
+/* 暗色模式下的圆点颜色 */
+html[data-mode="dark"] .color-btn.blue { background: #539bf5 !important; }   /* 第1个：GitHub 亮蓝 */
+html[data-mode="dark"] .color-btn.green { background: #34d399 !important; }  /* 第2个：亮青色 */
+html[data-mode="dark"] .color-btn.orange { background: #999999 !important; } /* 第3个：亮灰 */
+html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; } /* 第4个：暗棕 */
 
 /* ============================================================
  * 🌟 终极修复：夜间模式主体颜色跟随主题同步 🌟
