@@ -28,8 +28,6 @@ const isIndex = currentPath === '/';
           <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
           <p class="description">{options.description}</p>
         </div>
-        
-        <!-- 🌟 增加了一点点样式，让设置面板相对这个区域绝对定位 -->
         <div class="site-search col-3 kit-hidden-tb" style="position: relative;">
           <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
             <label for="s" class="sr-only">搜索关键字</label>
@@ -88,9 +86,7 @@ const isIndex = currentPath === '/';
               </div>
             </div>
           </div>
-          <!-- ========================================== -->
           <!-- 🌟 主题设置面板 UI 结束 🌟 -->
-          <!-- ========================================== -->
 
         </div>
         <div class="col-mb-12">
