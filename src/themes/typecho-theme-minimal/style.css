@@ -219,7 +219,7 @@ textarea {
   border-bottom: 1px solid var(--border-color);
 }
 #logo {
-  color: var(--text-color);
+  color: var(--text-color) !important; /* 强制 Logo 跟随变量 */
   font-size: 2.5em;
 }
 #logo img {
@@ -293,6 +293,12 @@ textarea {
   margin: .83em 0;
   font-size: 1.4em;
 }
+
+/* 🌟 强制文章标题链接跟随强调色 */
+.post-title a {
+  color: var(--accent-color) !important;
+}
+
 .post-meta {
   margin-top: -0.5em;
   padding: 0;
@@ -314,6 +320,7 @@ textarea {
 .post-content {
   font-size: var(--font-size-base); /* 文章正文应用字号变量 */
   line-height: 1.8;
+  color: var(--text-color) !important; /* 🌟 强制正文文字跟随变量 */
 }
 .post .tags {
   clear: both;
@@ -633,6 +640,13 @@ img.alignright {
 [data-mode="dark"] #secondary .widget-list a {
   color: var(--accent-color-dark, var(--accent-color)); /* 暗黑模式下使用略亮的强调色 */
 }
+
+/* 暗黑模式下的文章标题微调 */
+[data-mode="dark"] .post-title,
+[data-mode="dark"] .post-title a {
+  color: var(--accent-color-dark, #4a9eff) !important;
+}
+
 [data-mode="dark"] .comment-list li.comment-level-odd {
   background: #1e1e1e; /* 暗黑模式下评论背景微调，与背景色区分 */
 }
