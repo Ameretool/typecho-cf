@@ -1,0 +1,173 @@
+/* ------------------------------------
+ * Typecho 多配色/暗黑模式终极版 (仅 CSS)
+ * --------------------------------- */
+
+/* ============================================================
+ * 1. 基础兜底变量 (防止无 JS 时显示异常)
+ * ============================================================ */
+:root {
+  --bg-color: #f6f8fa; --text-color: #24292f; --card-bg: #eaeef2; --border-color: #d0d7de; --accent-color: #0969da;
+  --table-border: #d0d7de; --table-header-bg: #f6f8fa; --table-hover-bg: #eaeef2; --code-bg: #f6f8fa; --code-text: #24292f;
+}
+
+/* ============================================================
+ * 2. 8 套全独立配色预设 (由前端圆点直接触发)
+ * ============================================================ */
+/* ☀️ 亮色 1：GitHub 浅色 */
+[data-color="light-github"] {
+  --bg-color: #f6f8fa; --text-color: #24292f; --card-bg: #eaeef2; --border-color: #d0d7de; --accent-color: #0969da;
+  --table-border: #d0d7de; --table-header-bg: #f6f8fa; --table-hover-bg: #eaeef2; --code-bg: #f6f8fa; --code-text: #24292f;
+}
+/* ☀️ 亮色 2：淡蓝护眼 */
+[data-color="light-blue"] {
+  --bg-color: #eaf2fb; --text-color: #333a44; --card-bg: #dde8f5; --border-color: #c5d5e8; --accent-color: #3354AA;
+  --table-border: #9db6d6; --table-header-bg: #d5e2f2; --table-hover-bg: #c4d6eb; --code-bg: #d5e2f2; --code-text: #2a3a52;
+}
+/* ☀️ 亮色 3：浅灰极简 */
+[data-color="light-gray"] {
+  --bg-color: #f7f8fa; --text-color: #333333; --card-bg: #eef0f3; --border-color: #c0c4cc; --accent-color: #555555;
+  --table-border: #b4b9c2; --table-header-bg: #eef0f3; --table-hover-bg: #dfe2e7; --code-bg: #eef0f3; --code-text: #333333;
+}
+/* ☀️ 亮色 4：藕荷粉 */
+[data-color="light-pink"] {
+  --bg-color: #f5eef2; --text-color: #3e3339; --card-bg: #ece0e7; --border-color: #c4a9b6; --accent-color: #9c4f7a;
+  --table-border: #b89aa8; --table-header-bg: #ece0e7; --table-hover-bg: #e0d0d9; --code-bg: #ece0e7; --code-text: #3e3339;
+}
+
+/* 🌙 暗色 1：GitHub 暗色 */
+[data-color="dark-github"] {
+  --bg-color: #22272e; --text-color: #adbac7; --card-bg: #2d333b; --border-color: #444c56; --accent-color: #539bf5;
+  --table-border: #444c56; --table-header-bg: #2d333b; --table-hover-bg: #373e47; --code-bg: #2d333b; --code-text: #adbac7;
+}
+/* 🌙 暗色 2：深蓝底 */
+[data-color="dark-blue"] {
+  --bg-color: #1a2230; --text-color: #b8c6d9; --card-bg: #232d3f; --border-color: #38445c; --accent-color: #5b9bd5;
+  --table-border: #38445c; --table-header-bg: #232d3f; --table-hover-bg: #2c3849; --code-bg: #232d3f; --code-text: #b8c6d9;
+}
+/* 🌙 暗色 3：护眼暗蓝 */
+[data-color="dark-blue2"] {
+  --bg-color: #1e2633; --text-color: #b8c6d9; --card-bg: #2a3446; --border-color: #3e4a60; --accent-color: #5b9bd5;
+  --table-border: #3e4a60; --table-header-bg: #2a3446; --table-hover-bg: #334054; --code-bg: #2a3446; --code-text: #b8c6d9;
+}
+/* 🌙 暗色 4：护眼暗棕 */
+[data-color="dark-brown"] {
+  --bg-color: #2b2620; --text-color: #d4c8b8; --card-bg: #38322a; --border-color: #4a4238; --accent-color: #c8a878;
+  --table-border: #4a4238; --table-header-bg: #38322a; --table-hover-bg: #443d33; --code-bg: #38322a; --code-text: #d4c8b8;
+}
+
+/* 字号预设 */
+[data-font="small"]  { --font-size-base: 14px; }
+[data-font="medium"] { --font-size-base: 16px; }
+[data-font="large"]  { --font-size-base: 18px; }
+
+/* ============================================================
+ * 3. 全局基础样式
+ * ============================================================ */
+html { -webkit-tap-highlight-color: transparent; }
+body {
+  background-color: var(--bg-color); color: var(--text-color);
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
+  font-size: var(--font-size-base, 16px);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+a { color: var(--accent-color); text-decoration: none; }
+a:hover, a:active { color: var(--text-color); }
+button { -webkit-appearance: button; background-color: var(--accent-color); border: none; color: #fff; padding: 5px 15px; text-align: center; text-decoration: none; display: inline-block; border-radius: 6px; }
+.logout-form { display: inline; margin: 0; padding: 0; }
+.logout-form button { padding: 0; border: 0; background: transparent; color: var(--accent-color); font: inherit; cursor: pointer; }
+.logout-form button:hover, .logout-form button:active { color: var(--text-color); }
+
+/* ============================================================
+ * 4. 表格与代码块
+ * ============================================================ */
+table { border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; margin-bottom: 16px !important; border: none !important; box-shadow: 0 0 0 2px var(--table-border) !important; border-radius: 6px !important; overflow: hidden !important; font-size: 15px !important; }
+table th, table td { padding: 12px 16px !important; border: none !important; vertical-align: middle !important; box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important; }
+table tr > *:last-child { box-shadow: 0 1px 0 0 var(--table-border) !important; }
+table th { background-color: var(--table-header-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--code-text) !important; }
+table tbody tr:hover { background-color: var(--table-hover-bg) !important; }
+table td code { background-color: var(--table-hover-bg) !important; color: var(--code-text) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: monospace !important; font-size: 85% !important; }
+pre { background-color: var(--code-bg) !important; padding: 16px !important; border-radius: 6px !important; overflow: auto !important; white-space: pre-wrap !important; word-wrap: break-word !important; }
+pre code { background-color: transparent !important; padding: 0 !important; color: var(--code-text) !important; white-space: pre-wrap !important; word-wrap: break-word !important; font-size: .92857em !important; }
+blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.85; }
+h1, h2, h3, h4, h5, h6 { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--text-color); }
+
+input[type="text"], input[type="email"], input[type="url"], input[type="password"], textarea { padding: 5px; border: 1px solid var(--border-color); width: 100%; border-radius: 2px; box-sizing: border-box; background: var(--bg-color); color: var(--text-color); }
+textarea { resize: vertical; }
+
+/* ============================================================
+ * 5. 头部与导航
+ * ============================================================ */
+#header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
+#logo { color: var(--text-color); font-size: 2.5em; }
+#logo img { max-height: 64px; }
+.description { margin: .5em 0 0; color: var(--text-color); opacity: 0.6; font-style: italic; }
+#nav-menu { margin: 25px 0 0; padding: 0; }
+#nav-menu a { display: block; margin-right: -1px; padding: 0 20px; border: 1px solid var(--border-color); border-bottom: none; height: 32px; line-height: 32px; color: var(--text-color); background: var(--bg-color); float: left; transition: background 0.2s ease, color 0.2s ease; }
+#nav-menu a:hover { background: var(--card-bg); color: var(--accent-color); }
+#nav-menu a.current { background: var(--card-bg); color: var(--accent-color); font-weight: 700; border-color: var(--accent-color); }
+
+#search { position: relative; margin-top: 15px; }
+#search input { padding-right: 30px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
+#search button { position: absolute; right: 4px; top: 2px; border: none; padding: 0; width: 24px; height: 24px; background: transparent; cursor: pointer; direction: ltr; font-size: 0; color: transparent; }
+#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.6; }
+
+/* ============================================================
+ * 6. 主内容与侧边栏
+ * ============================================================ */
+.post { padding: 15px 0 0 0; border-bottom: 1px solid var(--border-color); }
+.post-title { margin: .83em 0; font-size: 1.4em; color: var(--text-color); }
+.post-meta { margin-top: -0.5em; padding: 0; color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.post-meta li { display: inline-block; margin: 0 8px 0 0; padding-left: 12px; border-left: 1px solid var(--border-color); }
+.post-meta li:first-child { margin-left: 0; padding-left: 0; border: none; }
+.post-content { line-height: 1.8; color: var(--text-color); }
+
+.post-near { list-style: none; margin: 30px 0; padding: 0; color: var(--text-color); opacity: 0.6; font-size: 14px !important; line-height: 1.6 !important; }
+.post-near a { color: var(--accent-color) !important; }
+.post-near a:hover { color: var(--text-color) !important; }
+
+#secondary { padding-top: 15px; word-wrap: break-word; }
+.widget { margin-bottom: 30px; }
+.widget-list { list-style: none; padding: 0; }
+.widget-list li { margin: 5px 0; line-height: 1.6; }
+.widget-list li ul { margin-left: 15px; }
+#footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
+
+/* 🌟 侧边栏竖线（仅电脑端生效） */
+@media (min-width: 992px) {
+  #secondary { border-left: 1px solid var(--border-color); padding-left: 24px; }
+}
+
+/* ============================================================
+ * 7. 主题设置面板
+ * ============================================================ */
+.theme-settings-wrapper { position: relative; display: inline-block; z-index: 9999; }
+.theme-settings-toggle { background: transparent; border: none; color: var(--text-color, #444); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; transition: transform 0.3s, color 0.3s; }
+.theme-settings-toggle:hover { transform: rotate(30deg); color: var(--accent-color, #3354AA); }
+.theme-settings-panel { position: absolute; right: 0; width: 260px; background: var(--bg-color, #fff); border: 1px solid var(--border-color, #eee); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; text-align: left; z-index: 10000; }
+.theme-settings-wrapper.active .theme-settings-panel { display: block; }
+.setting-group { margin-bottom: 16px; }
+.setting-title { font-size: 13px; color: var(--text-color, #333); opacity: 0.7; margin-bottom: 8px; }
+.setting-options { display: flex; gap: 8px; }
+.opt-btn { flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color, #eee); border-radius: 20px; color: var(--text-color, #333); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
+.opt-btn:hover { background: var(--card-bg, #f5f5f5); }
+.color-options { justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.color-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
+.color-btn:hover { transform: scale(1.1); }
+
+/* 配合你前端 HTML 里的 data-theme-value 显示对应圆点颜色 */
+.color-btn[data-theme-value="light-github"] { background: #0969da; }
+.color-btn[data-theme-value="light-blue"] { background: #3354AA; }
+.color-btn[data-theme-value="light-gray"] { background: #555555; }
+.color-btn[data-theme-value="light-pink"] { background: #9c4f7a; }
+.color-btn[data-theme-value="dark-github"] { background: #539bf5; }
+.color-btn[data-theme-value="dark-blue"] { background: #5b9bd5; }
+.color-btn[data-theme-value="dark-blue2"] { background: #4a9eff; }
+.color-btn[data-theme-value="dark-brown"] { background: #c8a878; }
+
+/* ============================================================
+ * 8. 终极修复：暗黑模式下正文/标题颜色强制跟随变量
+ * ============================================================ */
+html[data-mode="dark"] .post-title, 
+html[data-mode="dark"] .post-title a { color: var(--accent-color) !important; }
+html[data-mode="dark"] .post-meta,
+html[data-mode="dark"] .post-meta a { color: var(--text-color) !important; opacity: 0.7; }
