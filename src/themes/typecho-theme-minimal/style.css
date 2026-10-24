@@ -1,144 +1,267 @@
 /* ------------------------------------
- * Typecho 多配色/暗黑模式终极版 (仅 CSS)
+ * Typecho 默认主题 (全屏换肤终极版)
  * --------------------------------- */
 
 /* ============================================================
- * 1. 基础兜底变量 (防止无 JS 时显示异常)
+ * 1. 基础变量定义 (作为兜底)
  * ============================================================ */
 :root {
-  --bg-color: #f6f8fa; --text-color: #24292f; --card-bg: #eaeef2; --border-color: #d0d7de; --accent-color: #0969da;
-  --table-border: #d0d7de; --table-header-bg: #f6f8fa; --table-hover-bg: #eaeef2; --code-bg: #f6f8fa; --code-text: #24292f;
+  --font-size-base: 16px;
+  /* 默认兜底亮色 (GitHub 浅色) */
+  --bg-color:     #f6f8fa;
+  --text-color:   #24292f;
+  --card-bg:      #eaeef2;
+  --border-color: #d0d7de;
+  --accent-color: #0969da;
 }
 
 /* ============================================================
- * 2. 8 套全独立配色预设 (由前端圆点直接触发)
+ * 2. 亮色模式预设 (对应面板 4 个圆点)
  * ============================================================ */
-/* ☀️ 亮色 1：GitHub 浅色 */
-[data-color="light-github"] {
-  --bg-color: #f6f8fa; --text-color: #24292f; --card-bg: #eaeef2; --border-color: #d0d7de; --accent-color: #0969da;
-  --table-border: #d0d7de; --table-header-bg: #f6f8fa; --table-hover-bg: #eaeef2; --code-bg: #f6f8fa; --code-text: #24292f;
-}
-/* ☀️ 亮色 2：淡蓝护眼 */
-[data-color="light-blue"] {
-  --bg-color: #eaf2fb; --text-color: #333a44; --card-bg: #dde8f5; --border-color: #c5d5e8; --accent-color: #3354AA;
-  --table-border: #9db6d6; --table-header-bg: #d5e2f2; --table-hover-bg: #c4d6eb; --code-bg: #d5e2f2; --code-text: #2a3a52;
-}
-/* ☀️ 亮色 3：浅灰极简 */
-[data-color="light-gray"] {
-  --bg-color: #f7f8fa; --text-color: #333333; --card-bg: #eef0f3; --border-color: #c0c4cc; --accent-color: #555555;
-  --table-border: #b4b9c2; --table-header-bg: #eef0f3; --table-hover-bg: #dfe2e7; --code-bg: #eef0f3; --code-text: #333333;
-}
-/* ☀️ 亮色 4：藕荷粉 */
-[data-color="light-pink"] {
-  --bg-color: #f5eef2; --text-color: #3e3339; --card-bg: #ece0e7; --border-color: #c4a9b6; --accent-color: #9c4f7a;
-  --table-border: #b89aa8; --table-header-bg: #ece0e7; --table-hover-bg: #e0d0d9; --code-bg: #ece0e7; --code-text: #3e3339;
+
+/* ☀️ 亮色 1：GitHub 浅色 (默认主色，对应面板第 1 个圆点) */
+[data-color="blue"] { 
+  --accent-color: #0969da; 
+  --bg-color: #f6f8fa; 
+  --text-color: #24292f; 
+  --border-color: #d0d7de; 
+  --card-bg: #eaeef2; 
 }
 
-/* 🌙 暗色 1：GitHub 暗色 */
-[data-color="dark-github"] {
-  --bg-color: #22272e; --text-color: #adbac7; --card-bg: #2d333b; --border-color: #444c56; --accent-color: #539bf5;
-  --table-border: #444c56; --table-header-bg: #2d333b; --table-hover-bg: #373e47; --code-bg: #2d333b; --code-text: #adbac7;
-}
-/* 🌙 暗色 2：深蓝底 */
-[data-color="dark-blue"] {
-  --bg-color: #1a2230; --text-color: #b8c6d9; --card-bg: #232d3f; --border-color: #38445c; --accent-color: #5b9bd5;
-  --table-border: #38445c; --table-header-bg: #232d3f; --table-hover-bg: #2c3849; --code-bg: #232d3f; --code-text: #b8c6d9;
-}
-/* 🌙 暗色 3：护眼暗蓝 */
-[data-color="dark-blue2"] {
-  --bg-color: #1e2633; --text-color: #b8c6d9; --card-bg: #2a3446; --border-color: #3e4a60; --accent-color: #5b9bd5;
-  --table-border: #3e4a60; --table-header-bg: #2a3446; --table-hover-bg: #334054; --code-bg: #2a3446; --code-text: #b8c6d9;
-}
-/* 🌙 暗色 4：护眼暗棕 */
-[data-color="dark-brown"] {
-  --bg-color: #2b2620; --text-color: #d4c8b8; --card-bg: #38322a; --border-color: #4a4238; --accent-color: #c8a878;
-  --table-border: #4a4238; --table-header-bg: #38322a; --table-hover-bg: #443d33; --code-bg: #38322a; --code-text: #d4c8b8;
+/* ☀️ 亮色 2：淡蓝护眼 (对应面板第 2 个圆点) */
+[data-color="green"] { 
+  --accent-color: #3354AA; 
+  --bg-color: #eaf2fb; 
+  --text-color: #333a44; 
+  --border-color: #c5d5e8; 
+  --card-bg: #dde8f5; 
 }
 
-/* 字号预设 */
+/* ☀️ 亮色 3：浅灰极简 (对应面板第 3 个圆点) */
+[data-color="orange"] { 
+  --accent-color: #555555; 
+  --bg-color: #f7f8fa; 
+  --text-color: #333333; 
+  --border-color: #c0c4cc; 
+  --card-bg: #eef0f3; 
+}
+
+/* ☀️ 亮色 4：藕荷粉 (对应面板第 4 个圆点) */
+[data-color="purple"] { 
+  --accent-color: #9c4f7a; 
+  --bg-color: #f5eef2; 
+  --text-color: #3e3339; 
+  --border-color: #c4a9b6; 
+  --card-bg: #ece0e7; 
+}
+
+/* ============================================================
+ * 3. 暗黑模式预设 (对应面板 4 个圆点)
+ * ============================================================ */
+
+/* 🌙 暗色 1：GitHub 暗色 (对应面板第 1 个圆点) */
+html[data-mode="dark"][data-color="blue"] {
+  --accent-color: #539bf5; 
+  --bg-color: #22272e; 
+  --text-color: #adbac7; 
+  --border-color: #444c56; 
+  --card-bg: #2d333b;
+}
+
+/* 🌙 暗色 2：深蓝底 (对应面板第 2 个圆点) */
+html[data-mode="dark"][data-color="green"] {
+  --accent-color: #5b9bd5; 
+  --bg-color: #1a2230; 
+  --text-color: #b8c6d9; 
+  --border-color: #38445c; 
+  --card-bg: #232d3f;
+}
+
+/* 🌙 暗色 3：护眼暗蓝 (对应面板第 3 个圆点) */
+html[data-mode="dark"][data-color="orange"] {
+  --accent-color: #5b9bd5; 
+  --bg-color: #1e2633; 
+  --text-color: #b8c6d9; 
+  --border-color: #3e4a60; 
+  --card-bg: #2a3446;
+}
+
+/* 🌙 暗色 4：护眼暗棕 (对应面板第 4 个圆点) */
+html[data-mode="dark"][data-color="purple"] {
+  --accent-color: #c8a878; 
+  --bg-color: #2b2620; 
+  --text-color: #d4c8b8; 
+  --border-color: #4a4238; 
+  --card-bg: #38322a;
+}
+
+/* ============================================================
+ * 4. 字号预设
+ * ============================================================ */
 [data-font="small"]  { --font-size-base: 14px; }
 [data-font="medium"] { --font-size-base: 16px; }
 [data-font="large"]  { --font-size-base: 18px; }
 
-/* ============================================================
- * 3. 全局基础样式
- * ============================================================ */
-html { -webkit-tap-highlight-color: transparent; }
+/* ------------------
+ * 全局样式
+ * --------------- */
 body {
-  background-color: var(--bg-color); color: var(--text-color);
+  background-color: var(--bg-color);
+  color: var(--text-color);
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
-  font-size: var(--font-size-base, 16px);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  font-size: var(--font-size-base);
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
-a { color: var(--accent-color); text-decoration: none; }
+
+a { color: var(--accent-color); text-decoration: none; transition: color 0.2s; }
 a:hover, a:active { color: var(--text-color); }
-button { -webkit-appearance: button; background-color: var(--accent-color); border: none; color: #fff; padding: 5px 15px; text-align: center; text-decoration: none; display: inline-block; border-radius: 6px; }
+
 .logout-form { display: inline; margin: 0; padding: 0; }
 .logout-form button { padding: 0; border: 0; background: transparent; color: var(--accent-color); font: inherit; cursor: pointer; }
 .logout-form button:hover, .logout-form button:active { color: var(--text-color); }
 
-/* ============================================================
- * 4. 表格与代码块
- * ============================================================ */
-table { border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; margin-bottom: 16px !important; border: none !important; box-shadow: 0 0 0 2px var(--table-border) !important; border-radius: 6px !important; overflow: hidden !important; font-size: 15px !important; }
-table th, table td { padding: 12px 16px !important; border: none !important; vertical-align: middle !important; box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important; }
-table tr > *:last-child { box-shadow: 0 1px 0 0 var(--table-border) !important; }
-table th { background-color: var(--table-header-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--code-text) !important; }
-table tbody tr:hover { background-color: var(--table-hover-bg) !important; }
-table td code { background-color: var(--table-hover-bg) !important; color: var(--code-text) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: monospace !important; font-size: 85% !important; }
-pre { background-color: var(--code-bg) !important; padding: 16px !important; border-radius: 6px !important; overflow: auto !important; white-space: pre-wrap !important; word-wrap: break-word !important; }
-pre code { background-color: transparent !important; padding: 0 !important; color: var(--code-text) !important; white-space: pre-wrap !important; word-wrap: break-word !important; font-size: .92857em !important; }
-blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.85; }
-h1, h2, h3, h4, h5, h6 { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--text-color); }
+/* =========================================
+ * 表格与代码块
+ * ========================================= */
+table { border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; margin-bottom: 16px !important; border: none !important; box-shadow: 0 0 0 2px var(--border-color) !important; border-radius: 6px !important; overflow: hidden !important; font-size: 15px !important; }
+table th, table td { padding: 12px 16px !important; border: none !important; vertical-align: middle !important; box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; }
+table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; }
+table th { background-color: var(--card-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--text-color) !important; }
+table tbody tr:hover { background-color: var(--card-bg) !important; }
+table td code { background-color: rgba(175, 184, 193, 0.2) !important; color: var(--text-color) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important; font-size: 85% !important; }
+pre { background-color: var(--card-bg) !important; padding: 16px !important; border-radius: 6px !important; overflow: auto !important; white-space: pre-wrap !important; word-wrap: break-word !important; }
+pre code { background-color: transparent !important; padding: 0 !important; color: var(--text-color) !important; white-space: pre-wrap !important; word-wrap: break-word !important; font-size: .92857em !important; }
+blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.8; }
 
-input[type="text"], input[type="email"], input[type="url"], input[type="password"], textarea { padding: 5px; border: 1px solid var(--border-color); width: 100%; border-radius: 2px; box-sizing: border-box; background: var(--bg-color); color: var(--text-color); }
+/* 表单输入 */
+input[type="text"], input[type="email"], input[type="url"], input[type="password"], textarea { padding: 5px; border: 1px solid var(--border-color); width: 100%; border-radius: 2px; -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; background-color: var(--bg-color); color: var(--text-color); }
 textarea { resize: vertical; }
 
-/* ============================================================
- * 5. 头部与导航
- * ============================================================ */
+/* 特殊链接下划线 */
+.post-meta a, .post-content a, .widget a, .comment-content a { border-bottom: 1px solid var(--border-color); }
+.post-meta a:hover, .post-content a:hover, .widget a:hover, .comment-content a:hover { border-bottom-color: transparent; }
+
+/* ------------------
+ * 页头
+ * --------------- */
 #header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
-#logo { color: var(--text-color); font-size: 2.5em; }
+#logo { color: var(--text-color) !important; font-size: 2.5em; }
 #logo img { max-height: 64px; }
 .description { margin: .5em 0 0; color: var(--text-color); opacity: 0.6; font-style: italic; }
 #nav-menu { margin: 25px 0 0; padding: 0; }
-#nav-menu a { display: block; margin-right: -1px; padding: 0 20px; border: 1px solid var(--border-color); border-bottom: none; height: 32px; line-height: 32px; color: var(--text-color); background: var(--bg-color); float: left; transition: background 0.2s ease, color 0.2s ease; }
-#nav-menu a:hover { background: var(--card-bg); color: var(--accent-color); }
-#nav-menu a.current { background: var(--card-bg); color: var(--accent-color); font-weight: 700; border-color: var(--accent-color); }
+#nav-menu a { display: block; margin-right: -1px; padding: 0 20px; border: 1px solid var(--border-color); border-bottom: none; height: 32px; line-height: 32px; color: var(--text-color); float: left; }
+#nav-menu a:hover, #nav-menu .current { background: var(--card-bg); }
 
 #search { position: relative; margin-top: 15px; }
-#search input { padding-right: 30px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
+#search input { padding-right: 30px; }
 #search button { position: absolute; right: 4px; top: 2px; border: none; padding: 0; width: 24px; height: 24px; background: transparent; cursor: pointer; direction: ltr; font-size: 0; color: transparent; }
-#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.6; }
+#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.5; }
 
-/* ============================================================
- * 6. 主内容与侧边栏
- * ============================================================ */
-.post { padding: 15px 0 0 0; border-bottom: 1px solid var(--border-color); }
-.post-title { margin: .83em 0; font-size: 1.4em; color: var(--text-color); }
+/* ------------------
+ * 主内容区
+ * --------------- */
+.post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
+.post-title { margin: .83em 0; font-size: 1.4em; }
+.post-title a { color: var(--accent-color) !important; }
 .post-meta { margin-top: -0.5em; padding: 0; color: var(--text-color); opacity: 0.6; font-size: .92857em; }
 .post-meta li { display: inline-block; margin: 0 8px 0 0; padding-left: 12px; border-left: 1px solid var(--border-color); }
 .post-meta li:first-child { margin-left: 0; padding-left: 0; border: none; }
-.post-content { line-height: 1.8; color: var(--text-color); }
+.post-content { font-size: var(--font-size-base); line-height: 1.8; color: var(--text-color) !important; }
+.post .tags { clear: both; }
+.post-near { list-style: none; margin: 30px 0; padding: 0; color: var(--text-color); opacity: 0.6; }
+.post-near li { margin: 10px 0; }
+.archive-title { margin: 1em 0 -1em; padding-top: 20px; color: var(--text-color); opacity: 0.6; font-size: 1em; }
+.more { text-align: center; }
+.more a { border: none; }
+.protected .text { width: 50%; }
 
-.post-near { list-style: none; margin: 30px 0; padding: 0; color: var(--text-color); opacity: 0.6; font-size: 14px !important; line-height: 1.6 !important; }
-.post-near a { color: var(--accent-color) !important; }
-.post-near a:hover { color: var(--text-color) !important; }
+/* 分页 */
+.page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
+.page-navigator li { display: inline-block; margin: 0 4px; }
+.page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
+.page-navigator a:hover { background: var(--card-bg); text-decoration: none; }
+.page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
 
-#secondary { padding-top: 15px; word-wrap: break-word; }
+/* ------------------
+ * 评论列表
+ * --------------- */
+#comments { padding-top: 15px; }
+.comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
+.comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
+.comment-list li.comment-level-odd { background: var(--card-bg); }
+.comment-list li.comment-level-even { background: var(--bg-color); }
+.comment-list li.comment-by-author { background: rgba(255, 235, 59, 0.1); }
+.comment-list li .comment-reply { text-align: right; font-size: .92857em; }
+.comment-meta a { color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.comment-author { display: block; margin-bottom: 3px; color: var(--text-color); }
+.comment-author .avatar { float: left; margin-right: 10px; }
+.comment-author cite { font-weight: bold; font-style: normal; }
+.comment-list .respond { margin-top: 15px; border-top: 1px solid var(--border-color); }
+.respond .cancel-comment-reply { float: right; margin-top: 15px; font-size: .92857em; }
+#comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
+#comment-form .required:after { content: " *"; color: #C00; }
+
+/* ------------------
+ * 侧栏与页脚
+ * --------------- */
+#secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
 .widget { margin-bottom: 30px; }
+.widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
 .widget-list { list-style: none; padding: 0; }
-.widget-list li { margin: 5px 0; line-height: 1.6; }
+.widget-list li { margin: 6px 0 !important; line-height: 1.8 !important; }
+.widget-list a { color: var(--accent-color) !important; }
+.widget-list a:hover { color: var(--text-color) !important; }
 .widget-list li ul { margin-left: 15px; }
 #footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
 
-/* 🌟 侧边栏竖线（仅电脑端生效） */
-@media (min-width: 992px) {
-  #secondary { border-left: 1px solid var(--border-color); padding-left: 24px; }
+/* -----------------
+ * 内容格式与杂项
+ *--------------- */
+.error-page { margin-top: 100px; margin-bottom: 100px; }
+.post-content, .comment-content { line-height: 1.8; word-wrap: break-word; }
+.post-content h2, .comment-content h2 { font-size: 1.28571em; }
+.post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
+.post-content a img, .comment-content a img { background: var(--bg-color); position: relative; border-radius: 6px; bottom: -4px; }
+.post-content hr, .comment-content hr { margin: 2em auto; width: 100px; border: 1px solid var(--border-color); border-width: 2px 0 0 0; }
+.aligncenter, div.aligncenter { display: block; margin-left: auto; margin-right: auto; }
+.alignleft { float: left; }
+.alignright { float: right; }
+img.alignleft { margin: 0 15px 0 0; }
+img.alignright { margin: 0 0 0 15px; }
+
+/* -----------------
+ * 响应式
+ *--------------- */
+@media (max-width: 767px) {
+  body { font-size: var(--font-size-base); }
+  #nav-menu a { float: none; display: inline-block; margin: 0 -2px; }
+  .container { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 768px) {
+  #header, .post-title, .post-meta { text-align: center; }
+  #header { padding-left: 30px; }
+  #nav-menu { margin: 25px 0 0 -10px; }
+}
+@media (min-width: 1200px) {
+  .container { width: 80%; max-width: 1280px; margin: 0 auto; }
 }
 
+/* -----------------
+ * 辅助类
+ *--------------- */
+.hidden { display: none !important; visibility: hidden; }
+.sr-only { border: 0; height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
+.sr-only.focusable:active, .sr-only.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
+.invisible { visibility: hidden; }
+
 /* ============================================================
- * 7. 主题设置面板
+ * 侧边栏夜间模式修正
+ * ============================================================ */
+[data-mode="dark"] #secondary .widget-list a { color: var(--accent-color) !important; }
+[data-mode="dark"] .comment-list li.comment-level-odd { background: var(--card-bg); }
+
+/* ============================================================
+ * 主题设置面板全局样式
  * ============================================================ */
 .theme-settings-wrapper { position: relative; display: inline-block; z-index: 9999; }
 .theme-settings-toggle { background: transparent; border: none; color: var(--text-color, #444); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; transition: transform 0.3s, color 0.3s; }
@@ -146,28 +269,62 @@ textarea { resize: vertical; }
 .theme-settings-panel { position: absolute; right: 0; width: 260px; background: var(--bg-color, #fff); border: 1px solid var(--border-color, #eee); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; text-align: left; z-index: 10000; }
 .theme-settings-wrapper.active .theme-settings-panel { display: block; }
 .setting-group { margin-bottom: 16px; }
+.setting-group:last-child { margin-bottom: 0; }
 .setting-title { font-size: 13px; color: var(--text-color, #333); opacity: 0.7; margin-bottom: 8px; }
 .setting-options { display: flex; gap: 8px; }
 .opt-btn { flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color, #eee); border-radius: 20px; color: var(--text-color, #333); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
 .opt-btn:hover { background: var(--card-bg, #f5f5f5); }
-.color-options { justify-content: space-between; flex-wrap: wrap; gap: 6px; }
-.color-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
+.font-btn:nth-child(1) { font-size: 12px; }
+.font-btn:nth-child(2) { font-size: 14px; }
+.font-btn:nth-child(3) { font-size: 16px; }
+.color-options { justify-content: space-between; }
+.color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
 .color-btn:hover { transform: scale(1.1); }
 
-/* 配合你前端 HTML 里的 data-theme-value 显示对应圆点颜色 */
-.color-btn[data-theme-value="light-github"] { background: #0969da; }
-.color-btn[data-theme-value="light-blue"] { background: #3354AA; }
-.color-btn[data-theme-value="light-gray"] { background: #555555; }
-.color-btn[data-theme-value="light-pink"] { background: #9c4f7a; }
-.color-btn[data-theme-value="dark-github"] { background: #539bf5; }
-.color-btn[data-theme-value="dark-blue"] { background: #5b9bd5; }
-.color-btn[data-theme-value="dark-blue2"] { background: #4a9eff; }
-.color-btn[data-theme-value="dark-brown"] { background: #c8a878; }
+/* ============================================================
+ * 🌟 核心：让圆点颜色根据模式自动变化 (匹配你 Index.astro 里的类名)
+ * ============================================================ */
+
+/* 亮色模式下的圆点颜色 */
+.color-btn.blue { background: #0969da !important; }   /* GitHub 蓝 */
+.color-btn.green { background: #3354AA !important; }  /* 淡蓝 */
+.color-btn.orange { background: #555555 !important; } /* 浅灰 */
+.color-btn.purple { background: #9c4f7a !important; } /* 藕荷粉 */
+
+/* 暗色模式下的圆点颜色 (会自动覆盖上面的亮色) */
+html[data-mode="dark"] .color-btn.blue { background: #539bf5 !important; }   /* GitHub 暗蓝 */
+html[data-mode="dark"] .color-btn.green { background: #5b9bd5 !important; }  /* 深蓝 */
+html[data-mode="dark"] .color-btn.orange { background: #5b9bd5 !important; } /* 暗蓝 */
+html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; } /* 暗棕 */
 
 /* ============================================================
- * 8. 终极修复：暗黑模式下正文/标题颜色强制跟随变量
+ * 🌟 终极修复：夜间模式主体颜色跟随主题同步 🌟
  * ============================================================ */
 html[data-mode="dark"] .post-title, 
-html[data-mode="dark"] .post-title a { color: var(--accent-color) !important; }
+html[data-mode="dark"] .post-title a,
+html[data-mode="dark"] .post-title a:visited {
+  color: var(--accent-color) !important; 
+}
+
 html[data-mode="dark"] .post-meta,
-html[data-mode="dark"] .post-meta a { color: var(--text-color) !important; opacity: 0.7; }
+html[data-mode="dark"] .post-meta li,
+html[data-mode="dark"] .post-meta a,
+html[data-mode="dark"] .post-meta time {
+  color: var(--text-color) !important; 
+  opacity: 0.7;
+}
+
+html[data-mode="dark"] .post-content,
+html[data-mode="dark"] .post-content p {
+  color: var(--text-color) !important; 
+}
+
+/* ============================================================
+ * 侧边栏竖线（电脑端显示，手机端隐藏）
+ * ============================================================ */
+@media (min-width: 992px) {
+  #secondary {
+    border-left: 1px solid var(--border-color) !important;
+    padding-left: 24px !important;
+  }
+}
