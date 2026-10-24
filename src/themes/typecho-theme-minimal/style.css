@@ -653,11 +653,11 @@ img.alignright {
 
 
 /* ============================================================
- * 主题设置面板全局样式
+ * 主题设置面板全局样式 (追加在 CSS 最末尾)
  * ============================================================ */
 .theme-settings-wrapper {
-  /* 移除之前写死的 absolute，改由 HTML 控制 */
-  position: relative; 
+  /* 移除之前写死的 absolute 定位，交由 Index.astro 控制 */
+  position: relative;
   display: inline-block;
   z-index: 9999;
 }
@@ -682,7 +682,7 @@ img.alignright {
 /* 面板样式 */
 .theme-settings-panel {
   position: absolute;
-  /* top 和 bottom 已经在 Index.astro 的内联样式里写死了，这里不要加了 */
+  /* top/bottom 已在 Index.astro 中写死，这里不需要 */
   right: 0;
   width: 260px;
   background: var(--bg-color, #fff);
@@ -691,7 +691,7 @@ img.alignright {
   padding: 16px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   display: none; /* 默认隐藏 */
-  text-align: left; /* 防止被父元素的居中样式干扰 */
+  text-align: left;
   z-index: 10000; /* 确保面板在最上层，不被下方文章列表遮挡 */
 }
 
