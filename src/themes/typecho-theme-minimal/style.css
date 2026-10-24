@@ -765,3 +765,22 @@ img.alignright {
 .color-btn.green { background: #10b981; }
 .color-btn.orange { background: #f59e0b; }
 .color-btn.purple { background: #8b5cf6; }
+
+/* 缺失的部分：强制夜间模式主体颜色 */
+[data-mode="dark"] .post-title, 
+[data-mode="dark"] .post-title a,
+[data-mode="dark"] .post-title a:visited {
+  color: var(--accent-color-dark, #4a9eff) !important;
+}
+
+[data-mode="dark"] .post-meta,
+[data-mode="dark"] .post-meta li,
+[data-mode="dark"] .post-meta a,
+[data-mode="dark"] .post-meta time {
+  color: #a0a0a0 !important; 
+}
+
+[data-mode="dark"] .post-content,
+[data-mode="dark"] .post-content p {
+  color: #e0e0e0 !important;
+}
