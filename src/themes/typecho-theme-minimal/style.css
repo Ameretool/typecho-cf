@@ -40,8 +40,9 @@
 /* ============================================================
  * 4. 暗黑模式变量覆盖 (对应截图中的月亮图标)
  * 说明：开启深色模式时，覆盖上方 :root 中的浅色变量
+ * ⚠️ 注意：这里使用的是 data-mode，与 Base.astro 保持一致
  * ============================================================ */
-[data-theme="dark"] {
+[data-mode="dark"] {
   --bg-color:     #121212; /* 护眼深灰背景（避免纯黑） */
   --text-color:   #e0e0e0; /* 浅灰文字（避免纯白刺眼） */
   --card-bg:      #1e1e1e; /* 深色卡片背景 */
@@ -628,10 +629,126 @@ img.alignright {
 /* ============================================================
  * 暗黑模式特殊修正 (微调暗黑模式下的强调色)
  * ============================================================ */
-[data-theme="dark"] a,
-[data-theme="dark"] #secondary .widget-list a {
+[data-mode="dark"] a,
+[data-mode="dark"] #secondary .widget-list a {
   color: var(--accent-color-dark, var(--accent-color)); /* 暗黑模式下使用略亮的强调色 */
 }
-[data-theme="dark"] .comment-list li.comment-level-odd {
+[data-mode="dark"] .comment-list li.comment-level-odd {
   background: #1e1e1e; /* 暗黑模式下评论背景微调，与背景色区分 */
 }
+
+
+/* ============================================================
+ * 主题设置面板全局样式 (追加在 CSS 最末尾)
+ * ============================================================ */
+.theme-settings-wrapper {
+  position: absolute;
+  right: 0;
+  top: 50%; /* 垂直居中对齐搜索框 */
+  transform: translateY(-50%);
+  display: inline-block;
+  z-index: 9999;
+}
+
+/* 触发按钮样式 */
+.theme-settings-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-color, #444);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  transition: transform 0.3s, color 0.3s;
+}
+.theme-settings-toggle:hover {
+  transform: rotate(30deg);
+  color: var(--accent-color, #3354AA);
+}
+
+/* 面板样式 */
+.theme-settings-panel {
+  position: absolute;
+  top: 35px; /* 出现在按钮下方 */
+  right: 0;
+  width: 260px;
+  background: var(--bg-color, #fff);
+  border: 1px solid var(--border-color, #eee);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  display: none; /* 默认隐藏 */
+  text-align: left; /* 防止被父元素的居中样式干扰 */
+}
+
+/* 当 wrapper 有 active 类时，显示面板 */
+.theme-settings-wrapper.active .theme-settings-panel {
+  display: block;
+}
+
+/* 面板内部小标题 */
+.setting-group {
+  margin-bottom: 16px;
+}
+.setting-group:last-child {
+  margin-bottom: 0;
+}
+.setting-title {
+  font-size: 13px;
+  color: var(--text-color, #333);
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+/* 按钮组容器 */
+.setting-options {
+  display: flex;
+  gap: 8px;
+}
+
+/* 选项按钮 */
+.opt-btn {
+  flex: 1;
+  padding: 8px 0;
+  background: transparent;
+  border: 1px solid var(--border-color, #eee);
+  border-radius: 20px;
+  color: var(--text-color, #333);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s;
+}
+.opt-btn:hover {
+  background: var(--card-bg, #f5f5f5);
+}
+
+/* 字号按钮字体大小 */
+.font-btn:nth-child(1) { font-size: 12px; }
+.font-btn:nth-child(2) { font-size: 14px; }
+.font-btn:nth-child(3) { font-size: 16px; }
+
+/* 颜色圆点组 */
+.color-options {
+  justify-content: space-between;
+}
+.color-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--border-color, #eee);
+  transition: transform 0.2s;
+}
+.color-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 4种配色 */
+.color-btn.blue { background: #3354AA; }
+.color-btn.green { background: #10b981; }
+.color-btn.orange { background: #f59e0b; }
+.color-btn.purple { background: #8b5cf6; }
