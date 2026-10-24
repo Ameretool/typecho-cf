@@ -1,5 +1,5 @@
 /* ------------------------------------
- * Typecho 默认主题 (全屏换肤终极版)
+ * Typecho 默认主题 (全屏换肤终极版 - 圆点完美修复)
  * --------------------------------- */
 
 /* ============================================================
@@ -282,20 +282,20 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn:hover { transform: scale(1.1); }
 
 /* ============================================================
- * 🌟 核心：让圆点颜色根据模式自动变化 (匹配你 Index.astro 里的类名)
+ * 🌟 核心：让圆点颜色根据模式自动变化
  * ============================================================ */
 
-/* 亮色模式下的圆点颜色 */
-.color-btn.blue { background: #0969da !important; }   /* GitHub 蓝 */
-.color-btn.green { background: #3354AA !important; }  /* 淡蓝 */
-.color-btn.orange { background: #555555 !important; } /* 浅灰 */
-.color-btn.purple { background: #9c4f7a !important; } /* 藕荷粉 */
+/* 亮色模式下的圆点颜色 (取自对应主题的链接色) */
+.color-btn.blue { background: #0969da !important; }   /* 蓝 */
+.color-btn.green { background: #3354AA !important; }  /* 深蓝 */
+.color-btn.orange { background: #555555 !important; } /* 灰 */
+.color-btn.purple { background: #9c4f7a !important; } /* 粉 */
 
-/* 暗色模式下的圆点颜色 (会自动覆盖上面的亮色) */
-html[data-mode="dark"] .color-btn.blue { background: #539bf5 !important; }   /* GitHub 暗蓝 */
-html[data-mode="dark"] .color-btn.green { background: #5b9bd5 !important; }  /* 深蓝 */
-html[data-mode="dark"] .color-btn.orange { background: #5b9bd5 !important; } /* 暗蓝 */
-html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; } /* 暗棕 */
+/* 暗色模式下的圆点颜色 (使用亮色高亮，在深色面板上极其明显) */
+html[data-mode="dark"] .color-btn.blue { background: #539bf5 !important; }   /* GitHub亮蓝 */
+html[data-mode="dark"] .color-btn.green { background: #5b9bd5 !important; }  /* 柔和蓝 */
+html[data-mode="dark"] .color-btn.orange { background: #7ba4d9 !important; } /* 护眼蓝 (为了区分加亮) */
+html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; } /* 咖啡棕 */
 
 /* ============================================================
  * 🌟 终极修复：夜间模式主体颜色跟随主题同步 🌟
