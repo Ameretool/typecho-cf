@@ -208,29 +208,40 @@ const { sidebarData, pages } = await loadSidebarAndNav(
 </Base>
 
 <style>
+/* =========================================
+ * 归档页面专属样式 (完美适配暗黑模式)
+ * ========================================= */
+
 .archive-post-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+/* 每一行文章的样式 */
 .archive-post-row {
   display: flex;
   gap: 1rem;
   align-items: baseline;
   padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid #f0f0f0;
+  /* 🌟 用变量代替死白色，暗黑模式自动变深灰 */
+  border-bottom: 1px solid var(--border-color); 
   transition: background-color 0.15s ease;
 }
 .archive-post-row:last-child {
   border-bottom: none;
 }
+
+/* 鼠标悬停时的背景色 */
 .archive-post-row:hover {
-  background-color: #f7f8fa;
+  /* 🌟 用卡片背景变量，亮色下微灰，暗色下微亮 */
+  background-color: var(--card-bg); 
 }
 
 .archive-post-date {
-  color: #888;
+  /* 日期文字稍微变淡一点 */
+  color: var(--text-color);
+  opacity: 0.6;
   font-size: 0.9rem;
   flex-shrink: 0;
   min-width: 80px;
@@ -239,9 +250,38 @@ const { sidebarData, pages } = await loadSidebarAndNav(
 .archive-post-title {
   font-size: 1rem;
   text-decoration: none;
-  color: #3354aa;
+  /* 标题使用主题的强调色 */
+  color: var(--accent-color);
 }
 .archive-post-title:hover {
   text-decoration: underline;
+  color: var(--text-color);
+}
+
+/* 🌟 年份标题 (2026 年) */
+.archive-year h4 {
+  font-size: 1.2rem;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* 🌟 月份折叠框 (2026 年 10 月) */
+.archive-month summary {
+  cursor: pointer;
+  padding: 0.5rem 0.8rem;
+  /* 背景色用变量，完美融入暗黑模式 */
+  background: var(--card-bg);
+  border-radius: 4px;
+  font-size: 1rem;
+  color: var(--accent-color);
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+/* 月份折叠框悬停效果 */
+.archive-month summary:hover {
+  background: var(--border-color);
 }
 </style>
