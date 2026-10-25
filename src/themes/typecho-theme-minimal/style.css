@@ -28,20 +28,20 @@
 
 /* ☀️ 亮色 1：清新冰蓝 (蓝色到极浅蓝白) */
 [data-color="blue"] { 
-  --accent-color: #2563eb;  /* 👈 已改为清爽经典蓝 */
+  --accent-color: #2563eb;  /* 👈 清爽经典蓝 */
   --text-color: #2c3e50;   
   --border-color: #d0e3f0; 
   --card-bg: #e1f0fa;      
   --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%);
 }
 
-/* ☀️ 亮色 2：GitHub 极简 (浅灰到纯白) */
+/* ☀️ 亮色 2：赛博紫 (替换了原来的 GitHub 极简) */
 [data-color="green"] { 
-  --accent-color: #0969da; 
-  --text-color: #24292f; 
-  --border-color: #d0d7de; 
-  --card-bg: #eaeef2; 
-  --bg-color: linear-gradient(135deg, #e6ecf0 0%, #ffffff 100%);
+  --accent-color: #818cf8; /* 👈 改为长春花紫/赛博紫 */
+  --text-color: #374151; 
+  --border-color: #d1d5db; 
+  --card-bg: #f3f4f6; 
+  --bg-color: linear-gradient(135deg, #e5e7eb 0%, #ffffff 100%);
 }
 
 /* ☀️ 亮色 3：浅灰极简 */
@@ -68,20 +68,20 @@
 
 /* 🌙 暗色 1：GitHub 暗色 */
 html[data-mode="dark"][data-color="blue"] {
-  --accent-color: #60a5fa; /* 稍微调亮了暗色模式下的蓝，更护眼 */
+  --accent-color: #60a5fa; 
   --text-color: #adbac7; 
   --border-color: #444c56; 
   --card-bg: #2d333b;
   --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%);
 }
 
-/* 🌙 暗色 2：极光深青 */
+/* 🌙 暗色 2：赛博极光紫 (替换了原来的极光深青) */
 html[data-mode="dark"][data-color="green"] {
-  --accent-color: #34d399; 
-  --text-color: #ccfbf1; 
-  --border-color: #134e4a; 
+  --accent-color: #a78bfa; /* 👈 柔和高级的丁香紫 */
+  --text-color: #e2e8f0;   /* 文字改为更干净的冷灰白 */
+  --border-color: #334155; 
   --card-bg: #1e293b;
-  --bg-color: linear-gradient(135deg, #08111a 0%, #1e293b 100%);
+  --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 }
 
 /* 🌙 暗色 3：护眼暗蓝 */
@@ -292,13 +292,15 @@ img.alignright { margin: 0 0 0 15px; }
   background: linear-gradient(135deg, #dcecf9, #ffffff) !important; 
   border: 1px solid #b0cde0 !important; 
 }
-.color-btn.green { background: #0969da !important; }
+/* 修改：第 2 个圆点改为赛博紫 */
+.color-btn.green { background: #818cf8 !important; }
 .color-btn.orange { background: #555555 !important; }
 .color-btn.purple { background: #9c4f7a !important; }
 
 /* 暗黑模式下的圆点颜色 */
 html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
-html[data-mode="dark"] .color-btn.green { background: #34d399 !important; }
+/* 修改：暗黑模式下第 2 个圆点改为亮紫 */
+html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; } 
 html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
 html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
 
