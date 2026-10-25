@@ -202,7 +202,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
 <!-- ========================================== -->
-<!-- 评论切换与 Giscus 完整整合版 -->
+<!-- 评论切换与 Giscus 完整整合版 (修复版) -->
 <!-- ========================================== -->
 
 <!-- 1. 切换按钮的样式 -->
@@ -227,9 +227,13 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
 <!-- 2. 整合逻辑 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
-    // 寻找原生评论区
-    const nativeComments = document.getElementById('comments') || document.querySelector('.comment-list')?.parentElement;
-    if (!nativeComments) return; // 如果当前页没有评论，直接终止
+    // 【修复1】多重寻找评论区，防止被其他 DOM 结构干扰
+    let nativeComments = document.getElementById('comments');
+    if (!nativeComments) {
+      // 如果找不到 id，尝试找表单或评论列表
+      nativeComments = document.querySelector('.comment-list')?.parentElement || document.querySelector('#comment-form')?.parentElement;
+    }
+    if (!nativeComments) return; 
 
     // 生成切换按钮
     const switcherHTML = `
@@ -239,25 +243,24 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       </div>
     `;
 
-    // 创建 Giscus 容器（默认隐藏）
+    // 创建 Giscus 容器
     const giscusContainer = document.createElement('div');
     giscusContainer.id = 'giscus-comments';
     giscusContainer.style.display = 'none'; 
     giscusContainer.style.marginTop = '20px';
     giscusContainer.innerHTML = '<div class="giscus"></div>';
 
-    // 包装原生评论区（默认显示）
+    // 包装原生评论区
     const nativeWrapper = document.createElement('div');
     nativeWrapper.id = 'native-comments-wrapper';
     nativeWrapper.style.display = 'block'; 
 
-    // 插入到 DOM
+    // 插入 DOM
     nativeComments.parentNode.insertBefore(giscusContainer, nativeComments);
     nativeComments.parentNode.insertBefore(document.createRange().createContextualFragment(switcherHTML), nativeComments);
     nativeComments.parentNode.insertBefore(nativeWrapper, nativeComments);
-    nativeWrapper.appendChild(nativeComments); // 把原生评论塞进包装盒
+    nativeWrapper.appendChild(nativeComments); 
 
-    // 获取按钮并绑定点击事件
     const btnNative = document.getElementById('btn-native');
     const btnGiscus = document.getElementById('btn-giscus');
     let giscusLoaded = false;
@@ -280,29 +283,23 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       btnNative.style.background = 'var(--card-bg)';
       btnNative.style.color = 'var(--text-color)';
 
-      // 第一次点击时加载你提供的 Giscus 代码
       if (!giscusLoaded) {
         loadYourGiscus();
         giscusLoaded = true;
       }
     });
 
-    // ==========================================
-    // 👇 这里是你提供的 Giscus 代码，被改造成了动态加载
-    // ==========================================
     function loadYourGiscus() {
       const container = document.querySelector('.giscus');
       if (!container) return;
 
-      // 自动判断当前网页是亮色还是暗色
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      // 因为你提供了 light_tritanopia，我们配套一个暗色版
+      // 【修复2】读取你代码里真实的属性 'data-mode'，并兼容 system 模式
+      const currentMode = document.documentElement.getAttribute('data-mode');
+      const isDark = currentMode === 'dark' || (currentMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       const currentTheme = isDark ? 'dark_tritanopia' : 'light_tritanopia';
 
       const script = document.createElement('script');
       script.src = 'https://giscus.app/client.js';
-      
-      // 👇 替换为你提供的参数
       script.setAttribute('data-repo', 'WorkSpacesPro/guestbook');
       script.setAttribute('data-repo-id', 'R_kgDOOEORuw');
       script.setAttribute('data-category', 'General');
@@ -312,30 +309,29 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       script.setAttribute('data-reactions-enabled', '1');
       script.setAttribute('data-emit-metadata', '0');
       script.setAttribute('data-input-position', 'bottom');
-      
-      // 注入自动判断的主题
       script.setAttribute('data-theme', currentTheme); 
-      
       script.setAttribute('data-lang', 'zh-CN');
       script.setAttribute('crossorigin', 'anonymous');
       script.async = true;
 
-      // 把 Giscus 挂载到页面
+      // 【修复3】动态加载报错监控
+      script.onerror = () => console.error('Giscus 加载失败');
       container.appendChild(script);
     }
   });
 
   // ==========================================
-  // 👇 全局主题监听：只要你切换暗黑模式，Giscus 瞬间跟着变
+  // 【修复4】监听器改名，避免与你代码里的 observer 冲突！
+  // 并且同时监听 data-mode 和 data-theme
   // ==========================================
-  const observer = new MutationObserver((mutations) => {
+  const giscusThemeObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
-      if (mutation.attributeName === 'data-theme') {
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const iframe = document.querySelector('iframe.giscus-frame');
+      if (mutation.attributeName === 'data-mode' || mutation.attributeName === 'data-theme') {
+        const currentMode = document.documentElement.getAttribute('data-mode');
+        const isDark = currentMode === 'dark' || (currentMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         
+        const iframe = document.querySelector('iframe.giscus-frame');
         if (iframe) {
-          // 如果你用了 light_tritanopia，这里就对应 dark_tritanopia
           const giscusTheme = isDark ? 'dark_tritanopia' : 'light_tritanopia';
           iframe.contentWindow.postMessage(
             { giscus: { setConfig: { theme: giscusTheme } } },
@@ -345,7 +341,9 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     });
   });
-  observer.observe(document.documentElement, { attributes: true });
+  giscusThemeObserver.observe(document.documentElement, { attributes: true });
 </script>
+
+
 </body>
 </html>
