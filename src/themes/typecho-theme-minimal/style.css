@@ -4,7 +4,7 @@
    @project   Typecho Blog Theme (Astro Version)
    @author    Ameretool
    @link      https://hbw.me
-   @version   2.4.0 (渐变+圆点完美修复版)
+   @version   2.5.0 (清爽蓝色+夜间修复版)
    @update    2026-10-25
    ========================================================================== */
 
@@ -18,7 +18,7 @@
   --text-color:   #2c3e50; 
   --card-bg:      #e1f0fa;
   --border-color: #d0e3f0;
-  --accent-color: #2563eb;   /* 链接/强调色：清爽蓝，与背景渐变协调 */
+  --accent-color: #2563eb;   /* 链接/强调色：清爽蓝 */
   --link-hover:   #1d4ed8;   /* 悬停加深一档 */
 }
 
@@ -28,7 +28,7 @@
 
 /* ☀️ 亮色 1：清新冰蓝 (蓝色到极浅蓝白) */
 [data-color="blue"] { 
-  --accent-color: #0f766e; 
+  --accent-color: #2563eb;  /* 👈 已改为清爽经典蓝 */
   --text-color: #2c3e50;   
   --border-color: #d0e3f0; 
   --card-bg: #e1f0fa;      
@@ -68,7 +68,7 @@
 
 /* 🌙 暗色 1：GitHub 暗色 */
 html[data-mode="dark"][data-color="blue"] {
-  --accent-color: #539bf5; 
+  --accent-color: #60a5fa; /* 稍微调亮了暗色模式下的蓝，更护眼 */
   --text-color: #adbac7; 
   --border-color: #444c56; 
   --card-bg: #2d333b;
@@ -199,7 +199,8 @@ textarea { resize: vertical; }
 .comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
 .comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
 .comment-list li.comment-level-odd { background: var(--card-bg); }
-.comment-list li.comment-level-even { background: #ffffff; }
+/* 👈 已修复：把 #ffffff 改成了透明，夜间模式不再刺眼 */
+.comment-list li.comment-level-even { background: transparent; } 
 .comment-list li.comment-by-author { background: rgba(255, 235, 59, 0.1); }
 .comment-list li .comment-reply { text-align: right; font-size: .92857em; }
 .comment-meta a { color: var(--text-color); opacity: 0.6; font-size: .92857em; }
@@ -296,7 +297,7 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn.purple { background: #9c4f7a !important; }
 
 /* 暗黑模式下的圆点颜色 */
-html[data-mode="dark"] .color-btn.blue { background: #539bf5 !important; border: none; }
+html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
 html[data-mode="dark"] .color-btn.green { background: #34d399 !important; }
 html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
 html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
