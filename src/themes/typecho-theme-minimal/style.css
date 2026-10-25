@@ -18,7 +18,8 @@
   --text-color:   #2c3e50; 
   --card-bg:      #e1f0fa;
   --border-color: #d0e3f0;
-  --accent-color: #0f766e; 
+  --accent-color: #2563eb;   /* 链接/强调色：清爽蓝，与背景渐变协调 */
+  --link-hover:   #1d4ed8;   /* 悬停加深一档 */
 }
 
 /* ============================================================
