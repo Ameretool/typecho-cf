@@ -201,65 +201,151 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     })();
   </script>
 
-  <!-- ============================================================
-       全局主题切换与面板控制逻辑
-       ============================================================ -->
-  <script is:inline>
-    // 1. 监听系统主题变化
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-      if (localStorage.getItem('hbw-theme-pref') === 'system') {
-        document.documentElement.setAttribute('data-mode', e.matches ? 'dark' : 'light');
+<!-- ========================================== -->
+<!-- 评论切换与 Giscus 完整整合版 -->
+<!-- ========================================== -->
+
+<!-- 1. 切换按钮的样式 -->
+<style is:inline>
+  .comment-switcher-bar {
+    display: flex; 
+    gap: 10px; 
+    margin-bottom: 20px; 
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .comment-switcher-bar button {
+    padding: 8px 16px; 
+    border-radius: 20px; 
+    border: 1px solid var(--border-color);
+    cursor: pointer; 
+    transition: 0.3s; 
+    font-size: 14px;
+  }
+</style>
+
+<!-- 2. 整合逻辑 -->
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    // 寻找原生评论区
+    const nativeComments = document.getElementById('comments') || document.querySelector('.comment-list')?.parentElement;
+    if (!nativeComments) return; // 如果当前页没有评论，直接终止
+
+    // 生成切换按钮
+    const switcherHTML = `
+      <div class="comment-switcher-bar">
+        <button id="btn-native" style="background: var(--accent-color); color: #fff;">站内评论</button>
+        <button id="btn-giscus" style="background: var(--card-bg); color: var(--text-color);">GitHub 评论</button>
+      </div>
+    `;
+
+    // 创建 Giscus 容器（默认隐藏）
+    const giscusContainer = document.createElement('div');
+    giscusContainer.id = 'giscus-comments';
+    giscusContainer.style.display = 'none'; 
+    giscusContainer.style.marginTop = '20px';
+    giscusContainer.innerHTML = '<div class="giscus"></div>';
+
+    // 包装原生评论区（默认显示）
+    const nativeWrapper = document.createElement('div');
+    nativeWrapper.id = 'native-comments-wrapper';
+    nativeWrapper.style.display = 'block'; 
+
+    // 插入到 DOM
+    nativeComments.parentNode.insertBefore(giscusContainer, nativeComments);
+    nativeComments.parentNode.insertBefore(document.createRange().createContextualFragment(switcherHTML), nativeComments);
+    nativeComments.parentNode.insertBefore(nativeWrapper, nativeComments);
+    nativeWrapper.appendChild(nativeComments); // 把原生评论塞进包装盒
+
+    // 获取按钮并绑定点击事件
+    const btnNative = document.getElementById('btn-native');
+    const btnGiscus = document.getElementById('btn-giscus');
+    let giscusLoaded = false;
+
+    // 切换逻辑
+    btnNative.addEventListener('click', () => {
+      nativeWrapper.style.display = 'block';
+      giscusContainer.style.display = 'none';
+      btnNative.style.background = 'var(--accent-color)';
+      btnNative.style.color = '#fff';
+      btnGiscus.style.background = 'var(--card-bg)';
+      btnGiscus.style.color = 'var(--text-color)';
+    });
+
+    btnGiscus.addEventListener('click', () => {
+      nativeWrapper.style.display = 'none';
+      giscusContainer.style.display = 'block';
+      btnGiscus.style.background = 'var(--accent-color)';
+      btnGiscus.style.color = '#fff';
+      btnNative.style.background = 'var(--card-bg)';
+      btnNative.style.color = 'var(--text-color)';
+
+      // 第一次点击时加载你提供的 Giscus 代码
+      if (!giscusLoaded) {
+        loadYourGiscus();
+        giscusLoaded = true;
       }
     });
 
-    // 2. 切换函数
-    window.setThemeMode = function(mode) {
-      localStorage.setItem('hbw-theme-pref', mode);
-      let actualMode = mode;
-      if (mode === 'system') {
-        actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      document.documentElement.setAttribute('data-pref', mode);
-      document.documentElement.setAttribute('data-mode', actualMode);
-    };
+    // ==========================================
+    // 👇 这里是你提供的 Giscus 代码，被改造成了动态加载
+    // ==========================================
+    function loadYourGiscus() {
+      const container = document.querySelector('.giscus');
+      if (!container) return;
 
-    window.setThemeColor = function(color) {
-      localStorage.setItem('hbw-theme-color', color);
-      document.documentElement.setAttribute('data-color', color);
-    };
+      // 自动判断当前网页是亮色还是暗色
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      // 因为你提供了 light_tritanopia，我们配套一个暗色版
+      const currentTheme = isDark ? 'dark_tritanopia' : 'light_tritanopia';
 
-    window.setThemeFont = function(size) {
-      localStorage.setItem('hbw-theme-font', size);
-      document.documentElement.setAttribute('data-font', size);
-    };
-
-    // 3. 事件委托
-    document.addEventListener('click', function(e) {
-      // 处理面板开关
-      const toggleBtn = e.target.closest('.theme-settings-toggle');
-      if (toggleBtn) {
-        toggleBtn.parentElement.classList.toggle('active');
-        return; 
-      }
-
-      // 点击外部关闭面板
-      const wrapper = document.querySelector('.theme-settings-wrapper');
-      if (wrapper && !e.target.closest('.theme-settings-wrapper')) {
-        wrapper.classList.remove('active');
-      }
-
-      // 处理设置切换
-      const btn = e.target.closest('[data-theme-action]');
-      if (!btn) return;
+      const script = document.createElement('script');
+      script.src = 'https://giscus.app/client.js';
       
-      const action = btn.getAttribute('data-theme-action');
-      const value = btn.getAttribute('data-theme-value');
+      // 👇 替换为你提供的参数
+      script.setAttribute('data-repo', 'WorkSpacesPro/guestbook');
+      script.setAttribute('data-repo-id', 'R_kgDOOEORuw');
+      script.setAttribute('data-category', 'General');
+      script.setAttribute('data-category-id', 'DIC_kwDOOEORu84Cp384');
+      script.setAttribute('data-mapping', 'pathname');
+      script.setAttribute('data-strict', '0');
+      script.setAttribute('data-reactions-enabled', '1');
+      script.setAttribute('data-emit-metadata', '0');
+      script.setAttribute('data-input-position', 'bottom');
       
-      if (action === 'mode') window.setThemeMode(value);
-      if (action === 'color') window.setThemeColor(value);
-      if (action === 'font') window.setThemeFont(value);
+      // 注入自动判断的主题
+      script.setAttribute('data-theme', currentTheme); 
+      
+      script.setAttribute('data-lang', 'zh-CN');
+      script.setAttribute('crossorigin', 'anonymous');
+      script.async = true;
+
+      // 把 Giscus 挂载到页面
+      container.appendChild(script);
+    }
+  });
+
+  // ==========================================
+  // 👇 全局主题监听：只要你切换暗黑模式，Giscus 瞬间跟着变
+  // ==========================================
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'data-theme') {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const iframe = document.querySelector('iframe.giscus-frame');
+        
+        if (iframe) {
+          // 如果你用了 light_tritanopia，这里就对应 dark_tritanopia
+          const giscusTheme = isDark ? 'dark_tritanopia' : 'light_tritanopia';
+          iframe.contentWindow.postMessage(
+            { giscus: { setConfig: { theme: giscusTheme } } },
+            'https://giscus.app'
+          );
+        }
+      }
     });
-  </script>
-
+  });
+  observer.observe(document.documentElement, { attributes: true });
+</script>
 </body>
 </html>
