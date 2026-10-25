@@ -262,92 +262,128 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
 <!-- ========================================== -->
-<!-- 评论区切换与 Giscus 挂载逻辑 (全局生效) -->
+<!-- 评论区一键切换与 Giscus 挂载逻辑 (全局生效) -->
 <!-- ========================================== -->
+
+<!-- 1. 样式部分：定义切换按钮的外观 -->
 <style is:inline>
-  /* 给注入的按钮加一点基础样式 */
   .comment-switcher-bar {
-    display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 10px;
+    display: flex; 
+    gap: 10px; 
+    margin-bottom: 20px; 
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--border-color);
   }
   .comment-switcher-bar button {
-    padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color);
-    cursor: pointer; transition: 0.3s; font-size: 14px;
+    padding: 8px 16px; 
+    border-radius: 20px; 
+    border: 1px solid var(--border-color);
+    cursor: pointer; 
+    transition: 0.3s; 
+    font-size: 14px;
   }
 </style>
 
+<!-- 2. 逻辑部分：拦截页面、注入按钮、控制显示/隐藏、加载 Giscus -->
 <script is:inline>
+  // 等待页面的 DOM（HTML 结构）全部加载完毕后执行
   document.addEventListener('DOMContentLoaded', () => {
-    // 1. 寻找页面里的原生评论区（Typecho默认通常用 #comments）
+    
+    // 【1】寻找原生评论区
+    // 尝试寻找 ID 为 comments 的容器，或者寻找类名为 comment-list 的父元素
     const nativeComments = document.getElementById('comments') || document.querySelector('.comment-list')?.parentElement;
     
-    // 如果当前页面没有评论区（比如首页、归档页），则直接跳过
+    // 如果当前页面没有评论区（比如首页、分类页），则直接终止执行，不显示切换按钮
     if (!nativeComments) return;
 
-    // 2. 创建切换按钮 UI
+    // 【2】生成切换按钮的 HTML 代码
     const switcherHTML = `
       <div class="comment-switcher-bar">
+        <!-- 默认高亮"站内评论" -->
         <button id="btn-native" style="background: var(--accent-color); color: #fff;">站内评论</button>
+        <!-- 默认暗色"GitHub 评论" -->
         <button id="btn-giscus" style="background: var(--card-bg); color: var(--text-color);">GitHub 评论</button>
       </div>
     `;
 
-    // 3. 创建 Giscus 容器
+    // 【3】创建 Giscus 的容器
     const giscusContainer = document.createElement('div');
     giscusContainer.id = 'giscus-comments';
-    giscusContainer.style.display = 'none';
-    giscusContainer.style.marginTop = '20px';
-    giscusContainer.innerHTML = '<div class="giscus"></div>';
-
-    // 4. 把 UI 和容器插入到原生评论区的前面
-    nativeComments.parentNode.insertBefore(giscusContainer, nativeComments);
-    nativeComments.parentNode.insertBefore(document.createRange().createContextualFragment(switcherHTML), nativeComments);
     
-    // 将原生的评论包装起来，方便控制显示隐藏
+    // ⭐️ 核心：Giscus 默认隐藏 (display: none)，只有点击按钮才显示
+    giscusContainer.style.display = 'none'; 
+    
+    giscusContainer.style.marginTop = '20px';
+    giscusContainer.innerHTML = '<div class="giscus"></div>'; // 占位，后续脚本会注入到这里
+
+    // 【4】创建一个包装盒，用来包裹原来的站内评论
     const nativeWrapper = document.createElement('div');
     nativeWrapper.id = 'native-comments-wrapper';
+    
+    // ⭐️ 核心：站内评论默认显示 (display: block)
+    nativeWrapper.style.display = 'block'; 
+
+    // 【5】调整页面的 DOM 结构（把东西插进去）
+    // 在原本的评论区前面，插入 Giscus 容器
+    nativeComments.parentNode.insertBefore(giscusContainer, nativeComments);
+    
+    // 在原本的评论区前面，插入切换按钮
+    nativeComments.parentNode.insertBefore(document.createRange().createContextualFragment(switcherHTML), nativeComments);
+    
+    // 在原本的评论区前面，插入包装盒
     nativeComments.parentNode.insertBefore(nativeWrapper, nativeComments);
+    
+    // 把原本的评论区代码，塞进刚刚创建的包装盒里面
     nativeWrapper.appendChild(nativeComments);
 
-    // 5. 绑定切换事件
-    let giscusLoaded = false;
+    // 【6】获取两个按钮，准备绑定点击事件
     const btnNative = document.getElementById('btn-native');
     const btnGiscus = document.getElementById('btn-giscus');
+    let giscusLoaded = false; // 标记变量：防止用户多次点击导致 Giscus 被重复加载
 
-    window.switchComment = function(type) {
-      if (type === 'native') {
-        nativeWrapper.style.display = 'block';
-        giscusContainer.style.display = 'none';
-        btnNative.style.background = 'var(--accent-color)';
-        btnNative.style.color = '#fff';
-        btnGiscus.style.background = 'var(--card-bg)';
-        btnGiscus.style.color = 'var(--text-color)';
-      } else {
-        nativeWrapper.style.display = 'none';
-        giscusContainer.style.display = 'block';
-        btnGiscus.style.background = 'var(--accent-color)';
-        btnGiscus.style.color = '#fff';
-        btnNative.style.background = 'var(--card-bg)';
-        btnNative.style.color = 'var(--text-color)';
+    // 【7】点击"站内评论"按钮时执行的逻辑
+    btnNative.addEventListener('click', () => {
+      // ⭐️ 显示站内，隐藏 Giscus
+      nativeWrapper.style.display = 'block';
+      giscusContainer.style.display = 'none';
+      
+      // 按钮颜色样式的切换（站内变亮色，GitHub 变暗色）
+      btnNative.style.background = 'var(--accent-color)';
+      btnNative.style.color = '#fff';
+      btnGiscus.style.background = 'var(--card-bg)';
+      btnGiscus.style.color = 'var(--text-color)';
+    });
 
-        if (!giscusLoaded) {
-          loadGiscus();
-          giscusLoaded = true;
-        }
+    // 【8】点击"GitHub 评论"按钮时执行的逻辑
+    btnGiscus.addEventListener('click', () => {
+      // ⭐️ 显示 Giscus，隐藏站内
+      nativeWrapper.style.display = 'none'; // 隐藏站内
+      giscusContainer.style.display = 'block'; // 显示 Giscus
+      
+      // 按钮颜色样式的切换（GitHub 变亮色，站内变暗色）
+      btnGiscus.style.background = 'var(--accent-color)';
+      btnGiscus.style.color = '#fff';
+      btnNative.style.background = 'var(--card-bg)';
+      btnNative.style.color = 'var(--text-color)';
+
+      // 如果是第一次点击，才真正去加载 Giscus 的 iframe（为了加快页面首次加载速度）
+      if (!giscusLoaded) {
+        loadGiscus();
+        giscusLoaded = true;
       }
-    };
+    });
 
-    btnNative.addEventListener('click', () => window.switchComment('native'));
-    btnGiscus.addEventListener('click', () => window.switchComment('giscus'));
-
-    // 6. 加载 Giscus (使用你提供的参数)
+    // 【9】加载 Giscus 的核心函数
     function loadGiscus() {
       const container = document.querySelector('.giscus');
       if (!container) return;
       
+      // 判断当前网页是不是暗黑模式，决定给 Giscus 传什么主题
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      // 如果网页是暗色，Giscus 也用暗色主题；如果网页是亮色，Giscus 就用亮色主题
       const giscusTheme = isDark ? 'dark_tritanopia' : 'light_tritanopia'; 
 
+      // 创建 script 标签，把你提供的参数全部塞进去
       const script = document.createElement('script');
       script.src = 'https://giscus.app/client.js';
       script.setAttribute('data-repo', 'WorkSpacesPro/guestbook');
@@ -359,21 +395,29 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       script.setAttribute('data-reactions-enabled', '1');
       script.setAttribute('data-emit-metadata', '0');
       script.setAttribute('data-input-position', 'bottom');
-      script.setAttribute('data-theme', giscusTheme); 
+      script.setAttribute('data-theme', giscusTheme); // 注入主题颜色
       script.setAttribute('data-lang', 'zh-CN');
       script.setAttribute('crossorigin', 'anonymous');
       script.async = true;
 
+      // 把生成的 script 标签插入到页面的容器里，Giscus 就会开始加载了
       container.appendChild(script);
     }
   });
 
-  // 7. 核心：监听主题变化，实时通知 Giscus
+  // ==========================================
+  // 【10】全局监听：当用户切换网页亮/暗模式时，让 Giscus 跟着变
+  // ==========================================
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
+      // 如果发生变化的是 html 标签上的 'data-theme' 属性
       if (mutation.attributeName === 'data-theme') {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        
+        // 去寻找页面里的 Giscus iframe
         const iframe = document.querySelector('iframe.giscus-frame');
+        
+        // 如果 Giscus 已经加载出来了，通过 postMessage 发送消息让它变色
         if (iframe) {
           const giscusTheme = isDark ? 'dark_tritanopia' : 'light_tritanopia';
           iframe.contentWindow.postMessage(
@@ -384,8 +428,11 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       }
     });
   });
+  
+  // 开始监视 document.documentElement (也就是 <html> 标签) 的属性变化
   observer.observe(document.documentElement, { attributes: true });
 </script>
+
 
 </body>
 </html>
