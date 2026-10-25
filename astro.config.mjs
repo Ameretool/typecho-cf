@@ -57,9 +57,9 @@ export default defineConfig({
       },
       // 追加放行 iframe（Giscus 和 Waline 都需要）
       directives: [
-        "frame-src 'self' https://giscus.app https://*.hbw.me", // 如果你的 Waline 部署在 hbw.me 的子域名，这里无需改；否则改成你的 Waline 域名
-        "img-src 'self' data: https: https://giscus.app https://*.hbw.me", // 允许 Waline 的图片/头像
-        "connect-src 'self' https://giscus.app https://*.hbw.me"           // 允许 Waline 请求后台接口
+        "frame-src 'self' https://giscus.app https://*.gb.ooo", // 如果你的 Waline 部署在 hbw.me 的子域名，这里无需改；否则改成你的 Waline 域名
+        "img-src 'self' data: https: https://giscus.app https://*.gb.ooo", // 允许 Waline 的图片/头像
+        "connect-src 'self' https://giscus.app https://*.gb.ooo"           // 允许 Waline 请求后台接口
       ]
     }
   },
