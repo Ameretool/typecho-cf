@@ -1,43 +1,29 @@
 ---
 /**
  * ============================================================
- * 页面通用布局模板 (Layout / Wrapper)
+ * 全局布局 Base.astro (所有页面的底层母版)
  * ============================================================
- * 功能说明：
- * 1. 包裹所有非首页的子页面（如文章页、独立页面、归档页等）
- * 2. 统一渲染公共的头部导航（Logo、搜索框、菜单）
- * 3. 统一渲染侧边栏（最新文章、分类、评论等）
- * 4. 引入全局的主题设置面板（太阳/月亮图标）
+ * 包含：HTML基础结构、全局防闪烁、太阳悬浮面板、回到顶部按钮
  */
-
-import Base from './Base.astro';
 import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
+import type { UserRow } from '@/lib/context';
+import { getThemeStylesheets } from '@/lib/theme';
+import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
 
-// 定义组件接收的参数（Props）类型
 interface Props {
   title?: string;
   description?: string;
   keywords?: string;
   options: SiteOptions;
   urls: ReturnType<typeof computeUrls>;
-  user?: any;
+  user?: UserRow | null;
   isLoggedIn?: boolean;
-  // 导航栏的自定义页面列表
-  pages?: Array<{ title: string; slug: string; permalink: string }>;
-  currentSlug?: string;
-  // 是否显示侧边栏
-  showSidebar?: boolean;
-  // 侧边栏的数据源（最新文章、评论、分类、归档）
-  sidebarData?: {
-    recentPosts?: Array<{ title: string; permalink: string }>;
-    recentComments?: Array<{ author: string; excerpt: string; permalink: string }>;
-    categories?: Array<{ name: string; slug: string; count: number; permalink: string }>;
-    archives?: Array<{ date: string; permalink: string }>;
-  };
+  bodyClass?: string;
+  pageContext?: PageContext;
+  pluginCtx?: HookContext;
 }
 
-// 解构参数，并赋予默认值
 const {
   title,
   description,
@@ -46,221 +32,267 @@ const {
   urls,
   user,
   isLoggedIn = false,
-  pages = [],
-  currentSlug,
-  showSidebar = true,
-  sidebarData,
+  bodyClass = '',
+  pageContext,
+  pluginCtx,
 } = Astro.props;
 
-// 获取当前路径，用于判断哪个导航菜单被选中
-const currentPath = new URL(Astro.request.url).pathname;
-const isIndex = currentPath === '/';
+const pageTitle = title ? `${title} - ${options.title}` : options.title;
+const themeStylesheets = getThemeStylesheets(options.theme || 'typecho-theme-minimal');
+
+// 收集插件客户端片段
+const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: new Set<string>() }, options as Record<string, any>, pageContext);
 ---
-<Base
-  title={title}
-  description={description}
-  keywords={keywords}
-  options={options}
-  urls={urls}
-  user={user}
-  isLoggedIn={isLoggedIn}
->
-  <!-- ========================================== -->
-  <!-- 1. 页头区域 (Header) -->
-  <!-- ========================================== -->
-  <header id="header" class="clearfix">
-    <div class="container">
-      <div class="row">
-        <!-- 左侧：Logo 与站点描述 -->
-        <div class="site-name col-mb-12 col-9">
-          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-          <p class="description">{options.description}</p>
-        </div>
-        
-        <!-- 右侧：搜索框 -->
-        <div class="site-search col-3 kit-hidden-tb">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
-        </div>
-        
-        <!-- 下方：导航菜单与主题切换图标 -->
-        <div class="col-mb-12">
-          <!-- 使用 Flex 布局：让导航菜单靠左，太阳图标靠右 -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 25px;">
-            
-            <!-- 🌟 左侧：导航菜单 -->
-            <nav id="nav-menu" class="clearfix" role="navigation" style="margin-top: 0;">
-              <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-              {pages.map((page) => (
-                <a
-                  class:list={[{ current: currentSlug === page.slug }]}
-                  href={page.permalink}
-                  title={page.title}
-                >
-                  {page.title}
-                </a>
-              ))}
-            </nav>
+<!DOCTYPE html>
+<html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>
+<head>
+  <meta charset={options.charset || 'UTF-8'} />
+  <meta name="renderer" content="webkit" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{pageTitle}</title>
+  {description && <meta name="description" content={description} />}
+  {keywords && <meta name="keywords" content={keywords} />}
+  {themeStylesheets.map((href) => (
+    <link rel="stylesheet" href={href} />
+  ))}
+  <link rel="alternate" type="application/rss+xml" title={`${options.title} RSS`} href={urls.feedUrl} />
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <slot name="head" />
+  <Fragment set:html={pluginSnippets.headHtml} />
 
-            <!-- ========================================== -->
-            <!-- 🌟 右侧：全局主题设置面板 (太阳/月亮) -->
-            <!-- ========================================== -->
-            <div class="theme-settings-wrapper" style="position: relative; margin-bottom: 0; top: auto; transform: none;">
-              <!-- 触发按钮：带有 SVG 太阳图标 -->
-              <button class="theme-settings-toggle" aria-label="主题设置">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="5"></circle>
-                  <line x1="12" y1="1" x2="12" y2="3"></line>
-                  <line x1="12" y1="21" x2="12" y2="23"></line>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                  <line x1="1" y1="12" x2="3" y2="12"></line>
-                  <line x1="21" y1="12" x2="23" y2="12"></line>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                </svg>
-              </button>
+  <!-- ============================================================
+       主题防闪烁及设置初始化脚本 (放在 Head 里防白屏闪烁)
+       ============================================================ -->
+  <script is:inline>
+    (function() {
+      const pref = localStorage.getItem('hbw-theme-pref') || 'system';
+      let mode = pref;
+      if (pref === 'system') {
+        mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-mode', mode);
+      
+      const color = localStorage.getItem('hbw-theme-color') || 'blue';
+      document.documentElement.setAttribute('data-color', color);
 
-              <!-- 悬浮弹出的控制面板 -->
-              <!-- 注意：top: 35px 让面板向下弹出，避免超出屏幕 -->
-              <div class="theme-settings-panel" style="top: 35px; bottom: auto;">
-                
-                <!-- 模块 1：界面模式 (亮色/暗色/跟随系统) -->
-                <div class="setting-group">
-                  <div class="setting-title">界面模式</div>
-                  <div class="setting-options">
-                    <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
-                    <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
-                    <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
-                  </div>
-                </div>
-                
-                <!-- 模块 2：主题预设 (4 个颜色圆点) -->
-                <div class="setting-group">
-                  <div class="setting-title">主题预设</div>
-                  <div class="setting-options color-options">
-                    <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
-                    <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
-                    <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
-                    <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
-                  </div>
-                </div>
-                
-                <!-- 模块 3：字号预设 (小、中、大) -->
-                <div class="setting-group">
-                  <div class="setting-title">字号预设</div>
-                  <div class="setting-options">
-                    <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
-                    <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
-                    <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
-                  </div>
-                </div>
-                
-              </div>
-            </div>
-            <!-- 🌟 设置面板结束 -->
+      const font = localStorage.getItem('hbw-theme-font') || 'medium';
+      document.documentElement.setAttribute('data-font', font);
+    })();
+  </script>
 
-          </div>
+  <!-- 全站外链新窗口打开脚本 -->
+  <script is:inline>
+    document.addEventListener('click', function(e) {
+      const link = e.target.closest('a');
+      if (link && link.hostname && link.hostname !== window.location.hostname) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }, true);
+  </script>
+
+  <!-- 回到顶部按钮样式 -->
+  <style is:global>
+    #back-to-top {
+      position: fixed !important;
+      right: 20px !important;
+      bottom: 30px !important;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--card-bg, #f5f5f5);
+      color: var(--text-color, #444);
+      border: 1px solid var(--border-color, #e0e0e0);
+      cursor: pointer;
+      z-index: 99999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
+      opacity: 0;
+      transform: translateY(10px);
+      visibility: hidden;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #back-to-top.show {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
+    }
+    #back-to-top:hover {
+      background: var(--border-color, #e0e0e0);
+      transform: translateY(-2px);
+    }
+    #back-to-top:active {
+      transform: scale(0.92);
+    }
+    @media (max-width: 768px) {
+      #back-to-top {
+        right: 12px !important;
+        bottom: 80px !important;
+        bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+        width: 44px;
+        height: 44px;
+      }
+    }
+  </style>
+</head>
+<body class={bodyClass}>
+  <slot />
+  <Fragment set:html={pluginSnippets.bodyHtml} />
+
+  <!-- ============================================================
+       🌟 全局悬浮主题设置面板 (写在 Body 末尾，所有页面 100% 可见)
+       ============================================================ -->
+  <div class="global-theme-settings" style="position: fixed; top: 80px; right: 20px; z-index: 99999;">
+    <!-- 触发按钮：带有圆形背景的太阳图标 -->
+    <button class="theme-settings-toggle" aria-label="主题设置" style="background: var(--card-bg); border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 8px; border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+    </button>
+
+    <!-- 弹出的设置面板 (默认隐藏) -->
+    <div class="theme-settings-panel" style="position: absolute; top: 45px; right: 0; width: 260px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; text-align: left;">
+      <!-- 1. 界面模式 -->
+      <div class="setting-group">
+        <div class="setting-title" style="font-size: 13px; opacity: 0.7; margin-bottom: 8px;">界面模式</div>
+        <div class="setting-options" style="display: flex; gap: 8px;">
+          <button data-theme-action="mode" data-theme-value="light" class="opt-btn" style="flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer;">☀️</button>
+          <button data-theme-action="mode" data-theme-value="dark" class="opt-btn" style="flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer;">🌙</button>
+          <button data-theme-action="mode" data-theme-value="system" class="opt-btn" style="flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer;">💻</button>
         </div>
       </div>
-    </div>
-  </header>
-
-  <!-- ========================================== -->
-  <!-- 2. 页面主体区域 (包含正文与侧边栏) -->
-  <!-- ========================================== -->
-  <div id="body">
-    <div class="container">
-      <div class="row">
-        <!-- 这里的 <slot /> 是父组件注入正文（如文章内容）的地方 -->
-        <slot />
-
-        <!-- 侧边栏区域 (由 showSidebar 变量控制是否显示) -->
-        {showSidebar && sidebarData && (
-          <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
-            
-            <!-- 侧边栏模块：最新文章 -->
-            {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">最新文章</h3>
-                <ul class="widget-list">
-                  {sidebarData.recentPosts.map((post) => (
-                    <li><a href={post.permalink}>{post.title}</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <!-- 侧边栏模块：最近回复 -->
-            {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">最近回复</h3>
-                <ul class="widget-list">
-                  {sidebarData.recentComments.map((comment) => (
-                    <li>
-                      <a href={comment.permalink}>{comment.author}</a>: {comment.excerpt}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <!-- 侧边栏模块：分类目录 -->
-            {sidebarData.categories && sidebarData.categories.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">分类</h3>
-                <ul class="widget-list">
-                  {sidebarData.categories.map((cat) => (
-                    <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <!-- 侧边栏模块：归档 -->
-            {sidebarData.archives && sidebarData.archives.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">归档</h3>
-                <ul class="widget-list">
-                  {sidebarData.archives.map((archive) => (
-                    <li><a href={archive.permalink}>{archive.date}</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <!-- 侧边栏模块：其它 (登录状态、RSS订阅) -->
-            <section class="widget">
-              <h3 class="widget-title">其它</h3>
-              <ul class="widget-list">
-                {isLoggedIn ? (
-                  <>
-                    <li class="last">
-                      <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
-                    </li>
-                    <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
-                  </>
-                ) : (
-                  <li class="last"><a href={urls.loginUrl}>登录</a></li>
-                )}
-                <li><a href={urls.feedUrl}>文章 RSS</a></li>
-                <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
-              </ul>
-            </section>
-          </div>
-        )}
+      
+      <!-- 2. 主题预设 -->
+      <div class="setting-group" style="margin-top: 16px;">
+        <div class="setting-title" style="font-size: 13px; opacity: 0.7; margin-bottom: 8px;">主题预设</div>
+        <div class="setting-options color-options" style="display: flex; justify-content: space-between; gap: 8px;">
+          <button data-theme-action="color" data-theme-value="blue" class="color-btn blue" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #b0cde0; background: linear-gradient(135deg, #dcecf9, #ffffff); cursor: pointer;"></button>
+          <button data-theme-action="color" data-theme-value="green" class="color-btn green" style="width: 28px; height: 28px; border-radius: 50%; border: none; background: #7c3aed; cursor: pointer;"></button>
+          <button data-theme-action="color" data-theme-value="orange" class="color-btn orange" style="width: 28px; height: 28px; border-radius: 50%; border: none; background: #555555; cursor: pointer;"></button>
+          <button data-theme-action="color" data-theme-value="purple" class="color-btn purple" style="width: 28px; height: 28px; border-radius: 50%; border: none; background: #9c4f7a; cursor: pointer;"></button>
+        </div>
+      </div>
+      
+      <!-- 3. 字号预设 -->
+      <div class="setting-group" style="margin-top: 16px;">
+        <div class="setting-title" style="font-size: 13px; opacity: 0.7; margin-bottom: 8px;">字号预设</div>
+        <div class="setting-options" style="display: flex; gap: 8px;">
+          <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn" style="flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 12px;">A</button>
+          <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn" style="flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px;">A</button>
+          <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn" style="flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 16px;">A</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- 3. 页脚区域 (Footer) -->
-  <!-- ========================================== -->
-  <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
-    由 <a href="https://github.com/eslizn/typecho-cf">Typecho</a> 强力驱动.
-  </footer>
-</Base>
+  <!-- ============================================================
+       回到顶部按钮脚本
+       ============================================================ -->
+  <script is:inline>
+    (function () {
+      function ensureButton() {
+        if (document.getElementById('back-to-top')) return;
+        var btn = document.createElement('button');
+        btn.id = 'back-to-top';
+        btn.setAttribute('aria-label', '返回顶部');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>';
+        document.body.appendChild(btn);
+        btn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      function onScroll() {
+        var b = document.getElementById('back-to-top');
+        if (!b) return;
+        var threshold = window.innerWidth <= 768 ? 200 : 300;
+        if (window.scrollY > threshold) {
+          b.classList.add('show');
+        } else {
+          b.classList.remove('show');
+        }
+      }
+
+      ensureButton();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      document.addEventListener('swup:contentReplaced', function () { ensureButton(); onScroll(); });
+      document.addEventListener('swup:pageView', function () { ensureButton(); onScroll(); });
+      var observer = new MutationObserver(function () { ensureButton(); });
+      observer.observe(document.body, { childList: true, subtree: false });
+    })();
+  </script>
+
+  <!-- ============================================================
+       全局主题切换与悬浮面板控制逻辑 (兼容手机端)
+       ============================================================ -->
+  <script is:inline>
+    // 监听系统主题变化
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (localStorage.getItem('hbw-theme-pref') === 'system') {
+        document.documentElement.setAttribute('data-mode', e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // 全局切换函数
+    window.setThemeMode = function(mode) {
+      localStorage.setItem('hbw-theme-pref', mode);
+      let actualMode = mode;
+      if (mode === 'system') {
+        actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-mode', actualMode);
+    };
+
+    window.setThemeColor = function(color) {
+      localStorage.setItem('hbw-theme-color', color);
+      document.documentElement.setAttribute('data-color', color);
+    };
+
+    window.setThemeFont = function(size) {
+      localStorage.setItem('hbw-theme-font', size);
+      document.documentElement.setAttribute('data-font', size);
+    };
+
+    // 点击事件监听 (修复手机端无效问题)
+    document.addEventListener('click', function(e) {
+      // 1. 开关面板
+      const toggleBtn = e.target.closest('.theme-settings-toggle');
+      if (toggleBtn) {
+        e.preventDefault();
+        const panel = toggleBtn.nextElementSibling;
+        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        return; 
+      }
+
+      // 2. 点击空白处关闭面板
+      if (!e.target.closest('.global-theme-settings')) {
+        const panel = document.querySelector('.global-theme-settings .theme-settings-panel');
+        if (panel) panel.style.display = 'none';
+      }
+
+      // 3. 处理具体的切换动作
+      const btn = e.target.closest('[data-theme-action]');
+      if (!btn) return;
+      const action = btn.getAttribute('data-theme-action');
+      const value = btn.getAttribute('data-theme-value');
+      if (action === 'mode') window.setThemeMode(value);
+      if (action === 'color') window.setThemeColor(value);
+      if (action === 'font') window.setThemeFont(value);
+    });
+  </script>
+
+</body>
+</html>
