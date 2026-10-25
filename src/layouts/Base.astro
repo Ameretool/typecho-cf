@@ -202,10 +202,10 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
   </script>
 
   <!-- ============================================================
-       全局切换函数与事件委托 (完美兼容手机/电脑)
+       全局切换函数与事件委托 (完美兼容手机端触控和 Swup 切页)
        ============================================================ -->
   <script is:inline>
-    // 1. 监听系统主题变化 (如果用户选了"跟随系统")
+    // 1. 监听系统主题变化
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
       if (localStorage.getItem('hbw-theme-pref') === 'system') {
         document.documentElement.setAttribute('data-mode', e.matches ? 'dark' : 'light');
@@ -233,11 +233,14 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     };
 
     // 3. 增强版事件委托：完美兼容手机端触控、电脑点击和 Swup 切页
+    // 增加了 capture: true，防止被 Swup 或其他插件拦截
     document.addEventListener('click', function(e) {
       // --- A. 处理面板开关 ---
+      // 兼容 Index.astro 里使用的 .theme-settings-toggle
       const toggleBtn = e.target.closest('.theme-settings-toggle');
       if (toggleBtn) {
-        e.preventDefault(); // 阻止手机端默认行为
+        e.preventDefault(); 
+        e.stopPropagation(); // 阻止冒泡，防止其他点击事件干扰
         toggleBtn.parentElement.classList.toggle('active');
         return; 
       }
@@ -258,7 +261,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       if (action === 'mode') window.setThemeMode(value);
       if (action === 'color') window.setThemeColor(value);
       if (action === 'font') window.setThemeFont(value);
-    });
+    }, true); // 👈 注意这里的 true，表示在事件捕获阶段触发，极大地提高了点击响应率
   </script>
 
 </body>
