@@ -1,0 +1,266 @@
+---
+/**
+ * ============================================================
+ * 页面通用布局模板 (Layout / Wrapper)
+ * ============================================================
+ * 功能说明：
+ * 1. 包裹所有非首页的子页面（如文章页、独立页面、归档页等）
+ * 2. 统一渲染公共的头部导航（Logo、搜索框、菜单）
+ * 3. 统一渲染侧边栏（最新文章、分类、评论等）
+ * 4. 引入全局的主题设置面板（太阳/月亮图标）
+ */
+
+import Base from './Base.astro';
+import type { SiteOptions } from '@/lib/options';
+import type { computeUrls } from '@/lib/options';
+
+// 定义组件接收的参数（Props）类型
+interface Props {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  options: SiteOptions;
+  urls: ReturnType<typeof computeUrls>;
+  user?: any;
+  isLoggedIn?: boolean;
+  // 导航栏的自定义页面列表
+  pages?: Array<{ title: string; slug: string; permalink: string }>;
+  currentSlug?: string;
+  // 是否显示侧边栏
+  showSidebar?: boolean;
+  // 侧边栏的数据源（最新文章、评论、分类、归档）
+  sidebarData?: {
+    recentPosts?: Array<{ title: string; permalink: string }>;
+    recentComments?: Array<{ author: string; excerpt: string; permalink: string }>;
+    categories?: Array<{ name: string; slug: string; count: number; permalink: string }>;
+    archives?: Array<{ date: string; permalink: string }>;
+  };
+}
+
+// 解构参数，并赋予默认值
+const {
+  title,
+  description,
+  keywords,
+  options,
+  urls,
+  user,
+  isLoggedIn = false,
+  pages = [],
+  currentSlug,
+  showSidebar = true,
+  sidebarData,
+} = Astro.props;
+
+// 获取当前路径，用于判断哪个导航菜单被选中
+const currentPath = new URL(Astro.request.url).pathname;
+const isIndex = currentPath === '/';
+---
+<Base
+  title={title}
+  description={description}
+  keywords={keywords}
+  options={options}
+  urls={urls}
+  user={user}
+  isLoggedIn={isLoggedIn}
+>
+  <!-- ========================================== -->
+  <!-- 1. 页头区域 (Header) -->
+  <!-- ========================================== -->
+  <header id="header" class="clearfix">
+    <div class="container">
+      <div class="row">
+        <!-- 左侧：Logo 与站点描述 -->
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        
+        <!-- 右侧：搜索框 -->
+        <div class="site-search col-3 kit-hidden-tb">
+          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+            <label for="s" class="sr-only">搜索关键字</label>
+            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+            <button type="submit" class="submit">搜索</button>
+          </form>
+        </div>
+        
+        <!-- 下方：导航菜单与主题切换图标 -->
+        <div class="col-mb-12">
+          <!-- 使用 Flex 布局：让导航菜单靠左，太阳图标靠右 -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 25px;">
+            
+            <!-- 🌟 左侧：导航菜单 -->
+            <nav id="nav-menu" class="clearfix" role="navigation" style="margin-top: 0;">
+              <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+              {pages.map((page) => (
+                <a
+                  class:list={[{ current: currentSlug === page.slug }]}
+                  href={page.permalink}
+                  title={page.title}
+                >
+                  {page.title}
+                </a>
+              ))}
+            </nav>
+
+            <!-- ========================================== -->
+            <!-- 🌟 右侧：全局主题设置面板 (太阳/月亮) -->
+            <!-- ========================================== -->
+            <div class="theme-settings-wrapper" style="position: relative; margin-bottom: 0; top: auto; transform: none;">
+              <!-- 触发按钮：带有 SVG 太阳图标 -->
+              <button class="theme-settings-toggle" aria-label="主题设置">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+              </button>
+
+              <!-- 悬浮弹出的控制面板 -->
+              <!-- 注意：top: 35px 让面板向下弹出，避免超出屏幕 -->
+              <div class="theme-settings-panel" style="top: 35px; bottom: auto;">
+                
+                <!-- 模块 1：界面模式 (亮色/暗色/跟随系统) -->
+                <div class="setting-group">
+                  <div class="setting-title">界面模式</div>
+                  <div class="setting-options">
+                    <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
+                    <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
+                    <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
+                  </div>
+                </div>
+                
+                <!-- 模块 2：主题预设 (4 个颜色圆点) -->
+                <div class="setting-group">
+                  <div class="setting-title">主题预设</div>
+                  <div class="setting-options color-options">
+                    <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
+                    <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
+                    <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
+                    <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
+                  </div>
+                </div>
+                
+                <!-- 模块 3：字号预设 (小、中、大) -->
+                <div class="setting-group">
+                  <div class="setting-title">字号预设</div>
+                  <div class="setting-options">
+                    <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
+                    <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
+                    <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+            <!-- 🌟 设置面板结束 -->
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 2. 页面主体区域 (包含正文与侧边栏) -->
+  <!-- ========================================== -->
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <!-- 这里的 <slot /> 是父组件注入正文（如文章内容）的地方 -->
+        <slot />
+
+        <!-- 侧边栏区域 (由 showSidebar 变量控制是否显示) -->
+        {showSidebar && sidebarData && (
+          <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+            
+            <!-- 侧边栏模块：最新文章 -->
+            {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">最新文章</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentPosts.map((post) => (
+                    <li><a href={post.permalink}>{post.title}</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <!-- 侧边栏模块：最近回复 -->
+            {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">最近回复</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentComments.map((comment) => (
+                    <li>
+                      <a href={comment.permalink}>{comment.author}</a>: {comment.excerpt}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <!-- 侧边栏模块：分类目录 -->
+            {sidebarData.categories && sidebarData.categories.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">分类</h3>
+                <ul class="widget-list">
+                  {sidebarData.categories.map((cat) => (
+                    <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <!-- 侧边栏模块：归档 -->
+            {sidebarData.archives && sidebarData.archives.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">归档</h3>
+                <ul class="widget-list">
+                  {sidebarData.archives.map((archive) => (
+                    <li><a href={archive.permalink}>{archive.date}</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <!-- 侧边栏模块：其它 (登录状态、RSS订阅) -->
+            <section class="widget">
+              <h3 class="widget-title">其它</h3>
+              <ul class="widget-list">
+                {isLoggedIn ? (
+                  <>
+                    <li class="last">
+                      <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
+                    </li>
+                    <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                  </>
+                ) : (
+                  <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                )}
+                <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+              </ul>
+            </section>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. 页脚区域 (Footer) -->
+  <!-- ========================================== -->
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+    由 <a href="https://github.com/eslizn/typecho-cf">Typecho</a> 强力驱动.
+  </footer>
+</Base>
