@@ -1,14 +1,14 @@
 ---
 /**
  * ============================================================
- *  归档页面 - /archive/ （方案 A：链接用 buildPermalink 生成）
+ *  归档页面 - /archive/
  * ============================================================
  *  说明：
  *    1. 直接查数据库，拿全部已发布文章，不分页
  *    2. 按「年 → 月」分组
  *    3. 用 buildPermalink 生成正确的 /post/xxx.html 链接
  *    4. 导航栏 + 侧边栏与首页一致
- *    5. 每篇文章一行，行分隔 + hover 变色
+ *    5. 完美适配暗黑模式，背景、边框、文字颜色全量动态化
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -108,7 +108,8 @@ const { sidebarData, pages } = await loadSidebarAndNav(
           ) : (
             sortedYears.map((year) => (
               <section class="archive-year" style="margin-bottom: 2rem;">
-                <h4 style="font-size: 1.2rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                <!-- 年份标题：去掉了内联的写死颜色，完全交由 CSS 变量控制 -->
+                <h4 class="archive-year-title">
                   {year} 年
                 </h4>
                 {Object.keys(postsByYearMonth[year])
@@ -117,9 +118,10 @@ const { sidebarData, pages } = await loadSidebarAndNav(
                     const postsInMonth = postsByYearMonth[year][month];
                     return (
                       <details class="archive-month" style="margin-bottom: 0.5rem;">
-                        <summary style="cursor: pointer; padding: 0.5rem 0.8rem; background: #f7f8fa; border-radius: 4px; font-size: 1rem; color: #3354aa; user-select: none;">
+                        <!-- 月份折叠框：去掉了写死的白底和内联颜色 -->
+                        <summary class="archive-month-summary">
                           {year} 年 {month} 月
-                          <span style="color: #888; font-size: 0.85rem; margin-left: 0.5rem;">
+                          <span class="archive-count">
                             ({postsInMonth.length} 篇)
                           </span>
                         </summary>
@@ -129,7 +131,6 @@ const { sidebarData, pages } = await loadSidebarAndNav(
                               <span class="archive-post-date">
                                 {formatDate(Number(post.created) || 0, 'm-d', options.timezone)}
                               </span>
-                              {/* 用 buildPermalink 生成的正确链接，格式为 /post/xxx.html */}
                               <a href={post.permalink} class="archive-post-title">
                                 {post.title || '无标题'}
                               </a>
@@ -212,19 +213,24 @@ const { sidebarData, pages } = await loadSidebarAndNav(
  * 归档页面专属样式 (完美适配暗黑模式)
  * ========================================= */
 
+/* 列表容器 */
 .archive-post-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  /* 给列表底部加一条跟随主题的边框 */
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
 }
 
-/* 每一行文章的样式 */
+/* 每一行文章 */
 .archive-post-row {
   display: flex;
   gap: 1rem;
   align-items: baseline;
   padding: 0.6rem 0.8rem;
-  /* 🌟 用变量代替死白色，暗黑模式自动变深灰 */
+  /* 分割线使用主题边框变量，夜间会自动变深 */
   border-bottom: 1px solid var(--border-color); 
   transition: background-color 0.15s ease;
 }
@@ -232,14 +238,13 @@ const { sidebarData, pages } = await loadSidebarAndNav(
   border-bottom: none;
 }
 
-/* 鼠标悬停时的背景色 */
+/* 鼠标悬停时的微亮背景 */
 .archive-post-row:hover {
-  /* 🌟 用卡片背景变量，亮色下微灰，暗色下微亮 */
   background-color: var(--card-bg); 
 }
 
+/* 左侧日期 */
 .archive-post-date {
-  /* 日期文字稍微变淡一点 */
   color: var(--text-color);
   opacity: 0.6;
   font-size: 0.9rem;
@@ -247,10 +252,10 @@ const { sidebarData, pages } = await loadSidebarAndNav(
   min-width: 80px;
 }
 
+/* 文章标题 */
 .archive-post-title {
   font-size: 1rem;
   text-decoration: none;
-  /* 标题使用主题的强调色 */
   color: var(--accent-color);
 }
 .archive-post-title:hover {
@@ -258,8 +263,8 @@ const { sidebarData, pages } = await loadSidebarAndNav(
   color: var(--text-color);
 }
 
-/* 🌟 年份标题 (2026 年) */
-.archive-year h4 {
+/* 年份标题 (例如：2026 年) */
+.archive-year-title {
   font-size: 1.2rem;
   color: var(--text-color) !important;
   border-bottom: 1px solid var(--border-color) !important;
@@ -267,21 +272,30 @@ const { sidebarData, pages } = await loadSidebarAndNav(
   margin-bottom: 1rem;
 }
 
-/* 🌟 月份折叠框 (2026 年 10 月) */
-.archive-month summary {
+/* 月份折叠框 (例如：2026 年 10 月) */
+.archive-month-summary {
   cursor: pointer;
   padding: 0.5rem 0.8rem;
-  /* 背景色用变量，完美融入暗黑模式 */
-  background: var(--card-bg);
+  /* 使用卡片背景色，完美融入亮色/暗色模式 */
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 4px;
   font-size: 1rem;
-  color: var(--accent-color);
+  color: var(--accent-color) !important;
   user-select: none;
-  transition: background-color 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 /* 月份折叠框悬停效果 */
-.archive-month summary:hover {
-  background: var(--border-color);
+.archive-month-summary:hover {
+  background: var(--border-color) !important;
+}
+
+/* 篇数统计小字 */
+.archive-count {
+  color: var(--text-color) !important;
+  opacity: 0.6;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
 }
 </style>
