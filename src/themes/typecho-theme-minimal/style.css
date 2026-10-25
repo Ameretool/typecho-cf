@@ -4,49 +4,43 @@
    @project   Typecho Blog Theme (Astro Version)
    @author    Ameretool
    @link      https://hbw.me
-   @version   2.5.0 (清爽蓝色+夜间修复版)
+   @version   2.7.0 (冰蓝首位+纯白第二+完美圆点版)
    @update    2026-10-25
    ========================================================================== */
 
 /* ==========================================================================
    1. 基础变量定义 (兜底亮色渐变)
    ========================================================================== */
-/* ==========================================================================
-   1. 基础变量定义 (兜底亮色渐变)
-   ========================================================================== */
 :root {
   --font-size-base: 16px;
-  /* 兜底渐变：从偏蓝过渡到极浅蓝 */
-  --bg-color:     linear-gradient(135deg, #dcecf9 0%, #f4faff 100%); 
+  /* 👈 兜底：清新冰蓝 */
+  --bg-color:     linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); 
   --text-color:   #2c3e50; 
   --card-bg:      #e1f0fa;
   --border-color: #d0e3f0;
-  
-  /* 👈 默认（第一个主题）链接和标题改为紫色 */
-  --accent-color: #7c3aed;   /* 链接/强调色：紫罗兰 */
-  --link-hover:   #5b21b6;   /* 悬停加深 */
+  --accent-color: #2563eb; 
 }
 
 /* ============================================================
- * 2. 亮色模式预设 (色差拉开，渐变明显)
+ * 2. 亮色模式预设
  * ============================================================ */
 
-/* ☀️ 亮色 1：纯白极简 (纯白背景 + 紫色链接) */
+/* ☀️ 亮色 1：清新冰蓝 (第 1 个圆点，恢复默认) */
 [data-color="blue"] { 
-  --accent-color: #7c3aed;  /* 👈 紫罗兰 */
-  --text-color: #1f2937;   
-  --border-color: #e5e7eb; 
-  --card-bg: #f9fafb;      
-  --bg-color: #ffffff; /* 纯白背景，和第二个区分 */
-}
-
-/* ☀️ 亮色 2：清新冰蓝 (浅蓝渐变背景 + 清爽蓝链接) */
-[data-color="green"] { 
-  --accent-color: #2563eb;  /* 👈 改为经典蓝，和第一个区分开 */
+  --accent-color: #2563eb;  
   --text-color: #2c3e50;   
   --border-color: #d0e3f0; 
   --card-bg: #e1f0fa;      
   --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%);
+}
+
+/* ☀️ 亮色 2：纯白极简 (第 2 个圆点) */
+[data-color="green"] { 
+  --accent-color: #7c3aed;  
+  --text-color: #1f2937;   
+  --border-color: #e5e7eb; 
+  --card-bg: #f9fafb;      
+  --bg-color: #ffffff;      
 }
 
 /* ☀️ 亮色 3：浅灰极简 */
@@ -68,7 +62,7 @@
 }
 
 /* ============================================================
- * 3. 暗黑模式预设 (深邃渐变)
+ * 3. 暗黑模式预设 (保持不变)
  * ============================================================ */
 
 /* 🌙 暗色 1：GitHub 暗色 */
@@ -80,10 +74,10 @@ html[data-mode="dark"][data-color="blue"] {
   --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%);
 }
 
-/* 🌙 暗色 2：赛博极光紫 (替换了原来的极光深青) */
+/* 🌙 暗色 2：赛博极光紫 */
 html[data-mode="dark"][data-color="green"] {
-  --accent-color: #a78bfa; /* 👈 柔和高级的丁香紫 */
-  --text-color: #e2e8f0;   /* 文字改为更干净的冷灰白 */
+  --accent-color: #a78bfa; 
+  --text-color: #e2e8f0;   
   --border-color: #334155; 
   --card-bg: #1e293b;
   --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -115,7 +109,7 @@ html[data-mode="dark"][data-color="purple"] {
 [data-font="large"]  { --font-size-base: 18px; }
 
 /* ==========================================================================
-   5. 全局基础样式 (强制渲染渐变)
+   5. 全局基础样式
    ========================================================================== */
 html, body {
   background: var(--bg-color) !important;
@@ -127,7 +121,7 @@ html, body {
 body {
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
   font-size: var(--font-size-base);
-  transition: color 0.4s ease;
+  transition: color 0.4s ease, background 0.4s ease;
 }
 
 a { color: var(--accent-color); text-decoration: none; transition: color 0.2s; }
@@ -204,7 +198,6 @@ textarea { resize: vertical; }
 .comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
 .comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
 .comment-list li.comment-level-odd { background: var(--card-bg); }
-/* 👈 已修复：把 #ffffff 改成了透明，夜间模式不再刺眼 */
 .comment-list li.comment-level-even { background: transparent; } 
 .comment-list li.comment-by-author { background: rgba(255, 235, 59, 0.1); }
 .comment-list li .comment-reply { text-align: right; font-size: .92857em; }
@@ -292,20 +285,20 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
 .color-btn:hover { transform: scale(1.1); }
 
-/* 🌟 修复：第 1 个浅色圆点加渐变和深色边框，防止在亮色面板里隐身 */
+/* 🌟 面板圆点颜色完美同步 */
+/* 第 1 个圆点：清新冰蓝 (浅蓝渐变) */
 .color-btn.blue { 
   background: linear-gradient(135deg, #dcecf9, #ffffff) !important; 
   border: 1px solid #b0cde0 !important; 
 }
-/* 修改：第 2 个圆点改为赛博紫 */
-.color-btn.green { background: #818cf8 !important; }
+/* 第 2 个圆点：纯白极简 (用紫色代表，因为纯白在面板上会隐身) */
+.color-btn.green { background: #7c3aed !important; }
 .color-btn.orange { background: #555555 !important; }
 .color-btn.purple { background: #9c4f7a !important; }
 
 /* 暗黑模式下的圆点颜色 */
 html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
-/* 修改：暗黑模式下第 2 个圆点改为亮紫 */
-html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; } 
+html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; }
 html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
 html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
 
