@@ -264,16 +264,7 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     }, true); // 👈 注意这里的 true，表示在事件捕获阶段触发，极大地提高了点击响应率
   </script>
 
-<script is:inline>
-  // 监听全站点击事件，专门处理相册图片
-  document.addEventListener('click', function(e) {
-    // 如果点击的是带有 album-img 类的图片
-    if (e.target && e.target.classList.contains('album-img')) {
-      // 获取这张图当前真实加载的地址，并在新窗口打开
-      window.open(e.target.src, '_blank');
-    }
-  });
-</script>
+
 
 </body>
 </html>
