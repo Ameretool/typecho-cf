@@ -264,5 +264,137 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     }, true); // 👈 注意这里的 true，表示在事件捕获阶段触发，极大地提高了点击响应率
   </script>
 
+
+<script is:inline>
+  // 等待页面的 HTML 结构全部加载完毕后再执行
+  document.addEventListener('DOMContentLoaded', () => {
+    
+    // 【1】寻找相册页面的专属容器
+    const albumContainer = document.getElementById('my-custom-album');
+    
+    // 如果当前页面没有这个容器，说明不是相册页（比如在首页、文章页），直接终止执行，避免报错和浪费性能。
+    if (!albumContainer) return;
+
+    // 获取分页相关的 DOM 元素
+    const pagination = document.getElementById('album-pagination');
+    const prevBtn = document.getElementById('album-prev');
+    const nextBtn = document.getElementById('album-next');
+    const pageInfo = document.getElementById('album-page-info');
+    
+    // 定义分页变量
+    let currentPage = 1;      // 当前页码，默认从第 1 页开始
+    const pageSize = 20;      // 每页显示多少张图片（如果你想要更多可以改成 30 或 50）
+    
+    // 配置接口地址
+    // 获取图床列表的 API，dir=photos 表示只拉取 photos 文件夹
+    const apiBase = 'https://img.huw.me/api/manage/list?dir=photos&type=img';
+    // 图床的域名前缀，用于拼接完整的图片链接
+    const imgBase = 'https://img.huw.me';
+
+    // 【2】核心加载函数：每次翻页都会调用这个函数
+    async function loadAlbum(page) {
+      // 在请求数据前，先在页面上显示“加载中”的提示，并恢复默认文字样式
+      albumContainer.innerHTML = '正在加载照片...';
+      albumContainer.style.textAlign = 'center';
+      albumContainer.style.color = '#666';
+      albumContainer.style.padding = '20px';
+      pagination.style.display = 'none'; // 加载时暂时隐藏翻页按钮
+
+      try {
+        // 计算 API 需要的分页参数 start（跳过多少张）
+        // 比如第 1 页 start=0，第 2 页 start=20，第 3 页 start=40
+        const start = (page - 1) * pageSize;
+        
+        // 发起网络请求，获取图床数据
+        const res = await fetch(`${apiBase}&start=${start}&count=${pageSize}`);
+        const data = await res.json();
+        
+        // 提取图片列表数据（这里对应你截图里返回的 data.files 数组）
+        const files = data.files || [];
+
+        // 如果这一页没有任何图片，说明到底了
+        if (files.length === 0) {
+          albumContainer.innerHTML = '相册里暂时没有照片了。';
+          return;
+        }
+
+        // 【3】清空“加载中”的文字，准备开始渲染图片网格
+        albumContainer.innerHTML = '';
+        albumContainer.style.textAlign = 'left';
+        albumContainer.style.padding = '0';
+        
+        // 使用 CSS Grid 设置响应式网格布局（手机两列，电脑多列）
+        albumContainer.style.display = 'grid';
+        albumContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px, 1fr))';
+        albumContainer.style.gap = '12px';
+
+        // 【4】循环遍历返回的图片数据，创建 HTML 元素
+        files.forEach(item => {
+          // 拼接真实的图片地址：https://img.huw.me + /file/photos/xxxx.jpg
+          const imgUrl = imgBase + item.name;
+          
+          // 创建一个 <a> 标签，实现点击图片在新窗口打开大图
+          const a = document.createElement('a');
+          a.href = imgUrl;
+          a.target = '_blank';
+          a.style.cssText = 'display: block; border-radius: 10px; overflow: hidden; aspect-ratio: 1/1; background: #eee; box-shadow: 0 2px 6px rgba(0,0,0,0.1);';
+          
+          // 创建 <img> 标签
+          const img = document.createElement('img');
+          img.src = imgUrl;
+          // ⭐️ 开启懒加载：浏览器只会下载屏幕上能看到的图片，往下滑动才加载后面的，节省流量不卡顿
+          img.loading = 'lazy'; 
+          img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;';
+          
+          // 鼠标悬停时的微放大动效
+          img.onmouseover = () => img.style.transform = 'scale(1.05)';
+          img.onmouseout = () => img.style.transform = 'scale(1)';
+
+          // 将 img 塞进 a 标签，再将 a 标签塞进相册容器
+          a.appendChild(img);
+          albumContainer.appendChild(a);
+        });
+
+        // 【5】更新底部分页按钮的状态
+        pagination.style.display = 'flex'; // 显示翻页控制条
+        pageInfo.innerText = `第 ${page} 页`; // 更新当前页码文字
+        
+        // 如果是第一页，禁用“上一页”按钮并降低透明度
+        prevBtn.disabled = page === 1;
+        prevBtn.style.opacity = page === 1 ? '0.5' : '1';
+        
+        // 如果这一页返回的图片少于 pageSize，说明已经是最后一页了，禁用“下一页”
+        nextBtn.disabled = files.length < pageSize;
+        nextBtn.style.opacity = files.length < pageSize ? '0.5' : '1';
+
+      } catch (error) {
+        // 如果 API 请求失败或网络报错，会在控制台打印并显示在页面上
+        console.error('相册加载失败:', error);
+        albumContainer.innerHTML = '加载失败，请检查网络或跨域设置。';
+        albumContainer.style.color = 'red';
+      }
+    }
+
+    // 【6】绑定翻页按钮的点击事件
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) { 
+        currentPage--; // 页码减一
+        loadAlbum(currentPage); // 重新加载数据
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // 翻页后页面平滑滚动回顶部
+      }
+    });
+    
+    nextBtn.addEventListener('click', () => {
+      currentPage++; // 页码加一
+      loadAlbum(currentPage); 
+      window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    });
+
+    // 【7】页面刚打开时的初始化调用，默认加载第 1 页
+    loadAlbum(currentPage);
+  });
+</script>
+
+
 </body>
 </html>
