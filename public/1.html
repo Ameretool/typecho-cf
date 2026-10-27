@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的相册</title>
+  <style>
+    /* ================= 基础主题与变量 ================= */
+    :root {
+      --bg-color: #f4faff;
+      --text-color: #2c3e50;
+      --card-bg: #ffffff;
+      --border-color: #d0e3f0;
+      --accent-color: #2563eb;
+    }
+    
+    /* 暗黑模式变量 */
+    body.dark-mode {
+      --bg-color: #161b22;
+      --text-color: #adbac7;
+      --card-bg: #2d333b;
+      --border-color: #444c56;
+      --accent-color: #60a5fa;
+    }
+
+    body {
+      margin: 0; padding: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: "PingFang SC", "Microsoft Yahei", sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* ================= 顶部导航栏 ================= */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 15px 20px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .header a {
+      text-decoration: none; color: var(--accent-color);
+      font-weight: bold; font-size: 16px;
+    }
+    .header a:hover { text-decoration: underline; }
+    
+    .toggle-btn {
+      background: none; border: none; font-size: 20px;
+      cursor: pointer; padding: 5px;
+    }
+
+    /* ================= 页面内容区 ================= */
+    .container {
+      max-width: 1200px; margin: 0 auto; padding: 20px;
+    }
+    .intro {
+      text-align: center; margin: 30px 0;
+    }
+    .intro h1 { margin: 0 0 10px 0; color: var(--accent-color); }
+    .intro p { color: var(--text-color); opacity: 0.7; }
+
+    /* ================= 相册网格 ================= */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+    }
+    .gallery-item {
+      border-radius: 12px; overflow: hidden;
+      aspect-ratio: 1 / 1; cursor: zoom-in;
+      background: var(--card-bg);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      transition: transform 0.3s;
+    }
+    .gallery-item:hover { transform: translateY(-4px); }
+    .gallery-item img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+
+    /* ================= 全屏大图弹窗 ================= */
+    .lightbox {
+      display: none; /* 默认隐藏 */
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.9); z-index: 99999;
+      justify-content: center; align-items: center;
+      cursor: zoom-out; backdrop-filter: blur(5px);
+    }
+    .lightbox.active { display: flex; } /* JS 添加这个类名时显示 */
+    .lightbox img {
+      max-width: 95vw; max-height: 95vh;
+      object-fit: contain; border-radius: 8px;
+      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+      animation: zoomIn 0.3s ease;
+    }
+    @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    
+    .close-btn {
+      position: absolute; top: 20px; right: 20px;
+      width: 44px; height: 44px; background: rgba(255,255,255,0.2);
+      border-radius: 50%; color: #fff; font-size: 24px;
+      display: flex; justify-content: center; align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航 -->
+  <div class="header">
+    <a href="/">← 返回博客</a>
+    <button class="toggle-btn" onclick="toggleDarkMode()">🌓</button>
+  </div>
+
+  <div class="container">
+    <div class="intro">
+      <h1>我的相册</h1>
+      <p>记录风景与插画，点击图片即可原地查看高清大图</p>
+    </div>
+
+    <!-- 照片自动生成在这里 -->
+    <div class="gallery" id="gallery-container"></div>
+  </div>
+
+  <!-- 全屏大图弹窗 -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <img id="lightbox-img" src="" alt="大图">
+    <div class="close-btn">✕</div>
+  </div>
+
+  <script>
+    // === 1. 暗黑模式切换逻辑 ===
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      // 记录用户偏好，下次刷新还在
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('album-theme', isDark ? 'dark' : 'light');
+    }
+    // 页面加载时检查暗黑模式偏好
+    if (localStorage.getItem('album-theme') === 'dark') {
+      document.body.classList.add('dark-mode');
+    }
+
+    // === 2. 相册自动生成逻辑 ===
+    // 这里你可以随便改图片数量。用的是你的图床随机接口。
+    const imageCount = 20; // 生成 20 张照片
+    const galleryContainer = document.getElementById('gallery-container');
+    let galleryHTML = '';
+
+    for (let i = 0; i < imageCount; i++) {
+      // 生成唯一的随机图 URL
+      const url = `https://img.huw.me/random?dir=photos&type=img&t=${Date.now()}_${i}`;
+      
+      // 拼装 HTML，直接把 url 同时赋给小图的 src 和大图的 onclick 事件
+      galleryHTML += `
+        <div class="gallery-item" onclick="openLightbox('${url}')">
+          <img src="${url}" loading="lazy" alt="相册图片">
+        </div>
+      `;
+    }
+    galleryContainer.innerHTML = galleryHTML;
+
+    // === 3. 弹窗控制逻辑 ===
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+
+    function openLightbox(src) {
+      lightboxImg.src = src; // 把点击的图片地址塞给大图
+      lightbox.classList.add('active'); // 显示弹窗
+    }
+
+    function closeLightbox(event) {
+      // 只有点击背景或者关闭按钮才关闭，点图片本身不关闭
+      if (event.target === lightbox || event.target.classList.contains('close-btn')) {
+        lightbox.classList.remove('active');
+      }
+    }
+
+    // 支持按 ESC 键关闭弹窗
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+        lightbox.classList.remove('active');
+      }
+    });
+  </script>
+</body>
+</html>
