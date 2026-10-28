@@ -104,19 +104,27 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
           <nav id="nav-menu" class="clearfix" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             
-            {/* 👇 隐藏：硬编码的归档链接，已被注释 */}
+            {/* 隐藏：硬编码的归档链接 */}
             {/* <a href={urls.siteUrl + '/archive/'}>归档</a> */}
 
-            {/* 👇 隐藏：动态渲染页面时，过滤掉“归档”和“标签”页面 */}
+            {/* 隐藏：动态渲染页面时，过滤掉“归档”和“标签”页面 */}
             {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
 
-            <!-- 👇 新增：暗黑模式切换按钮，右浮动 -->
-            <div style="float: right; margin-top: 25px;">
-              <button id="note-theme-toggle" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 13px; transition: 0.3s;">
-                🌓 模式
+            <!-- 👇 新增：暗黑模式下拉菜单 (🌓) -->
+            <div style="float: right; margin-top: 25px; position: relative;">
+              <!-- 触发按钮 -->
+              <button id="note-theme-btn" class="note-btn-hover" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 16px; transition: 0.3s; display: flex; align-items: center;">
+                🌓
               </button>
+              
+              <!-- 下拉菜单 -->
+              <div id="note-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
+                <button class="note-theme-opt note-opt-hover" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; transition: 0.2s;">☀️ 亮色</button>
+                <button class="note-theme-opt note-opt-hover" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; transition: 0.2s;">🌙 暗色</button>
+                <button class="note-theme-opt note-opt-hover" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; transition: 0.2s;">💻 系统</button>
+              </div>
             </div>
 
           </nav>
@@ -151,7 +159,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                       />
                     </div>
                     <div class="meta-block" style="flex: 1; min-width: 0;">
-                      <div class="post-author" style="font-weight: 600; font-size: 15px; color: #3354aa; margin-bottom: 2px;">
+                      <div class="post-author" style="font-weight: 600; font-size: 15px; color: var(--accent-color); margin-bottom: 2px;">
                         <a
                           itemprop="name"
                           href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'}
@@ -184,9 +192,9 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                         >
                           {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
                         </a>
-		{post.status === 'private' && (
-		<span class="meta-tags">私密</span>
-		)}
+                        {post.status === 'private' && (
+                          <span class="meta-tags">私密</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -195,7 +203,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                     class="post-excerpt"
                     itemprop="articleBody"
                     set:html={post.excerpt}
-                    style="margin-top: 26px; padding-left: 48px; font-size: 15px; line-height: 1.7; color: #4e5969; word-break: break-word; position: relative; z-index: 0;"
+                    style="margin-top: 26px; padding-left: 48px; font-size: 15px; line-height: 1.7; color: var(--text-color); word-break: break-word; position: relative; z-index: 0;"
                   />
 
                   {post.mediaItems.length > 0 && (
@@ -277,7 +285,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                 </section>
               )}
 
-              {/* 👇 隐藏：侧边栏的归档模块，已被注释 */}
+              {/* 隐藏：侧边栏的归档模块，已被注释 */}
               {/*
              {sidebarData.archives && sidebarData.archives.length > 0 && (
                 <section class="widget">
@@ -321,127 +329,92 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   </footer>
 </Base>
 
-<!-- 👇 暗黑模式控制脚本 -->
+<!-- 👇 暗黑模式下拉菜单控制脚本 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
-    const toggleBtn = document.getElementById('note-theme-toggle');
+    const btn = document.getElementById('note-theme-btn');
+    const menu = document.getElementById('note-theme-menu');
+    const opts = document.querySelectorAll('.note-theme-opt');
     const htmlEl = document.documentElement;
     
-    // 从本地存储读取，默认使用 'system'（跟随系统）
+    // 读取本地存储，默认跟随系统
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
 
     function applyTheme(mode) {
       if (mode === 'system') {
         const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
-        if(toggleBtn) toggleBtn.innerText = '💻 系统';
       } else {
         htmlEl.setAttribute('data-mode', mode);
-        if(toggleBtn) toggleBtn.innerText = mode === 'dark' ? '🌙 暗色' : '☀️ 亮色';
       }
+      
+      // 更新下拉菜单里选项的高亮状态
+      opts.forEach(opt => {
+        if(opt.dataset.mode === mode) {
+          opt.style.color = 'var(--accent-color)';
+          opt.style.fontWeight = 'bold';
+        } else {
+          opt.style.color = 'var(--text-color)';
+          opt.style.fontWeight = 'normal';
+        }
+      });
     }
 
     applyTheme(currentMode);
 
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
-        if (currentMode === 'light') {
-          currentMode = 'dark';
-        } else if (currentMode === 'dark') {
-          currentMode = 'system';
-        } else {
-          currentMode = 'light';
-        }
+    // 点击 🌓 按钮，切换菜单显示/隐藏
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // 点击菜单选项
+    opts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        currentMode = opt.dataset.mode;
         localStorage.setItem('hbw-theme-pref', currentMode);
         applyTheme(currentMode);
+        menu.style.display = 'none'; 
       });
-    }
+    });
+
+    // 点击页面空白处，自动收起菜单
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.style.display = 'none';
+      }
+    });
   });
 </script>
 
 <style>
-.card-overlay {
-  z-index: 1;
+.card-overlay { z-index: 1; }
+.post-author a, .post-meta-details a, .post-meta-details span a { position: relative; z-index: 3; }
+
+/* 下拉菜单悬停效果 */
+.note-btn-hover:hover {
+  background: var(--card-bg) !important;
 }
-.post-author a,
-.post-meta-details a,
-.post-meta-details span a {
-  position: relative;
-  z-index: 3;
+.note-opt-hover:hover {
+  background: var(--border-color) !important;
 }
 
-/* 单图：普通图片自适应 */
-.post-images[data-count="1"] {
-  grid-template-columns: 1fr;
-}
-.post-images[data-count="1"] img {
-  max-height: 300px;
-  width: auto;
-  margin: 0 auto;
-}
-/* 单图 LivePhoto：容器自适应 */
-.post-images[data-count="1"] .live-photo {
-  width: 100%;
-  height: auto;
-}
+/* 单图自适应 */
+.post-images[data-count="1"] { grid-template-columns: 1fr; }
+.post-images[data-count="1"] img { max-height: 300px; width: auto; margin: 0 auto; }
+.post-images[data-count="1"] .live-photo { width: 100%; height: auto; }
 
 /* 多图正方形网格 */
-.post-images[data-count="2"] {
-  grid-template-columns: 1fr 1fr;
-}
-.post-images[data-count="2"] img,
-.post-images[data-count="2"] .live-photo {
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.post-images[data-count="3"],
-.post-images[data-count="5"],
-.post-images[data-count="6"],
-.post-images[data-count="7"],
-.post-images[data-count="8"],
-.post-images[data-count="9"] {
-  grid-template-columns: repeat(3, 1fr);
-}
-.post-images[data-count="3"] img,
-.post-images[data-count="3"] .live-photo,
-.post-images[data-count="5"] img,
-.post-images[data-count="5"] .live-photo,
-.post-images[data-count="6"] img,
-.post-images[data-count="6"] .live-photo,
-.post-images[data-count="7"] img,
-.post-images[data-count="7"] .live-photo,
-.post-images[data-count="8"] img,
-.post-images[data-count="8"] .live-photo,
-.post-images[data-count="9"] img,
-.post-images[data-count="9"] .live-photo {
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.post-images[data-count="4"] {
-  grid-template-columns: 1fr 1fr;
-}
-.post-images[data-count="4"] img,
-.post-images[data-count="4"] .live-photo {
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.post-images[data-count="2"] { grid-template-columns: 1fr 1fr; }
+.post-images[data-count="2"] img, .post-images[data-count="2"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
+.post-images[data-count="3"], .post-images[data-count="5"], .post-images[data-count="6"], .post-images[data-count="7"], .post-images[data-count="8"], .post-images[data-count="9"] { grid-template-columns: repeat(3, 1fr); }
+.post-images[data-count="3"] img, .post-images[data-count="3"] .live-photo, .post-images[data-count="5"] img, .post-images[data-count="5"] .live-photo, .post-images[data-count="6"] img, .post-images[data-count="6"] .live-photo, .post-images[data-count="7"] img, .post-images[data-count="7"] .live-photo, .post-images[data-count="8"] img, .post-images[data-count="8"] .live-photo, .post-images[data-count="9"] img, .post-images[data-count="9"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
+.post-images[data-count="4"] { grid-template-columns: 1fr 1fr; }
+.post-images[data-count="4"] img, .post-images[data-count="4"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
 
 @media (max-width: 768px) {
-  .post-images {
-    max-width: 100% !important;
-    margin-left: 0 !important;
-  }
-  .post-excerpt {
-    padding: 0 16px 0 16px !important;
-  }
-  .post-header {
-    flex-wrap: wrap;
-  }
+  .post-images { max-width: 100% !important; margin-left: 0 !important; }
+  .post-excerpt { padding: 0 16px 0 16px !important; }
+  .post-header { flex-wrap: wrap; }
 }
 </style>
