@@ -476,3 +476,55 @@ img.alignright { margin: 0 0 0 15px; }
 .theme-settings-wrapper { 
   display: none !important; 
 }
+
+
+/* ============================================================
+ * 斑马线表格 & 折叠面板美化 (支持暗黑模式)
+ * ============================================================ */
+
+/* 1. 表格斑马线：偶数行加一个淡淡的背景色 */
+table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.03) !important; /* 亮色模式下的极浅灰 */
+}
+html[data-mode="dark"] table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.04) !important; /* 暗色模式下的极浅白 */
+}
+
+/* 悬停表格行时，颜色稍微加深一点，覆盖斑马线 */
+table tbody tr:hover {
+  background-color: var(--table-hover-bg) !important;
+}
+
+/* 2. 折叠面板（details）美化：做出截图里的圆角灰色块效果 */
+details {
+  background-color: rgba(0, 0, 0, 0.03) !important; /* 亮色背景 */
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-left: 4px solid var(--accent-color) !important; /* 左侧加个强调色装饰条更美观 */
+}
+html[data-mode="dark"] details {
+  background-color: rgba(255, 255, 255, 0.04) !important; /* 暗色背景 */
+}
+
+/* 3. 折叠面板的标题（summary）去默认小三角，改为自己的样式 */
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-color) !important;
+  outline: none;
+  list-style: none;
+}
+details summary::-webkit-details-marker {
+  display: none; /* 隐藏默认三角 */
+}
+details summary::before {
+  content: "▶ ";
+  font-size: 0.8em;
+  color: var(--accent-color);
+  display: inline-block;
+  transition: transform 0.2s;
+}
+details[open] summary::before {
+  transform: rotate(90deg); /* 展开时箭头旋转 */
+}
