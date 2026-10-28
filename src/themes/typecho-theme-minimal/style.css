@@ -160,7 +160,7 @@ table th, table td {
 table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; }
 table th { background-color: var(--card-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--text-color) !important; }
 
-/* 👇 新增：表格斑马线 (偶数行极浅底色，完美适配 4 亮 4 暗主题) */
+/* 👇 表格斑马线 (偶数行极浅底色，完美适配 4 亮 4 暗主题) */
 table tbody tr:nth-child(even) {
   background-color: rgba(0, 0, 0, 0.025) !important; 
 }
