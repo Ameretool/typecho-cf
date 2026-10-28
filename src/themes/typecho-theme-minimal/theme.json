@@ -9,5 +9,6 @@
   "stylesheets": ["normalize.css", "grid.css"],
   "homepage": "https://github.com/eslizn/typecho-cf",
   "license": "GPL-2.0",
-  "tags": ["minimal", "classic", "typecho"]
+  "tags": ["minimal", "classic", "typecho"],
+  "screenshot": "screenshot.png"
 }
