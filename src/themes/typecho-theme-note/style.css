@@ -872,3 +872,8 @@ img.alignright {
 #secondary .widget-list a:hover {
   color: var(--text-color) !important;
 }
+
+/* 隐藏在 note 主题下失效的全局设置面板 */
+.theme-settings-wrapper {
+  display: none !important;
+}
