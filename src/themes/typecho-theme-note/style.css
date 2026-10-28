@@ -4,23 +4,21 @@
    @project   Typecho Blog Theme (Astro Version)
    @author    Ameretool
    @link      https://hbw.me
-   @version   2.8.1 (暗黑模式整合 + 表格滑动 + 面板隐藏修复版)
+   @version   2.9.0 (斑马线表格 + 防套娃折叠面板 + 极简暗黑版)
    @update    2026-10-28
    ========================================================================== */
 
 /* ============================================================
- * 【1. 颜色变量配置中心】—— 位于最顶部，方便后期调整
- * ------------------------------------------------------------
- * 备注：想换颜色，只需要修改下面这些十六进制色号。
+ * 【1. 颜色变量配置中心】
  * ============================================================ */
 
-/* ☀️ 默认模式（亮色）—— 页面加载时的默认状态 */
+/* ☀️ 默认模式（亮色） */
 :root {
-  --bg-color:     #f6f8fa;   /* 页面背景：极淡冷灰 */
-  --text-color:   #24292f;   /* 正文文字：深灰 */
-  --card-bg:      #eaeef2;   /* 卡片/菜单背景：比背景深一档 */
-  --border-color: #d0d7de;   /* 边框/分割线：浅灰 */
-  --accent-color: #0969da;   /* 强调色：GitHub 蓝 */
+  --bg-color:     #f6f8fa;   
+  --text-color:   #24292f;   
+  --card-bg:      #eaeef2;   
+  --border-color: #d0d7de;   
+  --accent-color: #0969da;   
 
   --table-border:    #d0d7de; 
   --table-header-bg: #f6f8fa; 
@@ -29,13 +27,13 @@
   --code-text:       #24292f; 
 }
 
-/* 🌙 暗黑模式（夜间）—— 当点击按钮或系统为暗色时触发 */
+/* 🌙 暗黑模式（夜间） */
 html[data-mode="dark"] {
-  --bg-color:     #22272e;   /* 页面背景：深蓝灰 */
-  --text-color:   #adbac7;   /* 正文文字：柔白 */
-  --card-bg:      #2d333b;   /* 卡片/菜单背景：比背景略亮 */
-  --border-color: #444c56;   /* 边框/分割线：深灰 */
-  --accent-color: #539bf5;   /* 强调色：亮蓝 */
+  --bg-color:     #22272e;   
+  --text-color:   #adbac7;   
+  --card-bg:      #2d333b;   
+  --border-color: #444c56;   
+  --accent-color: #539bf5;   
 
   --table-border:    #444c56; 
   --table-header-bg: #2d333b; 
@@ -43,7 +41,6 @@ html[data-mode="dark"] {
   --code-bg:         #2d333b; 
   --code-text:       #adbac7; 
 }
-
 
 /* ============================================================
  * 【2. 全局基础样式】
@@ -103,7 +100,7 @@ button {
 
 
 /* ============================================================
- * 【3. 表格样式】（已修复：支持内部横向滑动，长代码不撑破页面）
+ * 【3. 表格样式】（修复长代码撑破 + 斑马线）
  * ============================================================ */
 table {
   border-collapse: separate !important;
@@ -139,6 +136,7 @@ table th {
   color: var(--code-text) !important;
 }
 
+/* 表格悬停 */
 table tbody tr:hover {
   background-color: var(--table-hover-bg) !important;
 }
@@ -150,6 +148,14 @@ table td code {
   border-radius: 6px !important;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
   font-size: 85% !important;
+}
+
+/* 👇 新增：表格斑马线 (偶数行极浅底色) */
+table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.025) !important; 
+}
+html[data-mode="dark"] table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03) !important; 
 }
 
 
@@ -204,7 +210,7 @@ textarea { resize: vertical; }
 
 
 /* ============================================================
- * 头部区域
+ * 头部、搜索、导航
  * ============================================================ */
 #header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
 #logo { color: var(--text-color); font-size: 2.5em; }
@@ -228,10 +234,6 @@ textarea { resize: vertical; }
 #nav-menu a:hover { background: var(--card-bg); color: var(--accent-color); }
 #nav-menu a.current { background: var(--card-bg); color: var(--accent-color); font-weight: 700; border-color: var(--accent-color); }
 
-
-/* ============================================================
- * 搜索框
- * ============================================================ */
 #search { position: relative; margin-top: 15px; }
 #search input { padding-right: 30px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
 #search button {
@@ -252,7 +254,7 @@ textarea { resize: vertical; }
 
 
 /* ============================================================
- * 主内容区域
+ * 主内容区域与归档
  * ============================================================ */
 .post { padding: 15px 0 0 0; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; color: var(--text-color); }
@@ -272,10 +274,6 @@ textarea { resize: vertical; }
 .more a { border: none; }
 .protected .text { width: 50%; }
 
-
-/* ============================================================
- * 分页导航
- * ============================================================ */
 .page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
 .page-navigator li { display: inline-block; margin: 0 4px; }
 .page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; color: var(--text-color); }
@@ -308,7 +306,7 @@ textarea { resize: vertical; }
 
 
 /* ============================================================
- * 侧边栏
+ * 侧边栏与底部
  * ============================================================ */
 #secondary { padding-top: 15px; word-wrap: break-word; }
 .widget { margin-bottom: 30px; }
@@ -320,22 +318,13 @@ textarea { resize: vertical; }
   #secondary { border-left: 1px solid var(--border-color); padding-left: 24px; }
 }
 
-
-/* ============================================================
- * 底部区域
- * ============================================================ */
 #footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
-
-
-/* ============================================================
- * 错误页面
- * ============================================================ */
-.error-page { margin-top: 100px; margin-bottom: 100px; }
 
 
 /* ============================================================
  * 内容格式
  * ============================================================ */
+.error-page { margin-top: 100px; margin-bottom: 100px; }
 .post-content, .comment-content { line-height: 1.8; word-wrap: break-word; color: var(--text-color); }
 .post-content h2, .comment-content h2 { font-size: 1.28571em; }
 .post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
@@ -344,7 +333,7 @@ textarea { resize: vertical; }
 
 
 /* ============================================================
- * 杂项
+ * 杂项与响应式布局
  * ============================================================ */
 .aligncenter, div.aligncenter { display: block; margin-left: auto; margin-right: auto; }
 .alignleft { float: left; }
@@ -352,10 +341,6 @@ textarea { resize: vertical; }
 img.alignleft { margin: 0 15px 0 0; }
 img.alignright { margin: 0 0 0 15px; }
 
-
-/* ============================================================
- * 响应式布局
- * ============================================================ */
 @media (max-width: 767px) {
   body { font-size: 100%; }
   .container { padding-left: 16px; padding-right: 16px; }
@@ -440,17 +425,13 @@ img.alignright { margin: 0 0 0 15px; }
 
 
 /* ============================================================
- * 辅助类（隐藏、无障碍）
+ * 辅助类与强制字号
  * ============================================================ */
 .hidden { display: none !important; visibility: hidden; }
 .sr-only { border: 0; height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
 .sr-only.focusable:active, .sr-only.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
 .invisible { visibility: hidden; }
 
-
-/* ============================================================
- * 强制正文段落字号
- * ============================================================ */
 .post-content p, .post-content li, .post-content blockquote, .post-content h2, .post-content h3 {
   font-size: 16px !important;
   line-height: 1.8 !important;
@@ -459,10 +440,6 @@ img.alignright { margin: 0 0 0 15px; }
   .post-content p, .post-content li { font-size: 16px !important; }
 }
 
-
-/* ============================================================
- * 侧边栏样式优化
- * ============================================================ */
 #secondary { font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
 #secondary .widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
 #secondary .widget-list li { margin: 6px 0 !important; line-height: 1.8 !important; }
@@ -479,35 +456,34 @@ img.alignright { margin: 0 0 0 15px; }
 
 
 /* ============================================================
- * 斑马线表格 & 折叠面板美化 (支持暗黑模式)
+ * 【新增：折叠面板（details）美化与防套娃】
  * ============================================================ */
-
-/* 1. 表格斑马线：偶数行加一个淡淡的背景色 */
-table tbody tr:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.03) !important; /* 亮色模式下的极浅灰 */
-}
-html[data-mode="dark"] table tbody tr:nth-child(even) {
-  background-color: rgba(255, 255, 255, 0.04) !important; /* 暗色模式下的极浅白 */
-}
-
-/* 悬停表格行时，颜色稍微加深一点，覆盖斑马线 */
-table tbody tr:hover {
-  background-color: var(--table-hover-bg) !important;
-}
-
-/* 2. 折叠面板（details）美化：做出截图里的圆角灰色块效果 */
 details {
-  background-color: rgba(0, 0, 0, 0.03) !important; /* 亮色背景 */
+  background-color: rgba(0, 0, 0, 0.02) !important;
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 16px;
-  border-left: 4px solid var(--accent-color) !important; /* 左侧加个强调色装饰条更美观 */
-}
-html[data-mode="dark"] details {
-  background-color: rgba(255, 255, 255, 0.04) !important; /* 暗色背景 */
+  border: 1px solid var(--border-color) !important;
 }
 
-/* 3. 折叠面板的标题（summary）去默认小三角，改为自己的样式 */
+/* 解决套娃问题：内层的 details 不要背景色，只保留左边框 */
+details details {
+  background-color: transparent !important;
+  border: none !important;
+  border-left: 3px solid var(--accent-color) !important;
+  border-radius: 0;
+  padding: 0 0 0 12px;
+  margin-top: 15px;
+}
+
+html[data-mode="dark"] details {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+html[data-mode="dark"] details details {
+  background-color: transparent !important;
+}
+
+/* 折叠面板标题 */
 details summary {
   cursor: pointer;
   font-weight: 600;
@@ -516,15 +492,16 @@ details summary {
   list-style: none;
 }
 details summary::-webkit-details-marker {
-  display: none; /* 隐藏默认三角 */
+  display: none;
 }
 details summary::before {
-  content: "▶ ";
-  font-size: 0.8em;
+  content: "▶";
+  font-size: 0.65em;
   color: var(--accent-color);
   display: inline-block;
+  margin-right: 8px;
   transition: transform 0.2s;
 }
-details[open] summary::before {
-  transform: rotate(90deg); /* 展开时箭头旋转 */
+details[open] > summary::before {
+  transform: rotate(90deg);
 }
