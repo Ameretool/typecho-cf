@@ -9,7 +9,7 @@ import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 // 导入格式化日期和生成作者链接的工具函数
 import { formatDate, buildAuthorLink } from '@/lib/content';
-// ⚠️ 导入截取100字的函数
+// 导入截取摘要的函数
 import { renderContentExcerpt } from '@/lib/markdown';
 
 // 定义组件的 Props 类型
@@ -118,14 +118,14 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
 
-            <!-- 👇【新增修改】电脑端：平铺三个按钮 -->
+            <!-- 👇 电脑端：平铺三个按钮 -->
             <div class="desktop-theme-switcher">
               <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
               <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
               <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
             </div>
 
-            <!-- 👇【新增修改】移动端：下拉菜单 -->
+            <!-- 👇 移动端：下拉菜单 -->
             <div class="mobile-theme-switcher">
               <!-- 手机端的触发按钮 -->
               <button id="mobile-theme-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; line-height: 1.2;">🌓</button>
@@ -240,17 +240,40 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
         <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
           {sidebarData && (
             <>
-              <!-- 最新文章 -->
+              <!-- 最新文章：限制最多显示 3 条 -->
               {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
-                <section class="widget"><h3 class="widget-title">最新文章</h3><ul class="widget-list">{sidebarData.recentPosts.map((p) => (<li><a href={p.permalink}>{p.title}</a></li>))}</ul></section>
+                <section class="widget">
+                  <h3 class="widget-title">最新文章</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentPosts.slice(0, 6).map((p) => (
+                      <li><a href={p.permalink}>{p.title}</a></li>
+                    ))}
+                  </ul>
+                </section>
               )}
-              <!-- 最近回复 -->
+              
+              <!-- 最近回复：限制最多显示 3 条 -->
               {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
-                <section class="widget"><h3 class="widget-title">最近回复</h3><ul class="widget-list">{sidebarData.recentComments.map((c) => (<li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>))}</ul></section>
+                <section class="widget">
+                  <h3 class="widget-title">最近回复</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentComments.slice(0, 3).map((c) => (
+                      <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>
+                    ))}
+                  </ul>
+                </section>
               )}
-              <!-- 分类 -->
+              
+              <!-- 分类：限制最多显示 8 个 -->
               {sidebarData.categories && sidebarData.categories.length > 0 && (
-                <section class="widget"><h3 class="widget-title">分类</h3><ul class="widget-list">{sidebarData.categories.map((cat) => (<li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>))}</ul></section>
+                <section class="widget">
+                  <h3 class="widget-title">分类</h3>
+                  <ul class="widget-list">
+                    {sidebarData.categories.slice(0, 8).map((cat) => (
+                      <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
+                    ))}
+                  </ul>
+                </section>
               )}
 
               <!-- 其它（后台、RSS 等） -->
@@ -282,7 +305,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   </footer>
 </Base>
 
-<!-- 👇【新增修改】暗黑模式控制脚本 -->
+<!-- 👇 暗黑模式控制脚本 -->
 <script is:inline>
   // 等待页面 DOM 加载完成
   document.addEventListener('DOMContentLoaded', () => {
