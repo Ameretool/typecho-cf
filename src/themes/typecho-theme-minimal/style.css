@@ -4,7 +4,7 @@
    @project   Typecho Blog Theme (Astro Version)
    @author    Ameretool
    @link      https://hbw.me
-   @version   2.7.1 (防溢出修复+长代码滑动版)
+   @version   2.8.0 (防溢出修复 + 斑马线表格 + 完美圆角折叠面板)
    @update    2026-10-28
    ========================================================================== */
 
@@ -24,8 +24,7 @@
 /* ============================================================
  * 2. 亮色模式预设
  * ============================================================ */
-
-/* ☀️ 亮色 1：清新冰蓝 (第 1 个圆点，恢复默认) */
+/* ☀️ 亮色 1：清新冰蓝 */
 [data-color="blue"] { 
   --accent-color: #2563eb;  
   --text-color: #2c3e50;   
@@ -34,7 +33,7 @@
   --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%);
 }
 
-/* ☀️ 亮色 2：纯白极简 (第 2 个圆点) */
+/* ☀️ 亮色 2：纯白极简 */
 [data-color="green"] { 
   --accent-color: #7c3aed;  
   --text-color: #1f2937;   
@@ -62,9 +61,8 @@
 }
 
 /* ============================================================
- * 3. 暗黑模式预设 (保持不变)
+ * 3. 暗黑模式预设
  * ============================================================ */
-
 /* 🌙 暗色 1：GitHub 暗色 */
 html[data-mode="dark"][data-color="blue"] {
   --accent-color: #60a5fa; 
@@ -116,7 +114,7 @@ html, body {
   background-attachment: fixed !important;
   background-size: cover !important;
   color: var(--text-color);
-  /* 👇 新增：全局防溢出保护，切掉因为长代码引起的横向白边 */
+  /* 全局防溢出保护 */
   overflow-x: hidden !important; 
 }
 
@@ -134,7 +132,7 @@ a:hover, a:active { color: var(--text-color); }
 .logout-form button:hover, .logout-form button:active { color: var(--text-color); }
 
 /* ==========================================================================
-   6. 表格与代码块 (已修复长文本撑破页面问题)
+   6. 表格与代码块
    ========================================================================== */
 table { 
   border-collapse: separate !important; 
@@ -145,7 +143,6 @@ table {
   box-shadow: 0 0 0 2px var(--border-color) !important; 
   border-radius: 6px !important; 
   font-size: 15px !important; 
-  /* 👇 修改：允许表格横向滑动，防止长表格撑破页面 */
   display: block !important; 
   overflow-x: auto !important; 
   -webkit-overflow-scrolling: touch;
@@ -156,14 +153,24 @@ table th, table td {
   border: none !important; 
   vertical-align: middle !important; 
   box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; 
-  /* 👇 新增：保持长内容不换行 */
   white-space: nowrap !important; 
   word-break: keep-all !important;
 }
 
 table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; }
 table th { background-color: var(--card-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--text-color) !important; }
+
+/* 👇 新增：表格斑马线 (偶数行极浅底色，完美适配 4 亮 4 暗主题) */
+table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.025) !important; 
+}
+html[data-mode="dark"] table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03) !important; 
+}
+
+/* 表格悬停 */
 table tbody tr:hover { background-color: var(--card-bg) !important; }
+
 table td code { background-color: rgba(175, 184, 193, 0.2) !important; color: var(--text-color) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important; font-size: 85% !important; }
 
 pre { 
@@ -171,7 +178,6 @@ pre {
   padding: 16px !important; 
   border-radius: 6px !important; 
   max-width: 100% !important;
-  /* 👇 修改：保留代码块不换行，超出部分允许横向滑动 */
   white-space: pre !important; 
   overflow-x: auto !important; 
   -webkit-overflow-scrolling: touch;
@@ -181,12 +187,11 @@ pre code {
   background-color: transparent !important; 
   padding: 0 !important; 
   color: var(--text-color) !important; 
-  /* 👇 修改：同步不换行 */
   white-space: pre !important; 
   font-size: .92857em !important; 
 }
 
-/* 👇 新增：段落中的行内代码强制换行，防止撑破页面 */
+/* 段落中的行内代码强制换行，防止撑破页面 */
 p code, li code {
   white-space: pre-wrap !important;
   word-break: break-all !important;
@@ -336,12 +341,7 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn:hover { transform: scale(1.1); }
 
 /* 🌟 面板圆点颜色完美同步 */
-/* 第 1 个圆点：清新冰蓝 (浅蓝渐变) */
-.color-btn.blue { 
-  background: linear-gradient(135deg, #dcecf9, #ffffff) !important; 
-  border: 1px solid #b0cde0 !important; 
-}
-/* 第 2 个圆点：纯白极简 (用紫色代表，因为纯白在面板上会隐身) */
+.color-btn.blue { background: linear-gradient(135deg, #dcecf9, #ffffff) !important; border: 1px solid #b0cde0 !important; }
 .color-btn.green { background: #7c3aed !important; }
 .color-btn.orange { background: #555555 !important; }
 .color-btn.purple { background: #9c4f7a !important; }
@@ -370,4 +370,80 @@ html[data-mode="dark"] .post-meta time {
 html[data-mode="dark"] .post-content,
 html[data-mode="dark"] .post-content p {
   color: var(--text-color) !important; 
+}
+
+/* ==========================================================================
+   14. 全局折叠面板美化 (完美双圆角 + 伪元素左侧彩色线)
+   ========================================================================== */
+
+/* 1. 外层：圆角、全边框、浅背景 */
+details {
+  position: relative; /* 为伪元素做定位 */
+  background-color: rgba(0, 0, 0, 0.02) !important; 
+  border: 1px solid var(--border-color) !important; 
+  border-radius: 8px !important; 
+  padding: 12px 16px !important;
+  margin-bottom: 16px !important;
+}
+
+/* 👇 用伪元素画左侧粗线，不破坏圆角。颜色自动跟随你面板选的主题色 */
+details::before {
+  content: "";
+  position: absolute;
+  left: -1px; /* 盖住原本的细边框 */
+  top: -1px;
+  bottom: -1px;
+  width: 4px; /* 左侧蓝线宽度 */
+  background-color: var(--accent-color); 
+  border-top-left-radius: 8px; /* 跟随外层圆角 */
+  border-bottom-left-radius: 8px;
+}
+
+/* 2. 内层嵌套：同样保留全边框和圆角 */
+details details {
+  background-color: rgba(0, 0, 0, 0.02) !important; /* 给点背景让内框圆角可见 */
+  border: 1px solid var(--border-color) !important; 
+  border-radius: 6px !important; /* 内层圆角稍微小一点 */
+  padding: 10px 14px !important;
+  margin-top: 15px !important;
+  margin-bottom: 10px !important;
+}
+
+/* 内层左侧蓝线稍微变细 */
+details details::before {
+  width: 3px;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+/* 暗黑模式背景适配 */
+html[data-mode="dark"] details {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+html[data-mode="dark"] details details {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* 3. 标题和箭头 */
+details summary {
+  cursor: pointer;
+  font-weight: 600 !important;
+  color: var(--text-color) !important;
+  outline: none;
+  list-style: none;
+  user-select: none;
+}
+details summary::-webkit-details-marker {
+  display: none; 
+}
+details summary::before {
+  content: "▶";
+  font-size: 0.7em;
+  color: var(--accent-color) !important; /* 箭头自动跟随主题色 */
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+details[open] > summary::before {
+  transform: rotate(90deg); 
 }
