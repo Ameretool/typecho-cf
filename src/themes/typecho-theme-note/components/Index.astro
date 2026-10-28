@@ -1,34 +1,49 @@
 ---
 /**
  * Default theme — Index (home page) component
+ * 首页组件（Astro 语法）
  */
+// 导入基础布局组件
 import Base from '@/layouts/Base.astro';
+// 导入主题相关的 TypeScript 类型定义
 import type { ThemeIndexProps } from '@/lib/theme-props';
+// 导入格式化日期和生成作者链接的工具函数
 import { formatDate, buildAuthorLink } from '@/lib/content';
+// ⚠️ 导入截取100字的函数
 import { renderContentExcerpt } from '@/lib/markdown';
 
+// 定义组件的 Props 类型
 type Props = ThemeIndexProps;
 
+// 从 Astro.props 中解构出需要的全局数据
 const {
   options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
   posts, pagination,
 } = Astro.props;
 
+// 判断当前是否是首页
 const isIndex = currentPath === '/';
 
+// 处理每一篇文章的数据（提取摘要、提取图片、处理头像）
 const processPost = (post: any) => {
   let excerpt = '';
   const rawContent = post.content || post.excerpt || '';
   
   if (rawContent) {
+    // 先清除掉系统可能自带的“阅读更多”标签，防止重复
     const cleanContent = rawContent
       .replace(/<p class="more">.*?<\/p>/g, '')
       .replace(/- 阅读剩余部分 -/g, '')
       .trim();
+      
+    // 强制截取前100个纯文本字符，并附加阅读更多
     excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
   }
 
+  // 定义一个数组，用来存放提取出来的图片或 LivePhoto（实况照片）数据
   const mediaItems: { type: 'image' | 'livephoto'; html: string; src?: string; videoSrc?: string }[] = [];
+
+  // 1. 提取 LivePhoto 容器（正则匹配）
   const livePhotoRegex = /<div[^>]*class="[^"]*live-photo[^"]*"[^>]*>[\s\S]*?<\/div>/g;
   let match;
   while ((match = livePhotoRegex.exec(excerpt)) !== null) {
@@ -39,21 +54,28 @@ const processPost = (post: any) => {
       mediaItems.push({ type: 'livephoto', html: html, src: imgMatch[1], videoSrc: videoMatch ? videoMatch[1] : undefined });
     }
   }
+  // 把提取完的标签从文本中删掉
   excerpt = excerpt.replace(livePhotoRegex, '');
 
+  // 2. 提取普通图片（正则匹配）
   const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/g;
   while ((match = imgRegex.exec(excerpt)) !== null) {
     mediaItems.push({ type: 'image', src: match[1], html: '', videoSrc: undefined });
   }
+  // 把普通的 img 标签从文本中删掉
   excerpt = excerpt.replace(/<img[^>]+>/g, '').trim();
 
+  // 3. 头像处理：如果没有头像，使用默认头像
   const avatarUrl = post.author?.avatarUrl || '/img/avatar.svg';
 
+  // 返回处理好的文章数据对象
   return { ...post, excerpt, mediaItems, avatarUrl };
 };
 
+// 对获取到的所有文章进行遍历处理
 const processedPosts = posts.map(processPost);
 
+// 辅助函数：生成正方形 LivePhoto 容器（多图使用，确保网格整齐）
 function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   return `<div style="position:relative; width:100%; padding-top:100%;border-radius: 0px;" class="live-photo">
     <img class="live-photo-img" src="${src}" alt="Live Photo" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;border-radius: 0px;">
@@ -64,14 +86,18 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 }
 ---
 
+<!-- 使用 Base 布局包裹整个页面，传入必要的参数 -->
 <Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
+  <!-- 顶部 Header 区域 -->
   <header id="header" class="clearfix">
     <div class="container">
       <div class="row">
+        <!-- 站点名称和描述 -->
         <div class="site-name col-mb-12 col-9">
           <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
           <p class="description">{options.description}</p>
         </div>
+        <!-- 搜索框 -->
         <div class="site-search col-3 kit-hidden-tb">
           <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
             <label for="s" class="sr-only">搜索关键字</label>
@@ -79,24 +105,31 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
             <button type="submit" class="submit">搜索</button>
           </form>
         </div>
+        
+        <!-- 导航菜单区域 -->
         <div class="col-mb-12">
+          <!-- 加上 position: relative 方便内部按钮绝对定位 -->
           <nav id="nav-menu" class="clearfix" role="navigation" style="position: relative; min-height: 32px;">
+            <!-- 首页链接 -->
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             
+            <!-- 动态渲染后台创建的独立页面，并在前端过滤掉“归档”和“标签” -->
             {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
 
-            <!-- 👇 电脑端：平铺三个按钮 -->
+            <!-- 👇【新增修改】电脑端：平铺三个按钮 -->
             <div class="desktop-theme-switcher">
               <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
               <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
               <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
             </div>
 
-            <!-- 👇 移动端：下拉菜单 -->
+            <!-- 👇【新增修改】移动端：下拉菜单 -->
             <div class="mobile-theme-switcher">
+              <!-- 手机端的触发按钮 -->
               <button id="mobile-theme-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; line-height: 1.2;">🌓</button>
+              <!-- 手机端的下拉面板 -->
               <div id="mobile-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
                 <button class="theme-opt-mobile" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">☀️ 亮色</button>
                 <button class="theme-opt-mobile" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">🌙 暗色</button>
@@ -110,21 +143,27 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
     </div>
   </header>
 
+  <!-- 主体内容区域 -->
   <div id="body">
     <div class="container">
       <div class="row">
+        <!-- 左侧文章列表区 -->
         <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           {processedPosts.length === 0 ? (
+            // 如果没有文章，显示提示
             <article class="post">
               <h2 class="post-title">暂时没有文章</h2>
               <div class="post-content"><p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p></div>
             </article>
           ) : (
+            // 遍历渲染所有文章
             processedPosts.map((post) => (
               <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
                 <div class="post-card" style="position: relative; padding: 16px 0;">
+                  <!-- 一个透明的覆盖层，点击整个卡片都能跳转 -->
                   <a href={post.permalink} class="card-overlay" style="position: absolute; inset: 0; z-index: 1; display: block; cursor: pointer;"></a>
 
+                  <!-- 文章头部（头像、作者、时间、分类、评论数） -->
                   <div class="post-header" style="display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 2;">
                     <div class="post-avatar" style="flex-shrink: 0; width: 36px; height: 36px;">
                       <img src={post.avatarUrl} alt={post.author?.screenName || '用户'} style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />
@@ -136,9 +175,11 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                         </a>
                       </div>
                       <div class="post-meta-details" style="font-size: 14px; color: #8a8f9a; display: flex; flex-wrap: wrap; gap: 2px 6px;">
+                        <!-- 发布时间 -->
                         <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
                           {formatDate(post.created, 'Y.m.d H:i', options.timezone)}
                         </time>
+                        <!-- 分类 -->
                         {post.categories.length > 0 && (
                           <>
                             <span class="sep" style="color: #d0d4dc;">·</span>
@@ -151,16 +192,20 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                           </>
                         )}
                         <span class="sep" style="color: #d0d4dc;">·</span>
+                        <!-- 评论数 -->
                         <a href={`${post.permalink}#comments`} itemprop="discussionUrl" style="color: #8a8f9a; text-decoration: none; position: relative; z-index: 3;">
                           {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
                         </a>
+                        <!-- 私密文章标签 -->
                         {post.status === 'private' && (<span class="meta-tags">私密</span>)}
                       </div>
                     </div>
                   </div>
 
+                  <!-- 文章摘要（把提取出来的文本渲染出来） -->
                   <div class="post-excerpt" itemprop="articleBody" set:html={post.excerpt} style="margin-top: 26px; padding-left: 48px; font-size: 15px; line-height: 1.7; color: var(--text-color); word-break: break-word; position: relative; z-index: 0;" />
 
+                  <!-- 如果文章里提取出了图片，则渲染图片网格 -->
                   {post.mediaItems.length > 0 && (
                     <div class="post-images" data-count={post.mediaItems.length} style="margin-top: 12px; margin-left: 48px; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; max-width: 50%; position: relative; z-index: 2;">
                       {post.mediaItems.map((item) => {
@@ -182,6 +227,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
             ))
           )}
 
+          <!-- 分页导航 -->
           {pagination.totalPages > 1 && (
             <nav class="page-navigator">
               {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
@@ -190,19 +236,24 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
           )}
         </div>
 
+        <!-- 右侧侧边栏 -->
         <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
           {sidebarData && (
             <>
+              <!-- 最新文章 -->
               {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
                 <section class="widget"><h3 class="widget-title">最新文章</h3><ul class="widget-list">{sidebarData.recentPosts.map((p) => (<li><a href={p.permalink}>{p.title}</a></li>))}</ul></section>
               )}
+              <!-- 最近回复 -->
               {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
                 <section class="widget"><h3 class="widget-title">最近回复</h3><ul class="widget-list">{sidebarData.recentComments.map((c) => (<li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>))}</ul></section>
               )}
+              <!-- 分类 -->
               {sidebarData.categories && sidebarData.categories.length > 0 && (
                 <section class="widget"><h3 class="widget-title">分类</h3><ul class="widget-list">{sidebarData.categories.map((cat) => (<li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>))}</ul></section>
               )}
 
+              <!-- 其它（后台、RSS 等） -->
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
                 <ul class="widget-list">
@@ -225,76 +276,92 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
     </div>
   </div>
 
+  <!-- 页脚 -->
   <footer id="footer" role="contentinfo">
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
 
-<!-- 👇 暗黑模式控制脚本 -->
+<!-- 👇【新增修改】暗黑模式控制脚本 -->
 <script is:inline>
+  // 等待页面 DOM 加载完成
   document.addEventListener('DOMContentLoaded', () => {
+    // 获取电脑端和手机端的按钮元素
     const pcOpts = document.querySelectorAll('.theme-opt');
     const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
     const allOpts = [...pcOpts, ...mobileOpts];
     
+    // 获取手机端下拉菜单元素
     const mobileBtn = document.getElementById('mobile-theme-btn');
     const mobileMenu = document.getElementById('mobile-theme-menu');
 
+    // 获取 html 根元素
     const htmlEl = document.documentElement;
+    // 从本地存储读取用户偏好，默认跟随系统
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
 
-    // 应用主题并更新高亮
+    // 应用主题并更新按钮高亮状态的函数
     function applyTheme(mode) {
+      // 如果是跟随系统，判断系统是否是暗色
       if (mode === 'system') {
         const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
       } else {
+        // 否则直接设置 data-mode
         htmlEl.setAttribute('data-mode', mode);
       }
       
-      // 电脑端按钮高亮
+      // 电脑端按钮高亮逻辑：使用当前主题的强调色，透明背景，加粗边框
       pcOpts.forEach(opt => {
         if(opt.dataset.mode === mode) {
-          opt.style.background = 'var(--accent-color)';
-          opt.style.color = '#fff';
-          opt.style.borderColor = 'var(--accent-color)';
+          opt.style.background = 'transparent'; 
+          opt.style.borderColor = 'var(--accent-color)'; 
+          opt.style.color = 'var(--accent-color)'; 
+          opt.style.boxShadow = 'inset 0 0 0 1px var(--accent-color)'; // 内发光加粗边框
+          opt.style.opacity = '1'; // 完全不透明
         } else {
           opt.style.background = 'transparent';
-          opt.style.color = 'var(--text-color)';
           opt.style.borderColor = 'var(--border-color)';
+          opt.style.color = 'var(--text-color)';
+          opt.style.boxShadow = 'none';
+          opt.style.opacity = '0.6'; // 未选中半透明
         }
       });
 
-      // 手机端菜单高亮
+      // 手机端菜单高亮逻辑
       mobileOpts.forEach(opt => {
         if(opt.dataset.mode === mode) {
           opt.style.color = 'var(--accent-color)';
           opt.style.fontWeight = 'bold';
+          opt.style.background = 'var(--bg-color)';
         } else {
           opt.style.color = 'var(--text-color)';
           opt.style.fontWeight = 'normal';
+          opt.style.background = 'transparent';
         }
       });
     }
 
+    // 初始化应用主题
     applyTheme(currentMode);
 
-    // 点击事件
+    // 为所有按钮绑定点击事件
     allOpts.forEach(opt => {
       opt.addEventListener('click', () => {
         currentMode = opt.dataset.mode;
-        localStorage.setItem('hbw-theme-pref', currentMode);
-        applyTheme(currentMode);
-        if(mobileMenu) mobileMenu.style.display = 'none'; // 手机选完关闭菜单
+        localStorage.setItem('hbw-theme-pref', currentMode); // 存入本地存储
+        applyTheme(currentMode); // 应用新主题
+        if(mobileMenu) mobileMenu.style.display = 'none'; // 选完关闭手机菜单
       });
     });
 
-    // 手机端下拉菜单控制
+    // 手机端下拉菜单的显示/隐藏控制
     if (mobileBtn && mobileMenu) {
       mobileBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+        e.stopPropagation(); // 阻止事件冒泡
         mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
       });
+      // 点击页面空白处关闭菜单
       document.addEventListener('click', (e) => {
         if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
           mobileMenu.style.display = 'none';
@@ -305,10 +372,11 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 </script>
 
 <style>
+/* 覆盖层和 z-index 调整 */
 .card-overlay { z-index: 1; }
 .post-author a, .post-meta-details a, .post-meta-details span a { position: relative; z-index: 3; }
 
-/* 🌟 核心：PC端和移动端的显示控制 */
+/* 🌟 电脑端平铺按钮容器：靠右绝对定位 */
 .desktop-theme-switcher {
   display: flex; 
   gap: 6px; 
@@ -317,9 +385,10 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   right: 0; 
   top: 0;
 }
+/* 🌟 手机端下拉容器：默认隐藏 */
 .mobile-theme-switcher { display: none; }
 
-/* 按钮基础样式（电脑端） */
+/* 🌟 电脑端按钮基础样式 */
 .theme-opt {
   background: transparent; 
   border: 1px solid var(--border-color); 
@@ -327,8 +396,9 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   padding: 4px 8px; 
   cursor: pointer; 
   font-size: 14px; 
-  transition: 0.3s; 
+  transition: all 0.3s ease; /* 平滑过渡所有状态 */
   line-height: 1.2;
+  opacity: 0.6; /* 默认半透明 */
 }
 
 /* 单图自适应 */
@@ -345,10 +415,11 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 .post-images[data-count="4"] img, .post-images[data-count="4"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
 
 
-/* 🌟 移动端响应式调整 */
+/* 🌟 移动端响应式调整：屏幕宽度小于 767px 时生效 */
 @media (max-width: 767px) {
-  /* 隐藏电脑端，显示移动端下拉 */
+  /* 隐藏电脑端按钮 */
   .desktop-theme-switcher { display: none; }
+  /* 显示手机端下拉按钮，并靠右绝对定位 */
   .mobile-theme-switcher { 
     display: block; 
     position: absolute; 
