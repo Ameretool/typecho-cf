@@ -1,0 +1,190 @@
+---
+/**
+ * ============================================================
+ *  标签总览页 - /tag/ （极简统一风格版）
+ * ============================================================
+ *  功能：
+ *    1. 列出所有标签，采用统一的极简主题色（适配暗黑模式）
+ *    2. 导航栏带 pages（项目、链接、关于）
+ *    3. 右侧带完整侧边栏，且包含标签云
+ * ============================================================
+ */
+import Base from '@/layouts/Base.astro';
+import { createContext } from '@/lib/context';
+import { prepareIndexData } from '@/lib/page-data';
+import { schema } from '@/db';
+import { eq } from 'drizzle-orm';
+
+// 1. 初始化上下文
+const ctx = await createContext(Astro.locals, Astro.request);
+const { db, options, urls, user, isLoggedIn, pluginCtx } = ctx;
+
+// 2. 复用首页数据，拿到 pages 和 sidebarData
+const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
+const pages = data?.pages;
+const sidebarData = data?.sidebarData;
+
+// 3. 查询所有标签
+const allTags = await db
+  .select({
+    mid: schema.metas.mid,
+    name: schema.metas.name,
+    slug: schema.metas.slug,
+  })
+  .from(schema.metas)
+  .where(eq(schema.metas.type, 'tag'));
+
+// 4. 统计每个标签下的文章数
+const relationships = await db
+  .select({
+    mid: schema.relationships.mid,
+    cid: schema.relationships.cid,
+  })
+  .from(schema.relationships);
+
+const tagCountMap: Record<number, number> = {};
+relationships.forEach((r) => {
+  tagCountMap[r.mid] = (tagCountMap[r.mid] || 0) + 1;
+});
+
+// 5. 合并数据，并按文章数量从多到少排序
+const tagsWithCount = allTags.map((tag) => {
+  return {
+    ...tag,
+    count: tagCountMap[tag.mid] || 0,
+  };
+}).sort((a, b) => b.count - a.count); // 按文章数降序排列
+---
+
+<Base
+  title="标签"
+  options={options}
+  urls={urls}
+  user={user}
+  isLoggedIn={isLoggedIn}
+  pluginCtx={pluginCtx}
+>
+  <header id="header" class="clearfix">
+    <div class="container">
+      <div class="row">
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        <div class="col-mb-12">
+          <nav id="nav-menu" class="clearfix" role="navigation">
+            <a href={urls.siteUrl + '/'}>首页</a>
+            <a href={urls.siteUrl + '/tag/'} class="current">标签</a>
+            {/* 导航栏补齐 pages */}
+            {(pages || []).map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <!-- ==================== 左侧主内容区 ==================== -->
+        <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
+          <h3 class="archive-title">所有标签</h3>
+
+          {tagsWithCount.length === 0 ? (
+            <article class="post">
+              <div class="post-content">
+                <p>暂时没有标签。</p>
+              </div>
+            </article>
+          ) : (
+            <div class="tag-cloud" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 20px 0;">
+              {tagsWithCount.map((tag) => (
+                <a
+                  href={`${urls.siteUrl}/tag/${tag.slug}/`}
+                  class="tag-pill"
+                  style="display: inline-block; padding: 4px 12px; border-radius: 20px; text-decoration: none; font-size: 14px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.2s;"
+                >
+                  {tag.name}
+                  <span style="opacity: 0.6; margin-left: 4px; font-size: 12px;">({tag.count})</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- ==================== 右侧侧边栏 ==================== -->
+        <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+          {sidebarData && (
+            <>
+              {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">最新文章</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentPosts.slice(0, 6).map((p) => (
+                      <li><a href={p.permalink}>{p.title}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">最近回复</h3>
+                  <ul class="widget-list">
+                    {sidebarData.recentComments.slice(0, 4).map((c) => (
+                      <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {sidebarData.categories && sidebarData.categories.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">分类</h3>
+                  <ul class="widget-list">
+                    {sidebarData.categories.slice(0, 10).map((cat) => (
+                      <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              
+              <section class="widget">
+                <h3 class="widget-title">其它</h3>
+                <ul class="widget-list">
+                  {isLoggedIn ? (
+                    <>
+                      <li class="last">
+                        <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
+                      </li>
+                      <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                    </>
+                  ) : (
+                    <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                  )}
+                  <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                  <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+                </ul>
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+   由 <a href="#">Typecho CF</a> 强力驱动.
+  </footer>
+</Base>
+
+<style>
+/* 鼠标悬停时标签的反馈效果 */
+.tag-pill:hover {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+</style>
