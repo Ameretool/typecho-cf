@@ -5,7 +5,6 @@
 import Base from '@/layouts/Base.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
-// ⚠️ 新增：导入截取100字的函数
 import { renderContentExcerpt } from '@/lib/markdown';
 
 type Props = ThemeIndexProps;
@@ -18,55 +17,36 @@ const {
 const isIndex = currentPath === '/';
 
 const processPost = (post: any) => {
-  // ⚠️ 唯一修改的地方：强制获取正文，截取100字，并清洗原有链接防止重复
   let excerpt = '';
   const rawContent = post.content || post.excerpt || '';
   
   if (rawContent) {
-    // 先清除掉系统可能自带的“阅读更多”标签，防止重复
     const cleanContent = rawContent
       .replace(/<p class="more">.*?<\/p>/g, '')
       .replace(/- 阅读剩余部分 -/g, '')
       .trim();
-      
-    // 强制截取前100个纯文本字符，并附加阅读更多
     excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
   }
 
   const mediaItems: { type: 'image' | 'livephoto'; html: string; src?: string; videoSrc?: string }[] = [];
-
-  // 1. 提取 LivePhoto 容器（未改动）
   const livePhotoRegex = /<div[^>]*class="[^"]*live-photo[^"]*"[^>]*>[\s\S]*?<\/div>/g;
   let match;
   while ((match = livePhotoRegex.exec(excerpt)) !== null) {
     const html = match[0];
     const imgMatch = html.match(/<img[^>]*src="([^">]+)"/);
-    const videoMatch = html.match(/<video[^>]*>[\s\S]*?<source[^>]*src="([^">]+)"/) ||
-                       html.match(/<video[^>]*src="([^">]+)"/);
+    const videoMatch = html.match(/<video[^>]*>[\s\S]*?<source[^>]*src="([^">]+)"/) || html.match(/<video[^>]*src="([^">]+)"/);
     if (imgMatch) {
-      mediaItems.push({
-        type: 'livephoto',
-        html: html,
-        src: imgMatch[1],
-        videoSrc: videoMatch ? videoMatch[1] : undefined,
-      });
+      mediaItems.push({ type: 'livephoto', html: html, src: imgMatch[1], videoSrc: videoMatch ? videoMatch[1] : undefined });
     }
   }
   excerpt = excerpt.replace(livePhotoRegex, '');
 
-  // 2. 提取普通图片（未改动）
   const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/g;
   while ((match = imgRegex.exec(excerpt)) !== null) {
-    mediaItems.push({
-      type: 'image',
-      src: match[1],
-      html: '',
-      videoSrc: undefined,
-    });
+    mediaItems.push({ type: 'image', src: match[1], html: '', videoSrc: undefined });
   }
   excerpt = excerpt.replace(/<img[^>]+>/g, '').trim();
 
-  // 3. 头像处理（未改动）
   const avatarUrl = post.author?.avatarUrl || '/img/avatar.svg';
 
   return { ...post, excerpt, mediaItems, avatarUrl };
@@ -74,7 +54,6 @@ const processPost = (post: any) => {
 
 const processedPosts = posts.map(processPost);
 
-// 辅助：生成正方形 LivePhoto 容器（多图使用，未改动）
 function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   return `<div style="position:relative; width:100%; padding-top:100%;border-radius: 0px;" class="live-photo">
     <img class="live-photo-img" src="${src}" alt="Live Photo" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;border-radius: 0px;">
@@ -101,29 +80,27 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
           </form>
         </div>
         <div class="col-mb-12">
-          <nav id="nav-menu" class="clearfix" role="navigation">
+          <nav id="nav-menu" class="clearfix" role="navigation" style="position: relative; min-height: 32px;">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             
-            {/* 隐藏：硬编码的归档链接 */}
-            {/* <a href={urls.siteUrl + '/archive/'}>归档</a> */}
-
-            {/* 隐藏：动态渲染页面时，过滤掉“归档”和“标签”页面 */}
             {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
               <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
 
-            <!-- 👇 新增：暗黑模式下拉菜单 (🌓) -->
-            <div style="float: right; margin-top: 25px; position: relative;">
-              <!-- 触发按钮 -->
-              <button id="note-theme-btn" class="note-btn-hover" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 20px; padding: 4px 12px; cursor: pointer; font-size: 16px; transition: 0.3s; display: flex; align-items: center;">
-                🌓
-              </button>
-              
-              <!-- 下拉菜单 -->
-              <div id="note-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
-                <button class="note-theme-opt note-opt-hover" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; transition: 0.2s;">☀️ 亮色</button>
-                <button class="note-theme-opt note-opt-hover" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; transition: 0.2s;">🌙 暗色</button>
-                <button class="note-theme-opt note-opt-hover" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; transition: 0.2s;">💻 系统</button>
+            <!-- 👇 电脑端：平铺三个按钮 -->
+            <div class="desktop-theme-switcher">
+              <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
+              <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
+              <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+            </div>
+
+            <!-- 👇 移动端：下拉菜单 -->
+            <div class="mobile-theme-switcher">
+              <button id="mobile-theme-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; line-height: 1.2;">🌓</button>
+              <div id="mobile-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
+                <button class="theme-opt-mobile" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">☀️ 亮色</button>
+                <button class="theme-opt-mobile" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">🌙 暗色</button>
+                <button class="theme-opt-mobile" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">💻 系统</button>
               </div>
             </div>
 
@@ -140,9 +117,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
           {processedPosts.length === 0 ? (
             <article class="post">
               <h2 class="post-title">暂时没有文章</h2>
-              <div class="post-content">
-                <p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p>
-              </div>
+              <div class="post-content"><p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p></div>
             </article>
           ) : (
             processedPosts.map((post) => (
@@ -152,20 +127,11 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 
                   <div class="post-header" style="display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 2;">
                     <div class="post-avatar" style="flex-shrink: 0; width: 36px; height: 36px;">
-                      <img
-                        src={post.avatarUrl}
-                        alt={post.author?.screenName || '用户'}
-                        style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"
-                      />
+                      <img src={post.avatarUrl} alt={post.author?.screenName || '用户'} style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />
                     </div>
                     <div class="meta-block" style="flex: 1; min-width: 0;">
                       <div class="post-author" style="font-weight: 600; font-size: 15px; color: var(--accent-color); margin-bottom: 2px;">
-                        <a
-                          itemprop="name"
-                          href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'}
-                          rel="author"
-                          style="color: inherit; text-decoration: none; position: relative; z-index: 3;"
-                        >
+                        <a itemprop="name" href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'} rel="author" style="color: inherit; text-decoration: none; position: relative; z-index: 3;">
                           {post.author?.screenName || post.author?.name || '未知'}
                         </a>
                       </div>
@@ -185,52 +151,25 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                           </>
                         )}
                         <span class="sep" style="color: #d0d4dc;">·</span>
-                        <a
-                          href={`${post.permalink}#comments`}
-                          itemprop="discussionUrl"
-                          style="color: #8a8f9a; text-decoration: none; position: relative; z-index: 3;"
-                        >
+                        <a href={`${post.permalink}#comments`} itemprop="discussionUrl" style="color: #8a8f9a; text-decoration: none; position: relative; z-index: 3;">
                           {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
                         </a>
-                        {post.status === 'private' && (
-                          <span class="meta-tags">私密</span>
-                        )}
+                        {post.status === 'private' && (<span class="meta-tags">私密</span>)}
                       </div>
                     </div>
                   </div>
 
-                  <div
-                    class="post-excerpt"
-                    itemprop="articleBody"
-                    set:html={post.excerpt}
-                    style="margin-top: 26px; padding-left: 48px; font-size: 15px; line-height: 1.7; color: var(--text-color); word-break: break-word; position: relative; z-index: 0;"
-                  />
+                  <div class="post-excerpt" itemprop="articleBody" set:html={post.excerpt} style="margin-top: 26px; padding-left: 48px; font-size: 15px; line-height: 1.7; color: var(--text-color); word-break: break-word; position: relative; z-index: 0;" />
 
                   {post.mediaItems.length > 0 && (
-                    <div
-                      class="post-images"
-                      data-count={post.mediaItems.length}
-                      style="margin-top: 12px; margin-left: 48px; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; max-width: 50%; position: relative; z-index: 2;"
-                    >
+                    <div class="post-images" data-count={post.mediaItems.length} style="margin-top: 12px; margin-left: 48px; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; max-width: 50%; position: relative; z-index: 2;">
                       {post.mediaItems.map((item) => {
                         if (item.type === 'image') {
-                          // 普通图片
-                          return (
-                            <img
-                              src={item.src}
-                              alt="配图"
-                              loading="lazy"
-                              class="lightbox-img"
-                              style="width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;"
-                            />
-                          );
+                          return (<img src={item.src} alt="配图" loading="lazy" class="lightbox-img" style="width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" />);
                         } else {
-                          // LivePhoto
                           if (post.mediaItems.length === 1) {
-                            // 单图：直接使用原始容器（保持原比例）
                             return <div set:html={item.html} style="width: 100%;" />;
                           } else {
-                            // 多图：使用正方形容器（padding-top:100%）
                             const squareHtml = buildSquareLivePhoto(item.src!, item.videoSrc);
                             return <div set:html={squareHtml} style="width: 100%; height: 100%;" />;
                           }
@@ -255,58 +194,21 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
           {sidebarData && (
             <>
               {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
-                <section class="widget">
-                  <h3 class="widget-title">最新文章</h3>
-                  <ul class="widget-list">
-                    {sidebarData.recentPosts.map((p) => (
-                      <li><a href={p.permalink}>{p.title}</a></li>
-                    ))}
-                  </ul>
-                </section>
+                <section class="widget"><h3 class="widget-title">最新文章</h3><ul class="widget-list">{sidebarData.recentPosts.map((p) => (<li><a href={p.permalink}>{p.title}</a></li>))}</ul></section>
               )}
               {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
-                <section class="widget">
-                  <h3 class="widget-title">最近回复</h3>
-                  <ul class="widget-list">
-                    {sidebarData.recentComments.map((c) => (
-                      <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>
-                    ))}
-                  </ul>
-                </section>
+                <section class="widget"><h3 class="widget-title">最近回复</h3><ul class="widget-list">{sidebarData.recentComments.map((c) => (<li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>))}</ul></section>
               )}
               {sidebarData.categories && sidebarData.categories.length > 0 && (
-                <section class="widget">
-                  <h3 class="widget-title">分类</h3>
-                  <ul class="widget-list">
-                    {sidebarData.categories.map((cat) => (
-                      <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
-                    ))}
-                  </ul>
-                </section>
+                <section class="widget"><h3 class="widget-title">分类</h3><ul class="widget-list">{sidebarData.categories.map((cat) => (<li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>))}</ul></section>
               )}
-
-              {/* 隐藏：侧边栏的归档模块，已被注释 */}
-              {/*
-             {sidebarData.archives && sidebarData.archives.length > 0 && (
-                <section class="widget">
-                  <h3 class="widget-title">归档</h3>
-                  <ul class="widget-list">
-                    {sidebarData.archives.map((archive) => (
-                      <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            */}
 
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
                 <ul class="widget-list">
                   {isLoggedIn ? (
                     <>
-                      <li class="last">
-                        <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
-                      </li>
+                      <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
                       <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
                     </>
                   ) : (
@@ -324,22 +226,24 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   </div>
 
   <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
-    由 <a href="#">Typecho CF</a> 强力驱动.
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
 
-<!-- 👇 暗黑模式下拉菜单控制脚本 -->
+<!-- 👇 暗黑模式控制脚本 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('note-theme-btn');
-    const menu = document.getElementById('note-theme-menu');
-    const opts = document.querySelectorAll('.note-theme-opt');
-    const htmlEl = document.documentElement;
+    const pcOpts = document.querySelectorAll('.theme-opt');
+    const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
+    const allOpts = [...pcOpts, ...mobileOpts];
     
-    // 读取本地存储，默认跟随系统
+    const mobileBtn = document.getElementById('mobile-theme-btn');
+    const mobileMenu = document.getElementById('mobile-theme-menu');
+
+    const htmlEl = document.documentElement;
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
 
+    // 应用主题并更新高亮
     function applyTheme(mode) {
       if (mode === 'system') {
         const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -348,8 +252,21 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
         htmlEl.setAttribute('data-mode', mode);
       }
       
-      // 更新下拉菜单里选项的高亮状态
-      opts.forEach(opt => {
+      // 电脑端按钮高亮
+      pcOpts.forEach(opt => {
+        if(opt.dataset.mode === mode) {
+          opt.style.background = 'var(--accent-color)';
+          opt.style.color = '#fff';
+          opt.style.borderColor = 'var(--accent-color)';
+        } else {
+          opt.style.background = 'transparent';
+          opt.style.color = 'var(--text-color)';
+          opt.style.borderColor = 'var(--border-color)';
+        }
+      });
+
+      // 手机端菜单高亮
+      mobileOpts.forEach(opt => {
         if(opt.dataset.mode === mode) {
           opt.style.color = 'var(--accent-color)';
           opt.style.fontWeight = 'bold';
@@ -362,28 +279,28 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 
     applyTheme(currentMode);
 
-    // 点击 🌓 按钮，切换菜单显示/隐藏
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    });
-
-    // 点击菜单选项
-    opts.forEach(opt => {
+    // 点击事件
+    allOpts.forEach(opt => {
       opt.addEventListener('click', () => {
         currentMode = opt.dataset.mode;
         localStorage.setItem('hbw-theme-pref', currentMode);
         applyTheme(currentMode);
-        menu.style.display = 'none'; 
+        if(mobileMenu) mobileMenu.style.display = 'none'; // 手机选完关闭菜单
       });
     });
 
-    // 点击页面空白处，自动收起菜单
-    document.addEventListener('click', (e) => {
-      if (!menu.contains(e.target) && !btn.contains(e.target)) {
-        menu.style.display = 'none';
-      }
-    });
+    // 手机端下拉菜单控制
+    if (mobileBtn && mobileMenu) {
+      mobileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', (e) => {
+        if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
+          mobileMenu.style.display = 'none';
+        }
+      });
+    }
   });
 </script>
 
@@ -391,12 +308,27 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 .card-overlay { z-index: 1; }
 .post-author a, .post-meta-details a, .post-meta-details span a { position: relative; z-index: 3; }
 
-/* 下拉菜单悬停效果 */
-.note-btn-hover:hover {
-  background: var(--card-bg) !important;
+/* 🌟 核心：PC端和移动端的显示控制 */
+.desktop-theme-switcher {
+  display: flex; 
+  gap: 6px; 
+  align-items: center; 
+  position: absolute; 
+  right: 0; 
+  top: 0;
 }
-.note-opt-hover:hover {
-  background: var(--border-color) !important;
+.mobile-theme-switcher { display: none; }
+
+/* 按钮基础样式（电脑端） */
+.theme-opt {
+  background: transparent; 
+  border: 1px solid var(--border-color); 
+  border-radius: 6px; 
+  padding: 4px 8px; 
+  cursor: pointer; 
+  font-size: 14px; 
+  transition: 0.3s; 
+  line-height: 1.2;
 }
 
 /* 单图自适应 */
@@ -412,7 +344,21 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 .post-images[data-count="4"] { grid-template-columns: 1fr 1fr; }
 .post-images[data-count="4"] img, .post-images[data-count="4"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
 
-@media (max-width: 768px) {
+
+/* 🌟 移动端响应式调整 */
+@media (max-width: 767px) {
+  /* 隐藏电脑端，显示移动端下拉 */
+  .desktop-theme-switcher { display: none; }
+  .mobile-theme-switcher { 
+    display: block; 
+    position: absolute; 
+    right: 0; 
+    top: 0; 
+  }
+
+  /* 给悬浮按钮留出空间，防止遮挡手机导航 */
+  #nav-menu { padding-bottom: 40px; }
+  
   .post-images { max-width: 100% !important; margin-left: 0 !important; }
   .post-excerpt { padding: 0 16px 0 16px !important; }
   .post-header { flex-wrap: wrap; }
