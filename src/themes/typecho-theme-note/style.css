@@ -530,3 +530,84 @@ details summary::before {
 details[open] > summary::before {
   transform: rotate(90deg); 
 }
+
+
+/* ============================================================
+ * 【折叠面板 - 全量 10 色主题扩展】
+ * ============================================================ */
+
+/* 1. 默认蓝 (Primary) */
+.details-primary::before { background-color: var(--accent-color) !important; }
+.details-primary > summary::before { color: var(--accent-color) !important; }
+
+/* 2. 成功绿 (Success) */
+.details-success::before { background-color: #198754 !important; }
+.details-success > summary::before { color: #198754 !important; }
+.details-success { background-color: rgba(25, 135, 84, 0.05) !important; } 
+html[data-mode="dark"] .details-success::before { background-color: #34d399 !important; }
+html[data-mode="dark"] .details-success > summary::before { color: #34d399 !important; }
+html[data-mode="dark"] .details-success { background-color: rgba(52, 211, 153, 0.1) !important; }
+
+/* 3. 危险红 (Danger) */
+.details-danger::before { background-color: #dc3545 !important; }
+.details-danger > summary::before { color: #dc3545 !important; }
+.details-danger { background-color: rgba(220, 53, 69, 0.05) !important; }
+html[data-mode="dark"] .details-danger::before { background-color: #f87171 !important; }
+html[data-mode="dark"] .details-danger > summary::before { color: #f87171 !important; }
+html[data-mode="dark"] .details-danger { background-color: rgba(248, 113, 113, 0.1) !important; }
+
+/* 4. 警告黄 (Warning) */
+.details-warning::before { background-color: #ffc107 !important; }
+.details-warning > summary::before { color: #ffc107 !important; }
+.details-warning { background-color: rgba(255, 193, 7, 0.05) !important; }
+html[data-mode="dark"] .details-warning::before { background-color: #fbbf24 !important; }
+html[data-mode="dark"] .details-warning > summary::before { color: #fbbf24 !important; }
+html[data-mode="dark"] .details-warning { background-color: rgba(251, 191, 36, 0.1) !important; }
+
+/* 5. 信息青 (Info) */
+.details-info::before { background-color: #0dcaf0 !important; }
+.details-info > summary::before { color: #0dcaf0 !important; }
+.details-info { background-color: rgba(13, 202, 240, 0.05) !important; }
+html[data-mode="dark"] .details-info::before { background-color: #22d3ee !important; }
+html[data-mode="dark"] .details-info > summary::before { color: #22d3ee !important; }
+html[data-mode="dark"] .details-info { background-color: rgba(34, 211, 238, 0.1) !important; }
+
+/* 6. 次要灰 (Secondary) */
+.details-secondary::before { background-color: #6c757d !important; }
+.details-secondary > summary::before { color: #6c757d !important; }
+.details-secondary { background-color: rgba(108, 117, 125, 0.05) !important; }
+html[data-mode="dark"] .details-secondary::before { background-color: #94a3b8 !important; }
+html[data-mode="dark"] .details-secondary > summary::before { color: #94a3b8 !important; }
+html[data-mode="dark"] .details-secondary { background-color: rgba(148, 163, 184, 0.1) !important; }
+
+/* 7. 深色黑 (Dark) */
+.details-dark::before { background-color: #212529 !important; }
+.details-dark > summary::before { color: #212529 !important; }
+.details-dark { background-color: rgba(33, 37, 41, 0.05) !important; }
+html[data-mode="dark"] .details-dark::before { background-color: #ffffff !important; }
+html[data-mode="dark"] .details-dark > summary::before { color: #ffffff !important; }
+html[data-mode="dark"] .details-dark { background-color: rgba(255, 255, 255, 0.1) !important; }
+
+/* 8. 扩展紫 (Purple) */
+.details-purple::before { background-color: #7c3aed !important; }
+.details-purple > summary::before { color: #7c3aed !important; }
+.details-purple { background-color: rgba(124, 58, 237, 0.05) !important; }
+html[data-mode="dark"] .details-purple::before { background-color: #a78bfa !important; }
+html[data-mode="dark"] .details-purple > summary::before { color: #a78bfa !important; }
+html[data-mode="dark"] .details-purple { background-color: rgba(167, 139, 250, 0.1) !important; }
+
+/* 9. 扩展粉 (Pink) */
+.details-pink::before { background-color: #db2777 !important; }
+.details-pink > summary::before { color: #db2777 !important; }
+.details-pink { background-color: rgba(219, 39, 119, 0.05) !important; }
+html[data-mode="dark"] .details-pink::before { background-color: #f472b6 !important; }
+html[data-mode="dark"] .details-pink > summary::before { color: #f472b6 !important; }
+html[data-mode="dark"] .details-pink { background-color: rgba(244, 114, 182, 0.1) !important; }
+
+/* 10. 扩展橙 (Orange) */
+.details-orange::before { background-color: #ea580c !important; }
+.details-orange > summary::before { color: #ea580c !important; }
+.details-orange { background-color: rgba(234, 88, 12, 0.05) !important; }
+html[data-mode="dark"] .details-orange::before { background-color: #fb923c !important; }
+html[data-mode="dark"] .details-orange > summary::before { color: #fb923c !important; }
+html[data-mode="dark"] .details-orange { background-color: rgba(251, 146, 60, 0.1) !important; }
