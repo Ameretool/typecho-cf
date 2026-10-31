@@ -1,9 +1,6 @@
 ---
 /**
  * Default theme — Independent page component
- *
- * Renders a single page with optional comments.
- * Equivalent to the original [slug].astro template section.
  */
 import Base from '@/layouts/Base.astro';
 import CommentList from './CommentList.astro';
@@ -18,7 +15,6 @@ const {
 } = Astro.props;
 
 const isIndex = currentPath === '/';
-
 const totalComments = commentPagination.totalComments;
 ---
 <Base
@@ -30,38 +26,85 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'page' }}
 >
-  <header id="header" class="clearfix">
+  <!-- 👇 全新头部导航结构 👇 -->
+  <header id="header" class="clearfix site-header-sticky">
     <div class="container">
-      <div class="row">
-        <div class="site-name col-mb-12 col-9">
-          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-          <p class="description">{options.description}</p>
-        </div>
-        <div class="site-search col-3 kit-hidden-tb">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
-        </div>
-        <div class="col-mb-12">
-          <nav id="nav-menu" class="clearfix" role="navigation">
+      <div class="header-flex">
+        
+        <div class="header-left">
+          <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
+            <img src="/logo.png" alt="Logo" class="site-logo-img" />
+            <span>{options.title}</span>
+          </a>
+          <nav id="nav-menu" class="desktop-nav kit-hidden-tb" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             {pages.map((p) => (
-              <a
-                class:list={[{ current: page.slug === p.slug }]}
-                href={p.permalink}
-                title={p.title}
-              >
-                {p.title}
-              </a>
+              <a class:list={[{ current: page.slug === p.slug }]} href={p.permalink} title={p.title}>{p.title}</a>
             ))}
           </nav>
+        </div>
+
+        <div class="header-right">
+          <div class="site-search kit-hidden-tb">
+            <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+              <label for="s" class="sr-only">搜索关键字</label>
+              <input type="text" id="s" name="s" class="text" placeholder="搜索..." />
+              <button type="submit" class="submit">搜索</button>
+            </form>
+          </div>
+
+          <!-- 移动端独立菜单 -->
+          <div class="mobile-menu-wrapper kit-hidden-pc">
+            <button id="mobile-menu-btn" class="my-mobile-btn" aria-label="打开菜单">
+              <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <div id="mobile-menu-list" class="my-mobile-dropdown">
+              <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+              {pages.map((p) => (
+                <a class:list={[{ current: page.slug === p.slug }]} href={p.permalink} title={p.title}>{p.title}</a>
+              ))}
+            </div>
+          </div>
+
+          <!-- 👇 这就是你要的夜间模式设置面板 👇 -->
+          <div class="theme-settings-wrapper">
+            <button class="theme-settings-toggle" aria-label="主题设置">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            </button>
+            <div class="theme-settings-panel" style="top: 45px; right: 0; bottom: auto;">
+              <div class="setting-group">
+                <div class="setting-title">界面模式</div>
+                <div class="setting-options">
+                  <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
+                  <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
+                  <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <div class="setting-title">主题预设</div>
+                <div class="setting-options color-options">
+                  <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
+                  <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
+                  <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
+                  <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <div class="setting-title">字号预设</div>
+                <div class="setting-options">
+                  <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
+                  <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
+                  <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </header>
 
+  <!-- 👇 下面是关于页面的主体内容，保持原样不动 👇 -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -84,7 +127,6 @@ const totalComments = commentPagination.totalComments;
             )}
           </article>
 
-          {/* Comments */}
           {(!page.hasPassword || page.passwordVerified) && commentOptions.allowComment && (
             <div id="comments">
               {totalComments > 0 && (
@@ -115,8 +157,7 @@ const totalComments = commentPagination.totalComments;
               <div id="respond" class="respond">
                 <h3 id="response">添加新评论</h3>
                 <div class="cancel-comment-reply" style="display:none">
-                  <a id="cancel-comment-reply-link" href={`${page.permalink}#respond`} rel="nofollow"
-                    onclick="return TypechoComment.cancelReply()">取消回复</a>
+                  <a id="cancel-comment-reply-link" href={`${page.permalink}#respond`} rel="nofollow" onclick="return TypechoComment.cancelReply()">取消回复</a>
                 </div>
                 <form method="post" action="/api/comment" id="comment-form" role="form">
                   <input type="hidden" name="cid" value={String(page.cid)} />
@@ -131,20 +172,11 @@ const totalComments = commentPagination.totalComments;
                     <p>登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a></p>
                   ) : (
                     <>
-                      <p>
-                        <label for="author" class="required">称呼</label>
-                        <input type="text" name="author" id="author" class="text" required />
-                      </p>
-                      <p>
-                        <label for="mail">Email</label>
-                        <input type="email" name="mail" id="mail" class="text" />
-                      </p>
+                      <p><label for="author" class="required">称呼</label><input type="text" name="author" id="author" class="text" required /></p>
+                      <p><label for="mail">Email</label><input type="email" name="mail" id="mail" class="text" /></p>
                     </>
                   )}
-                  <p>
-                    <label for="textarea" class="required">内容</label>
-                    <textarea rows="8" cols="50" name="text" id="textarea" class="textarea" required></textarea>
-                  </p>
+                  <p><label for="textarea" class="required">内容</label><textarea rows="8" cols="50" name="text" id="textarea" class="textarea" required></textarea></p>
                   <p><button type="submit" class="submit">提交评论</button></p>
                 </form>
               </div>
@@ -213,20 +245,6 @@ const totalComments = commentPagination.totalComments;
               </section>
             )}
             
-                 {/* 隐藏 归档 */}
-              {/* 
-            {sidebarData.archives && sidebarData.archives.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">归档</h3>
-                <ul class="widget-list">
-                  {sidebarData.archives.map((archive) => (
-                    <li><a href={archive.permalink}>{archive.date}</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            */}
-
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
@@ -251,7 +269,36 @@ const totalComments = commentPagination.totalComments;
   </div>
 
   <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
-    由 <a href="#">Typecho CF</a> 强力驱动.
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
+
+<!-- 👇 移动端菜单控制脚本 👇 -->
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('mobile-menu-btn');
+    const list = document.getElementById('mobile-menu-list');
+    if (btn && list) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        list.classList.toggle('show');
+      });
+      document.addEventListener('click', (e) => {
+        if (!list.contains(e.target) && !btn.contains(e.target)) {
+          list.classList.remove('show');
+        }
+      });
+    }
+  });
+  
+  document.addEventListener('swup:contentReplaced', () => {
+    const btn = document.getElementById('mobile-menu-btn');
+    const list = document.getElementById('mobile-menu-list');
+    if (btn && list) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        list.classList.toggle('show');
+      });
+    }
+  });
+</script>
