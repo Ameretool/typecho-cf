@@ -26,7 +26,6 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'page' }}
 >
-  <!-- 头部导航 (与首页统一) -->
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
       <div class="header-flex">
@@ -42,7 +41,6 @@ const totalComments = commentPagination.totalComments;
             ))}
           </nav>
         </div>
-
         <div class="header-right">
           <div class="site-search kit-hidden-tb">
             <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
@@ -51,7 +49,6 @@ const totalComments = commentPagination.totalComments;
               <button type="submit" class="submit">搜索</button>
             </form>
           </div>
-
           <div class="mobile-menu-wrapper kit-hidden-pc">
             <button id="mobile-menu-btn" class="my-mobile-btn" aria-label="打开菜单">
               <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -63,7 +60,6 @@ const totalComments = commentPagination.totalComments;
               ))}
             </div>
           </div>
-
           <div class="theme-settings-wrapper">
             <button class="theme-settings-toggle" aria-label="主题设置">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -171,8 +167,7 @@ const totalComments = commentPagination.totalComments;
                   <p><button type="submit" class="submit">提交评论</button></p>
                 </form>
               </div>
-              
-              <!-- 注意：这里只保留了评论回复控制，不再包含汉堡菜单逻辑 -->
+              <!-- 仅保留评论回复 JS -->
               <script is:inline>
                 var TypechoComment = {
                   dom: function (id) { return document.getElementById(id); },
