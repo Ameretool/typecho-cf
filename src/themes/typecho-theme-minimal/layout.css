@@ -1,110 +1,73 @@
 /* ==========================================================================
-   文件二：layout.css - 页面布局、导航、文章、评论区、侧边栏
+   文件二：layout.css - 纯净版 (基于原生导航 + 移动端吸顶)
    ========================================================================== */
 
 /* ============================================================
- * 1. 头部导航 (绝对吸顶 + 毛玻璃)
+ * 1. 全局与头部基础 (桌面端)
  * ============================================================ */
+#header { padding-top: 35px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
+#logo { color: var(--text-color) !important; font-size: 2.5em; font-weight: bold; text-decoration: none; }
+.description { margin: .5em 0 0; color: var(--text-color); opacity: 0.6; font-style: italic; }
+#nav-menu { margin: 25px 0 0; padding: 0; }
+#nav-menu a { display: block; margin-right: -1px; padding: 0 20px; border: 1px solid var(--border-color); border-bottom: none; height: 32px; line-height: 32px; color: var(--text-color); float: left; text-decoration: none; }
+#nav-menu a:hover, #nav-menu .current { background: var(--card-bg); color: var(--accent-color) !important; }
+#search { position: relative; margin-top: 15px; }
+#search input { padding-right: 30px; }
+#search button { position: absolute; right: 4px; top: 2px; border: none; padding: 0; width: 24px; height: 24px; background: transparent; cursor: pointer; }
+#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.5; }
 
-/* 强制 fixed 钉死，防止任何父级干扰 */
-.site-header-sticky {
-  position: fixed !important; 
-  top: 0 !important;
-  left: 0;
-  width: 100%;
-  z-index: 9999 !important;
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-color);
-  padding: 12px 0 !important;
+/* ============================================================
+ * 2. 移动端专属布局 (核心：固定吸顶 + 居中)
+ * ============================================================ */
+@media (max-width: 768px) {
+  /* 导航栏固定吸顶 */
+  #header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    background: var(--bg-color) !important;
+    padding: 10px 0 !important;
+    margin-bottom: 0 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+
+  /* 给 body 留出导航的高度，防止遮挡内容 */
+  body { padding-top: 120px !important; }
+
+  /* 移动端文字居中和排版 */
+  #header .site-name { text-align: center; }
+  #logo { font-size: 2em !important; }
+  .description { display: none !important; /* 手机端隐藏描述 */ }
+  
+  /* 导航菜单居中，平铺 */
+  #nav-menu {
+    margin: 15px 0 0 0 !important;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  #nav-menu a {
+    float: none;
+    margin: 0 4px 5px 4px;
+    border: 1px solid var(--border-color); /* 恢复边框 */
+    border-radius: 4px;
+    height: 30px;
+    line-height: 28px;
+  }
 }
-/* 因为导航 fixed 腾空了，body 需要顶下去一点，防止遮挡内容 */
-body { padding-top: 64px !important; } 
-
-html[data-mode="dark"] .site-header-sticky {
-  background: rgba(34, 39, 46, 0.85) !important;
-}
-
-/* Flex 布局控制 */
-.header-flex { display: flex; justify-content: space-between; align-items: center; }
-.header-left { display: flex; align-items: center; gap: 20px; }
-.header-right { display: flex; align-items: center; gap: 15px; }
-
-/* Logo 完美对齐 */
-.brand-logo {
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  gap: 8px !important; text-decoration: none !important; color: var(--text-color) !important;
-  font-weight: 700 !important; font-size: 1.4em !important; line-height: 1 !important; margin: 0 !important;
-}
-.site-logo-img { height: 28px !important; width: auto !important; object-fit: contain !important; margin: 0 !important; }
-
-/* 桌面端导航 */
-.desktop-nav { margin: 0 !important; display: flex; align-items: center; gap: 5px; }
-.desktop-nav a {
-  padding: 6px 12px !important; border-radius: 6px !important; color: var(--text-color) !important;
-  text-decoration: none !important; font-weight: 500 !important; border: none !important;
-  height: auto !important; line-height: normal !important; float: none !important;
-  background: transparent !important; font-size: 15px !important;
-}
-.desktop-nav a:hover, .desktop-nav a.current { background: var(--card-bg) !important; color: var(--accent-color) !important; }
-
-/* 搜索框 */
-.site-search form { margin: 0 !important; position: relative !important; }
-.site-search input {
-  height: 34px !important; border-radius: 20px !important; padding: 0 35px 0 15px !important;
-  border: 1px solid var(--border-color) !important; background: var(--bg-color) !important;
-  font-size: 13px !important; width: 180px !important; margin: 0 !important;
-}
-.site-search button { position: absolute !important; right: 10px !important; top: 50% !important; transform: translateY(-50%) !important; background: transparent !important; border: none !important; }
 
 /* 辅助类 */
 @media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
 /* ============================================================
- * 2. 移动端专属布局 (原生 details 下拉)
- * ============================================================ */
-@media (max-width: 768px) {
-  body { padding-top: 56px !important; }
-  .site-header-sticky { padding: 10px 0 !important; }
-  .site-logo-img { height: 24px !important; }
-  .brand-logo { font-size: 1.2em !important; gap: 6px !important; }
-
-  .mobile-menu-wrapper { position: relative; display: block; }
-
-  /* 隐藏默认小三角 */
-  .my-mobile-btn {
-    list-style: none; outline: none;
-    width: 36px; height: 36px;
-    border: 1px solid var(--border-color); border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--text-color); background: var(--card-bg);
-    padding: 0; margin: 0;
-  }
-  .my-mobile-btn::-webkit-details-marker { display: none; }
-
-  /* 下拉菜单面板 (由 details 自动控制，不需要 JS) */
-  .my-mobile-dropdown {
-    position: absolute; top: 45px; right: 0; width: 130px;
-    background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15); padding: 6px;
-    display: flex; flex-direction: column; z-index: 10000;
-  }
-
-  .my-mobile-dropdown a {
-    padding: 10px 12px; color: var(--text-color) !important; text-decoration: none;
-    border-radius: 6px; text-align: center; font-size: 14px;
-  }
-  .my-mobile-dropdown a:hover, .my-mobile-dropdown a.current { background: var(--card-bg); color: var(--accent-color) !important; }
-}
-
-/* ============================================================
- * 3. 主内容区与文章列表
+ * 3. 主内容区、文章、评论等 (保持原样)
  * ============================================================ */
 .post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; }
-.post-title a { color: var(--accent-color) !important; }
+.post-title a { color: var(--accent-color) !important; text-decoration: none; }
 .post-meta { margin-top: -0.5em; padding: 0; color: var(--text-color); opacity: 0.6; font-size: .92857em; }
 .post-meta li { display: inline-block; margin: 0 8px 0 0; padding-left: 12px; border-left: 1px solid var(--border-color); }
 .post-meta li:first-child { margin-left: 0; padding-left: 0; border: none; }
@@ -115,9 +78,7 @@ html[data-mode="dark"] .site-header-sticky {
 .archive-title { margin: 1em 0 -1em; padding-top: 20px; color: var(--text-color); opacity: 0.6; font-size: 1em; }
 .more { text-align: center; }
 .more a { border: none; }
-.protected .text { width: 50%; }
 
-/* 移动端文章居中 */
 @media (max-width: 768px) { .post-title, .post-meta { text-align: center !important; } }
 
 /* 分页 */
