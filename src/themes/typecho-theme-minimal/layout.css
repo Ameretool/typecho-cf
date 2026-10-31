@@ -92,3 +92,70 @@ img.alignright { margin: 0 0 0 15px; }
 }
 @media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
 @media (min-width: 992px) { #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; } }
+
+/* ============================================================
+ * 移动端专属布局 (小于 768px) - 导航与汉堡菜单
+ * ============================================================ */
+
+/* 辅助类控制 PC/移动端显示隐藏 */
+@media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
+@media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
+
+@media (max-width: 768px) {
+  .site-header-sticky { padding: 10px 0 !important; }
+  .site-logo-img { height: 24px !important; }
+  .brand-logo { font-size: 1.2em !important; gap: 6px !important; }
+
+  /* 移动端菜单容器 */
+  .mobile-menu-wrapper { position: relative; display: block; }
+
+  /* 极其干净的小方块汉堡按钮 */
+  .my-mobile-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    background: var(--card-bg);
+    padding: 0;
+    margin: 0;
+  }
+
+  /* 下拉菜单面板 (默认隐藏) */
+  .my-mobile-dropdown {
+    position: absolute;
+    top: 45px;
+    right: 0;
+    width: 140px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 6px;
+    display: none; 
+    flex-direction: column;
+    z-index: 10000;
+  }
+  
+  /* 点击后显示 */
+  .my-mobile-dropdown.show { display: flex; }
+
+  /* 下拉菜单里的链接 */
+  .my-mobile-dropdown a {
+    padding: 10px 12px;
+    color: var(--text-color) !important;
+    text-decoration: none;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 14px;
+  }
+  .my-mobile-dropdown a:hover, 
+  .my-mobile-dropdown a.current {
+    background: var(--card-bg);
+    color: var(--accent-color) !important;
+  }
+}
