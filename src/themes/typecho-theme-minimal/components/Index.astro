@@ -18,11 +18,11 @@ const isIndex = currentPath === '/';
 ---
 <Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
   
+  <!-- 头部导航 -->
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
       <div class="header-flex">
         
-        <!-- 左侧：Logo + 桌面端导航 -->
         <div class="header-left">
           <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
             <img src="/logo.png" alt="Logo" class="site-logo-img" />
@@ -36,7 +36,6 @@ const isIndex = currentPath === '/';
           </nav>
         </div>
 
-        <!-- 右侧：搜索 + 移动端汉堡 + 设置面板 -->
         <div class="header-right">
           <div class="site-search kit-hidden-tb">
             <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
@@ -59,7 +58,7 @@ const isIndex = currentPath === '/';
             </div>
           </div>
 
-          <!-- 主题设置面板 -->
+          <!-- 夜间模式设置面板 -->
           <div class="theme-settings-wrapper">
             <button class="theme-settings-toggle" aria-label="主题设置">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -93,12 +92,10 @@ const isIndex = currentPath === '/';
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </header>
 
-  <!-- 文章列表区 -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -113,9 +110,13 @@ const isIndex = currentPath === '/';
               let excerpt = post.excerpt || '';
               const rawContent = post.content || post.excerpt || '';
               if (rawContent) {
-                const cleanContent = rawContent.replace(/<p class="more">.*?<\/p>/g, '').replace(/- 阅读剩余部分 -/g, '').trim();
+                const cleanContent = rawContent
+                  .replace(/<p class="more">.*?<\/p>/g, '')
+                  .replace(/- 阅读剩余部分 -/g, '')
+                  .trim();
                 excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
               }
+              
               return (
                 <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
                   <h2 class="post-title" itemprop="name headline">
@@ -123,19 +124,34 @@ const isIndex = currentPath === '/';
                   </h2>
                   <ul class="post-meta">
                     <li itemprop="author" itemscope itemtype="http://schema.org/Person">
-                      作者: <a itemprop="name" href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'} rel="author">{post.author?.screenName || post.author?.name || '未知'}</a>
+                      作者: <a itemprop="name" href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'} rel="author">
+                        {post.author?.screenName || post.author?.name || '未知'}
+                      </a>
                     </li>
-                    <li>时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">{formatDate(post.created, 'Y-m-d', options.timezone)}</time></li>
+                    <li>
+                      时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
+                        {formatDate(post.created, 'Y-m-d', options.timezone)}
+                      </time>
+                    </li>
                     {post.categories.length > 0 && (
-                      <li>分类: {post.categories.map((c, i) => (<>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a></>))}</li>
+                      <li>
+                        分类: {post.categories.map((c, i) => (
+                          <>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a></>
+                        ))}
+                      </li>
                     )}
-                    <li itemprop="interactionCount"><a itemprop="discussionUrl" href={`${post.permalink}#comments`}>{post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}</a></li>
+                    <li itemprop="interactionCount">
+                      <a itemprop="discussionUrl" href={`${post.permalink}#comments`}>
+                        {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
+                      </a>
+                    </li>
                   </ul>
                   <div class="post-content" itemprop="articleBody" set:html={excerpt} />
                 </article>
               );
             })
           )}
+
           {pagination.totalPages > 1 && (
             <nav class="page-navigator">
               {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
@@ -143,16 +159,32 @@ const isIndex = currentPath === '/';
             </nav>
           )}
         </div>
+
         {sidebarData && (
           <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
             {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
-              <section class="widget"><h3 class="widget-title">最新文章</h3><ul class="widget-list">{sidebarData.recentPosts.map((p) => <li><a href={p.permalink}>{p.title}</a></li>)}</ul></section>
+              <section class="widget">
+                <h3 class="widget-title">最新文章</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentPosts.map((p) => <li><a href={p.permalink}>{p.title}</a></li>)}
+                </ul>
+              </section>
             )}
             {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
-              <section class="widget"><h3 class="widget-title">最近回复</h3><ul class="widget-list">{sidebarData.recentComments.map((c) => <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>)}</ul></section>
+              <section class="widget">
+                <h3 class="widget-title">最近回复</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentComments.map((c) => <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>)}
+                </ul>
+              </section>
             )}
             {sidebarData.categories && sidebarData.categories.length > 0 && (
-              <section class="widget"><h3 class="widget-title">分类</h3><ul class="widget-list">{sidebarData.categories.map((cat) => <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>)}</ul></section>
+              <section class="widget">
+                <h3 class="widget-title">分类</h3>
+                <ul class="widget-list">
+                  {sidebarData.categories.map((cat) => <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>)}
+                </ul>
+              </section>
             )}
             <section class="widget">
               <h3 class="widget-title">其它</h3>
@@ -174,35 +206,8 @@ const isIndex = currentPath === '/';
       </div>
     </div>
   </div>
+
   <footer id="footer" role="contentinfo">
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
-
-<script is:inline>
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('mobile-menu-btn');
-    const list = document.getElementById('mobile-menu-list');
-    if (btn && list) {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        list.classList.toggle('show');
-      });
-      document.addEventListener('click', (e) => {
-        if (!list.contains(e.target) && !btn.contains(e.target)) {
-          list.classList.remove('show');
-        }
-      });
-    }
-  });
-  document.addEventListener('swup:contentReplaced', () => {
-    const btn = document.getElementById('mobile-menu-btn');
-    const list = document.getElementById('mobile-menu-list');
-    if (btn && list) {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        list.classList.toggle('show');
-      });
-    }
-  });
-</script>
