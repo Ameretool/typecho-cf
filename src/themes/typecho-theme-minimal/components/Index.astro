@@ -43,17 +43,20 @@ const isIndex = currentPath === '/';
               <button type="submit" class="submit">搜索</button>
             </form>
           </div>
-          <div class="mobile-menu-wrapper kit-hidden-pc">
-            <button id="mobile-menu-btn" class="my-mobile-btn" aria-label="打开菜单">
+          
+          <!-- 原生折叠菜单 -->
+          <details class="mobile-menu-wrapper kit-hidden-pc">
+            <summary class="my-mobile-btn" aria-label="打开菜单">
               <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            </button>
-            <div id="mobile-menu-list" class="my-mobile-dropdown">
+            </summary>
+            <div class="my-mobile-dropdown">
               <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
               {pages.map((page) => (
                 <a href={page.permalink} title={page.title}>{page.title}</a>
               ))}
             </div>
-          </div>
+          </details>
+
           <div class="theme-settings-wrapper">
             <button class="theme-settings-toggle" aria-label="主题设置">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
