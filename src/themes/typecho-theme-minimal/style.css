@@ -4,8 +4,8 @@
    @project   Typecho Blog Theme (Astro Version)
    @author    Ameretool
    @link      https://hbw.me
-   @version   2.8.0 (防溢出修复 + 斑马线表格 + 完美圆角折叠面板)
-   @update    2026-10-28
+   @version   3.0.0 (Bootstrap导航 + 斑马线 + 双圆角折叠 + 10色扩展)
+   @update    2026-10-31
    ========================================================================== */
 
 /* ==========================================================================
@@ -13,7 +13,6 @@
    ========================================================================== */
 :root {
   --font-size-base: 16px;
-  /* 👈 兜底：清新冰蓝 */
   --bg-color:     linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); 
   --text-color:   #2c3e50; 
   --card-bg:      #e1f0fa;
@@ -24,80 +23,18 @@
 /* ============================================================
  * 2. 亮色模式预设
  * ============================================================ */
-/* ☀️ 亮色 1：清新冰蓝 */
-[data-color="blue"] { 
-  --accent-color: #2563eb;  
-  --text-color: #2c3e50;   
-  --border-color: #d0e3f0; 
-  --card-bg: #e1f0fa;      
-  --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%);
-}
-
-/* ☀️ 亮色 2：纯白极简 */
-[data-color="green"] { 
-  --accent-color: #7c3aed;  
-  --text-color: #1f2937;   
-  --border-color: #e5e7eb; 
-  --card-bg: #f9fafb;      
-  --bg-color: #ffffff;      
-}
-
-/* ☀️ 亮色 3：浅灰极简 */
-[data-color="orange"] { 
-  --accent-color: #555555; 
-  --text-color: #333333; 
-  --border-color: #c0c4cc; 
-  --card-bg: #eef0f3; 
-  --bg-color: linear-gradient(135deg, #e9ecf1 0%, #ffffff 100%);
-}
-
-/* ☀️ 亮色 4：藕荷粉 */
-[data-color="purple"] { 
-  --accent-color: #9c4f7a; 
-  --text-color: #3e3339; 
-  --border-color: #c4a9b6; 
-  --card-bg: #ece0e7; 
-  --bg-color: linear-gradient(135deg, #f0e4e9 0%, #ffffff 100%);
-}
+[data-color="blue"] { --accent-color: #2563eb; --text-color: #2c3e50; --border-color: #d0e3f0; --card-bg: #e1f0fa; --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); }
+[data-color="green"] { --accent-color: #7c3aed; --text-color: #1f2937; --border-color: #e5e7eb; --card-bg: #f9fafb; --bg-color: #ffffff; }
+[data-color="orange"] { --accent-color: #555555; --text-color: #333333; --border-color: #c0c4cc; --card-bg: #eef0f3; --bg-color: linear-gradient(135deg, #e9ecf1 0%, #ffffff 100%); }
+[data-color="purple"] { --accent-color: #9c4f7a; --text-color: #3e3339; --border-color: #c4a9b6; --card-bg: #ece0e7; --bg-color: linear-gradient(135deg, #f0e4e9 0%, #ffffff 100%); }
 
 /* ============================================================
  * 3. 暗黑模式预设
  * ============================================================ */
-/* 🌙 暗色 1：GitHub 暗色 */
-html[data-mode="dark"][data-color="blue"] {
-  --accent-color: #60a5fa; 
-  --text-color: #adbac7; 
-  --border-color: #444c56; 
-  --card-bg: #2d333b;
-  --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%);
-}
-
-/* 🌙 暗色 2：赛博极光紫 */
-html[data-mode="dark"][data-color="green"] {
-  --accent-color: #a78bfa; 
-  --text-color: #e2e8f0;   
-  --border-color: #334155; 
-  --card-bg: #1e293b;
-  --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-}
-
-/* 🌙 暗色 3：护眼暗蓝 */
-html[data-mode="dark"][data-color="orange"] {
-  --accent-color: #5b9bd5; 
-  --text-color: #b8c6d9; 
-  --border-color: #3e4a60; 
-  --card-bg: #2a3446;
-  --bg-color: linear-gradient(135deg, #111822 0%, #2a3446 100%);
-}
-
-/* 🌙 暗色 4：护眼暗棕 */
-html[data-mode="dark"][data-color="purple"] {
-  --accent-color: #c8a878; 
-  --text-color: #d4c8b8; 
-  --border-color: #4a4238; 
-  --card-bg: #38322a;
-  --bg-color: linear-gradient(135deg, #181411 0%, #38322a 100%);
-}
+html[data-mode="dark"][data-color="blue"] { --accent-color: #60a5fa; --text-color: #adbac7; --border-color: #444c56; --card-bg: #2d333b; --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%); }
+html[data-mode="dark"][data-color="green"] { --accent-color: #a78bfa; --text-color: #e2e8f0; --border-color: #334155; --card-bg: #1e293b; --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+html[data-mode="dark"][data-color="orange"] { --accent-color: #5b9bd5; --text-color: #b8c6d9; --border-color: #3e4a60; --card-bg: #2a3446; --bg-color: linear-gradient(135deg, #111822 0%, #2a3446 100%); }
+html[data-mode="dark"][data-color="purple"] { --accent-color: #c8a878; --text-color: #d4c8b8; --border-color: #4a4238; --card-bg: #38322a; --bg-color: linear-gradient(135deg, #181411 0%, #38322a 100%); }
 
 /* ==========================================================================
    4. 字号预设
@@ -114,16 +51,13 @@ html, body {
   background-attachment: fixed !important;
   background-size: cover !important;
   color: var(--text-color);
-  /* 全局防溢出保护 */
   overflow-x: hidden !important; 
 }
-
 body {
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
   font-size: var(--font-size-base);
   transition: color 0.4s ease, background 0.4s ease;
 }
-
 a { color: var(--accent-color); text-decoration: none; transition: color 0.2s; }
 a:hover, a:active { color: var(--text-color); }
 
@@ -135,71 +69,29 @@ a:hover, a:active { color: var(--text-color); }
    6. 表格与代码块
    ========================================================================== */
 table { 
-  border-collapse: separate !important; 
-  border-spacing: 0 !important; 
-  width: 100% !important; 
-  margin-bottom: 16px !important; 
-  border: none !important; 
-  box-shadow: 0 0 0 2px var(--border-color) !important; 
-  border-radius: 6px !important; 
-  font-size: 15px !important; 
-  display: block !important; 
-  overflow-x: auto !important; 
-  -webkit-overflow-scrolling: touch;
+  border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; margin-bottom: 16px !important; border: none !important; 
+  box-shadow: 0 0 0 2px var(--border-color) !important; border-radius: 6px !important; font-size: 15px !important; 
+  display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch;
 }
-
 table th, table td { 
-  padding: 12px 16px !important; 
-  border: none !important; 
-  vertical-align: middle !important; 
+  padding: 12px 16px !important; border: none !important; vertical-align: middle !important; 
   box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; 
-  white-space: nowrap !important; 
-  word-break: keep-all !important;
+  white-space: nowrap !important; word-break: keep-all !important;
 }
-
 table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; }
 table th { background-color: var(--card-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--text-color) !important; }
 
-/* 👇 表格斑马线 (偶数行极浅底色，完美适配 4 亮 4 暗主题) */
-table tbody tr:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.025) !important; 
-}
-html[data-mode="dark"] table tbody tr:nth-child(even) {
-  background-color: rgba(255, 255, 255, 0.03) !important; 
-}
-
-/* 表格悬停 */
+table tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.025) !important; }
+html[data-mode="dark"] table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03) !important; }
 table tbody tr:hover { background-color: var(--card-bg) !important; }
-
 table td code { background-color: rgba(175, 184, 193, 0.2) !important; color: var(--text-color) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important; font-size: 85% !important; }
 
-pre { 
-  background-color: var(--card-bg) !important; 
-  padding: 16px !important; 
-  border-radius: 6px !important; 
-  max-width: 100% !important;
-  white-space: pre !important; 
-  overflow-x: auto !important; 
-  -webkit-overflow-scrolling: touch;
-}
-
-pre code { 
-  background-color: transparent !important; 
-  padding: 0 !important; 
-  color: var(--text-color) !important; 
-  white-space: pre !important; 
-  font-size: .92857em !important; 
-}
-
-/* 段落中的行内代码强制换行，防止撑破页面 */
-p code, li code {
-  white-space: pre-wrap !important;
-  word-break: break-all !important;
-}
+pre { background-color: var(--card-bg) !important; padding: 16px !important; border-radius: 6px !important; max-width: 100% !important; white-space: pre !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+pre code { background-color: transparent !important; padding: 0 !important; color: var(--text-color) !important; white-space: pre !important; font-size: .92857em !important; }
+p code, li code { white-space: pre-wrap !important; word-break: break-all !important; }
 
 blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.8; }
 
-/* 表单输入 */
 input[type="text"], input[type="email"], input[type="url"], input[type="password"], textarea { padding: 5px; border: 1px solid var(--border-color); width: 100%; border-radius: 2px; -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; background: var(--card-bg); color: var(--text-color); }
 textarea { resize: vertical; }
 
@@ -207,7 +99,7 @@ textarea { resize: vertical; }
 .post-meta a:hover, .post-content a:hover, .widget a:hover, .comment-content a:hover { border-bottom-color: transparent; }
 
 /* ==========================================================================
-   7. 头部导航
+   7. 头部导航 (覆盖旧版，强制 Flex 布局)
    ========================================================================== */
 #header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
 #logo { color: var(--text-color) !important; font-size: 2.5em; }
@@ -239,7 +131,6 @@ textarea { resize: vertical; }
 .more a { border: none; }
 .protected .text { width: 50%; }
 
-/* 分页 */
 .page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
 .page-navigator li { display: inline-block; margin: 0 4px; }
 .page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
@@ -313,10 +204,7 @@ img.alignright { margin: 0 0 0 15px; }
   .container { width: 80%; max-width: 1280px; margin: 0 auto; }
 }
 @media (min-width: 992px) {
-  #secondary {
-    border-left: 1px solid var(--border-color) !important;
-    padding-left: 24px !important;
-  }
+  #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; }
 }
 
 /* ==========================================================================
@@ -340,13 +228,11 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
 .color-btn:hover { transform: scale(1.1); }
 
-/* 🌟 面板圆点颜色完美同步 */
 .color-btn.blue { background: linear-gradient(135deg, #dcecf9, #ffffff) !important; border: 1px solid #b0cde0 !important; }
 .color-btn.green { background: #7c3aed !important; }
 .color-btn.orange { background: #555555 !important; }
 .color-btn.purple { background: #9c4f7a !important; }
 
-/* 暗黑模式下的圆点颜色 */
 html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
 html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; }
 html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
@@ -355,109 +241,31 @@ html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
 /* ==========================================================================
    13. 夜间模式主体颜色强制同步
    ========================================================================== */
-html[data-mode="dark"] .post-title, 
-html[data-mode="dark"] .post-title a,
-html[data-mode="dark"] .post-title a:visited {
-  color: var(--accent-color) !important; 
-}
-html[data-mode="dark"] .post-meta,
-html[data-mode="dark"] .post-meta li,
-html[data-mode="dark"] .post-meta a,
-html[data-mode="dark"] .post-meta time {
-  color: var(--text-color) !important; 
-  opacity: 0.7;
-}
-html[data-mode="dark"] .post-content,
-html[data-mode="dark"] .post-content p {
-  color: var(--text-color) !important; 
-}
+html[data-mode="dark"] .post-title, html[data-mode="dark"] .post-title a, html[data-mode="dark"] .post-title a:visited { color: var(--accent-color) !important; }
+html[data-mode="dark"] .post-meta, html[data-mode="dark"] .post-meta li, html[data-mode="dark"] .post-meta a, html[data-mode="dark"] .post-meta time { color: var(--text-color) !important; opacity: 0.7; }
+html[data-mode="dark"] .post-content, html[data-mode="dark"] .post-content p { color: var(--text-color) !important; }
 
 /* ==========================================================================
    14. 全局折叠面板美化 (完美双圆角 + 伪元素左侧彩色线)
    ========================================================================== */
-
-/* 1. 外层：圆角、全边框、浅背景 */
-details {
-  position: relative; /* 为伪元素做定位 */
-  background-color: rgba(0, 0, 0, 0.02) !important; 
-  border: 1px solid var(--border-color) !important; 
-  border-radius: 8px !important; 
-  padding: 12px 16px !important;
-  margin-bottom: 16px !important;
-}
-
-/* 👇 用伪元素画左侧粗线，不破坏圆角。颜色自动跟随你面板选的主题色 */
-details::before {
-  content: "";
-  position: absolute;
-  left: -1px; /* 盖住原本的细边框 */
-  top: -1px;
-  bottom: -1px;
-  width: 4px; /* 左侧蓝线宽度 */
-  background-color: var(--accent-color); 
-  border-top-left-radius: 8px; /* 跟随外层圆角 */
-  border-bottom-left-radius: 8px;
-}
-
-/* 2. 内层嵌套：同样保留全边框和圆角 */
-details details {
-  background-color: rgba(0, 0, 0, 0.02) !important; /* 给点背景让内框圆角可见 */
-  border: 1px solid var(--border-color) !important; 
-  border-radius: 6px !important; /* 内层圆角稍微小一点 */
-  padding: 10px 14px !important;
-  margin-top: 15px !important;
-  margin-bottom: 10px !important;
-}
-
-/* 内层左侧蓝线稍微变细 */
-details details::before {
-  width: 3px;
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
-}
-
-/* 暗黑模式背景适配 */
-html[data-mode="dark"] details {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-}
-html[data-mode="dark"] details details {
-  background-color: rgba(255, 255, 255, 0.02) !important;
-}
-
-/* 3. 标题和箭头 */
-details summary {
-  cursor: pointer;
-  font-weight: 600 !important;
-  color: var(--text-color) !important;
-  outline: none;
-  list-style: none;
-  user-select: none;
-}
-details summary::-webkit-details-marker {
-  display: none; 
-}
-details summary::before {
-  content: "▶";
-  font-size: 0.7em;
-  color: var(--accent-color) !important; /* 箭头自动跟随主题色 */
-  display: inline-block;
-  margin-right: 8px;
-  transition: transform 0.2s ease;
-}
-details[open] > summary::before {
-  transform: rotate(90deg); 
-}
+details { position: relative; background-color: rgba(0, 0, 0, 0.02) !important; border: 1px solid var(--border-color) !important; border-radius: 8px !important; padding: 12px 16px !important; margin-bottom: 16px !important; }
+details::before { content: ""; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; background-color: var(--accent-color); border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+details details { background-color: rgba(0, 0, 0, 0.02) !important; border: 1px solid var(--border-color) !important; border-radius: 6px !important; padding: 10px 14px !important; margin-top: 15px !important; margin-bottom: 10px !important; }
+details details::before { width: 3px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+html[data-mode="dark"] details { background-color: rgba(255, 255, 255, 0.03) !important; }
+html[data-mode="dark"] details details { background-color: rgba(255, 255, 255, 0.02) !important; }
+details summary { cursor: pointer; font-weight: 600 !important; color: var(--text-color) !important; outline: none; list-style: none; user-select: none; }
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: "▶"; font-size: 0.7em; color: var(--accent-color) !important; display: inline-block; margin-right: 8px; transition: transform 0.2s ease; }
+details[open] > summary::before { transform: rotate(90deg); }
 
 
-/* ============================================================
- * 【折叠面板 - 全量 10 色主题扩展】
- * ============================================================ */
-
-/* 1. 默认蓝 (Primary) */
+/* ==========================================================================
+   15. 折叠面板全量 10 色主题扩展
+   ========================================================================== */
 .details-primary::before { background-color: var(--accent-color) !important; }
 .details-primary > summary::before { color: var(--accent-color) !important; }
 
-/* 2. 成功绿 (Success) */
 .details-success::before { background-color: #198754 !important; }
 .details-success > summary::before { color: #198754 !important; }
 .details-success { background-color: rgba(25, 135, 84, 0.05) !important; } 
@@ -465,7 +273,6 @@ html[data-mode="dark"] .details-success::before { background-color: #34d399 !imp
 html[data-mode="dark"] .details-success > summary::before { color: #34d399 !important; }
 html[data-mode="dark"] .details-success { background-color: rgba(52, 211, 153, 0.1) !important; }
 
-/* 3. 危险红 (Danger) */
 .details-danger::before { background-color: #dc3545 !important; }
 .details-danger > summary::before { color: #dc3545 !important; }
 .details-danger { background-color: rgba(220, 53, 69, 0.05) !important; }
@@ -473,7 +280,6 @@ html[data-mode="dark"] .details-danger::before { background-color: #f87171 !impo
 html[data-mode="dark"] .details-danger > summary::before { color: #f87171 !important; }
 html[data-mode="dark"] .details-danger { background-color: rgba(248, 113, 113, 0.1) !important; }
 
-/* 4. 警告黄 (Warning) */
 .details-warning::before { background-color: #ffc107 !important; }
 .details-warning > summary::before { color: #ffc107 !important; }
 .details-warning { background-color: rgba(255, 193, 7, 0.05) !important; }
@@ -481,7 +287,6 @@ html[data-mode="dark"] .details-warning::before { background-color: #fbbf24 !imp
 html[data-mode="dark"] .details-warning > summary::before { color: #fbbf24 !important; }
 html[data-mode="dark"] .details-warning { background-color: rgba(251, 191, 36, 0.1) !important; }
 
-/* 5. 信息青 (Info) */
 .details-info::before { background-color: #0dcaf0 !important; }
 .details-info > summary::before { color: #0dcaf0 !important; }
 .details-info { background-color: rgba(13, 202, 240, 0.05) !important; }
@@ -489,7 +294,6 @@ html[data-mode="dark"] .details-info::before { background-color: #22d3ee !import
 html[data-mode="dark"] .details-info > summary::before { color: #22d3ee !important; }
 html[data-mode="dark"] .details-info { background-color: rgba(34, 211, 238, 0.1) !important; }
 
-/* 6. 次要灰 (Secondary) */
 .details-secondary::before { background-color: #6c757d !important; }
 .details-secondary > summary::before { color: #6c757d !important; }
 .details-secondary { background-color: rgba(108, 117, 125, 0.05) !important; }
@@ -497,7 +301,6 @@ html[data-mode="dark"] .details-secondary::before { background-color: #94a3b8 !i
 html[data-mode="dark"] .details-secondary > summary::before { color: #94a3b8 !important; }
 html[data-mode="dark"] .details-secondary { background-color: rgba(148, 163, 184, 0.1) !important; }
 
-/* 7. 深色黑 (Dark) */
 .details-dark::before { background-color: #212529 !important; }
 .details-dark > summary::before { color: #212529 !important; }
 .details-dark { background-color: rgba(33, 37, 41, 0.05) !important; }
@@ -505,7 +308,6 @@ html[data-mode="dark"] .details-dark::before { background-color: #ffffff !import
 html[data-mode="dark"] .details-dark > summary::before { color: #ffffff !important; }
 html[data-mode="dark"] .details-dark { background-color: rgba(255, 255, 255, 0.1) !important; }
 
-/* 8. 扩展紫 (Purple) */
 .details-purple::before { background-color: #7c3aed !important; }
 .details-purple > summary::before { color: #7c3aed !important; }
 .details-purple { background-color: rgba(124, 58, 237, 0.05) !important; }
@@ -513,7 +315,6 @@ html[data-mode="dark"] .details-purple::before { background-color: #a78bfa !impo
 html[data-mode="dark"] .details-purple > summary::before { color: #a78bfa !important; }
 html[data-mode="dark"] .details-purple { background-color: rgba(167, 139, 250, 0.1) !important; }
 
-/* 9. 扩展粉 (Pink) */
 .details-pink::before { background-color: #db2777 !important; }
 .details-pink > summary::before { color: #db2777 !important; }
 .details-pink { background-color: rgba(219, 39, 119, 0.05) !important; }
@@ -521,7 +322,6 @@ html[data-mode="dark"] .details-pink::before { background-color: #f472b6 !import
 html[data-mode="dark"] .details-pink > summary::before { color: #f472b6 !important; }
 html[data-mode="dark"] .details-pink { background-color: rgba(244, 114, 182, 0.1) !important; }
 
-/* 10. 扩展橙 (Orange) */
 .details-orange::before { background-color: #ea580c !important; }
 .details-orange > summary::before { color: #ea580c !important; }
 .details-orange { background-color: rgba(234, 88, 12, 0.05) !important; }
@@ -529,11 +329,12 @@ html[data-mode="dark"] .details-orange::before { background-color: #fb923c !impo
 html[data-mode="dark"] .details-orange > summary::before { color: #fb923c !important; }
 html[data-mode="dark"] .details-orange { background-color: rgba(251, 146, 60, 0.1) !important; }
 
-/* ============================================================
- * 【Bootstrap 风格头部与移动端汉堡菜单】
- * ============================================================ */
 
-/* 1. 导航固定与毛玻璃 */
+/* ==========================================================================
+   16. Bootstrap 风格头部与移动端汉堡菜单 (最终覆盖版)
+   ========================================================================== */
+
+/* 导航固定与毛玻璃 */
 .site-header-sticky {
   position: sticky !important;
   top: 0;
@@ -548,103 +349,98 @@ html[data-mode="dark"] .site-header-sticky {
   background: rgba(34, 39, 46, 0.85) !important;
 }
 
-/* 2. 布局 Flex 化 */
-.header-flex {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+/* 布局 Flex 化 */
+.header-flex { display: flex; justify-content: space-between; align-items: center; }
+.header-left { display: flex; align-items: center; gap: 20px; }
+.header-right { display: flex; align-items: center; gap: 15px; }
 
-/* 3. Logo 完美对齐 */
+/* Logo 完美对齐 (覆盖老版 #logo) */
 .brand-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-decoration: none;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
   color: var(--text-color) !important;
-  font-weight: 700;
-  font-size: 1.3em;
-  line-height: 1;
+  font-weight: 700 !important;
+  font-size: 1.4em !important;
+  line-height: 1 !important;
+  margin: 0 !important;
 }
 .site-logo-img {
-  height: 28px;
-  width: auto;
-  object-fit: contain;
-  margin: 0;
+  height: 28px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  margin: 0 !important;
 }
 
-/* 4. 桌面端导航 */
+/* 桌面端导航 (覆盖老版 #nav-menu 的浮动和边框) */
+.desktop-nav { margin: 0 !important; display: flex; align-items: center; gap: 5px; }
 .desktop-nav a {
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
   color: var(--text-color) !important;
-  text-decoration: none;
-  font-weight: 500;
+  text-decoration: none !important;
+  font-weight: 500 !important;
   border: none !important;
+  height: auto !important;
+  line-height: normal !important;
+  float: none !important;
+  background: transparent !important;
+  font-size: 15px !important;
 }
 .desktop-nav a:hover, .desktop-nav a.current {
-  background: var(--card-bg);
+  background: var(--card-bg) !important;
   color: var(--accent-color) !important;
 }
 
-/* 5. 搜索框 */
-.site-search form { margin: 0; }
+/* 搜索框 */
+.site-search form { margin: 0 !important; position: relative !important; }
 .site-search input {
-  height: 32px;
+  height: 34px !important;
   border-radius: 20px !important;
-  padding: 0 30px 0 12px !important;
+  padding: 0 35px 0 15px !important;
   border: 1px solid var(--border-color) !important;
   background: var(--bg-color) !important;
-  font-size: 13px;
-  width: 160px;
+  font-size: 13px !important;
+  width: 180px !important;
+  margin: 0 !important;
 }
 .site-search button {
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
 }
 
-/* 6. 辅助类控制 PC/移动端显示隐藏 */
+/* 辅助类 */
 @media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
-/* ============================================================
- * 移动端专属布局 (小于 768px)
- * ============================================================ */
+/* 移动端专属布局 */
 @media (max-width: 768px) {
   .site-header-sticky { padding: 10px 0 !important; }
-  
-  .site-logo-img { height: 24px; }
-  .brand-logo { font-size: 1.2em; gap: 6px; }
+  .site-logo-img { height: 24px !important; }
+  .brand-logo { font-size: 1.2em !important; gap: 6px !important; }
 
   /* 汉堡菜单按钮 */
-  .mobile-menu-container {
-    display: block;
-    position: relative;
-  }
+  .mobile-menu-container { display: block; position: relative; margin: 0 !important; }
   .mobile-menu-btn {
     list-style: none;
     width: 36px;
     height: 36px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     color: var(--text-color);
-    background: transparent;
+    background: var(--card-bg);
+    padding: 0;
+    margin: 0;
   }
   .mobile-menu-btn::-webkit-details-marker { display: none; }
 
