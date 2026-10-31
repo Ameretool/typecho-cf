@@ -5,7 +5,7 @@
   "author": "Typecho Team",
   "authorUrl": "https://typecho.org/",
   "version": "1.0.0",
-  "stylesheet": "style.css",
+  "stylesheet": "variables.css",
   "stylesheets": [
     "normalize.css",
     "grid.css",
