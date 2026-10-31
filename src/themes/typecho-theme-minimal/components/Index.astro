@@ -20,27 +20,24 @@ const isIndex = currentPath === '/';
   
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
-      
       <div class="header-flex">
         
         <!-- 左侧：Logo + 桌面端导航 -->
         <div class="header-left">
-          <a id="logo" href= '/'} class="brand-logo">
-            < img src="/logo.png" alt="Logo" class="site-logo-img" />
+          <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
+            <img src="/logo.png" alt="Logo" class="site-logo-img" />
             <span>{options.title}</span>
-          </a >
-          
+          </a>
           <nav id="nav-menu" class="desktop-nav kit-hidden-tb" role="navigation">
-            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a >
+            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             {pages.map((page) => (
-              <a href={page.permalink} title={page.title}>{page.title}</a >
+              <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
           </nav>
         </div>
 
         <!-- 右侧：搜索 + 移动端汉堡 + 设置面板 -->
         <div class="header-right">
-          
           <div class="site-search kit-hidden-tb">
             <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
               <label for="s" class="sr-only">搜索关键字</label>
@@ -49,16 +46,15 @@ const isIndex = currentPath === '/';
             </form>
           </div>
 
-          <!-- 👇 移动端独立菜单 (核心修复区) 👇 -->
+          <!-- 移动端独立菜单 -->
           <div class="mobile-menu-wrapper kit-hidden-pc">
             <button id="mobile-menu-btn" class="my-mobile-btn" aria-label="打开菜单">
               <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            
             <div id="mobile-menu-list" class="my-mobile-dropdown">
-              <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a >
+              <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
               {pages.map((page) => (
-                <a href={page.permalink} title={page.title}>{page.title}</a >
+                <a href={page.permalink} title={page.title}>{page.title}</a>
               ))}
             </div>
           </div>
@@ -66,19 +62,8 @@ const isIndex = currentPath === '/';
           <!-- 主题设置面板 -->
           <div class="theme-settings-wrapper">
             <button class="theme-settings-toggle" aria-label="主题设置">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
             </button>
-            
             <div class="theme-settings-panel" style="top: 45px; right: 0; bottom: auto;">
               <div class="setting-group">
                 <div class="setting-title">界面模式</div>
@@ -113,6 +98,7 @@ const isIndex = currentPath === '/';
     </div>
   </header>
 
+  <!-- 文章列表区 -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -120,103 +106,67 @@ const isIndex = currentPath === '/';
           {posts.length === 0 ? (
             <article class="post">
               <h2 class="post-title">暂时没有文章</h2>
-              <div class="post-content"><p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p ></div>
+              <div class="post-content"><p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p></div>
             </article>
           ) : (
             posts.map((post) => {
               let excerpt = post.excerpt || '';
               const rawContent = post.content || post.excerpt || '';
               if (rawContent) {
-                const cleanContent = rawContent
-                  .replace(/<p class="more">.*?<\/p>/g, '')
-                  .replace(/- 阅读剩余部分 -/g, '')
-                  .trim();
+                const cleanContent = rawContent.replace(/<p class="more">.*?<\/p>/g, '').replace(/- 阅读剩余部分 -/g, '').trim();
                 excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
               }
-              
               return (
                 <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
                   <h2 class="post-title" itemprop="name headline">
-                    <a itemprop="url" href={post.permalink}>{post.title}</a >
+                    <a itemprop="url" href={post.permalink}>{post.title}</a>
                   </h2>
                   <ul class="post-meta">
                     <li itemprop="author" itemscope itemtype="http://schema.org/Person">
-                      作者: <a itemprop="name" href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'} rel="author">
-                        {post.author?.screenName || post.author?.name || '未知'}
-                      </a >
+                      作者: <a itemprop="name" href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'} rel="author">{post.author?.screenName || post.author?.name || '未知'}</a>
                     </li>
-                    <li>
-                      时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
-                        {formatDate(post.created, 'Y-m-d', options.timezone)}
-                      </time>
-                    </li>
+                    <li>时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">{formatDate(post.created, 'Y-m-d', options.timezone)}</time></li>
                     {post.categories.length > 0 && (
-                      <li>
-                        分类: {post.categories.map((c, i) => (
-                          <>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a ></>
-                        ))}
-                      </li>
+                      <li>分类: {post.categories.map((c, i) => (<>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a></>))}</li>
                     )}
-                    <li itemprop="interactionCount">
-                      <a itemprop="discussionUrl" href={`${post.permalink}#comments`}>
-                        {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
-                      </a >
-                    </li>
+                    <li itemprop="interactionCount"><a itemprop="discussionUrl" href={`${post.permalink}#comments`}>{post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}</a></li>
                   </ul>
                   <div class="post-content" itemprop="articleBody" set:html={excerpt} />
                 </article>
               );
             })
           )}
-
           {pagination.totalPages > 1 && (
             <nav class="page-navigator">
-              {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a >}
-              {pagination.hasNext && <a class="next" href={pagination.nextUrl!}>后一页 &raquo;</a >}
+              {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
+              {pagination.hasNext && <a class="next" href={pagination.nextUrl!}>后一页 &raquo;</a>}
             </nav>
           )}
         </div>
-
         {sidebarData && (
           <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
             {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">最新文章</h3>
-                <ul class="widget-list">
-                  {sidebarData.recentPosts.map((p) => <li><a href={p.permalink}>{p.title}</a ></li>)}
-                </ul>
-              </section>
+              <section class="widget"><h3 class="widget-title">最新文章</h3><ul class="widget-list">{sidebarData.recentPosts.map((p) => <li><a href={p.permalink}>{p.title}</a></li>)}</ul></section>
             )}
             {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">最近回复</h3>
-                <ul class="widget-list">
-                  {sidebarData.recentComments.map((c) => <li><a href={c.permalink}>{c.author}</a >: {c.excerpt}</li>)}
-                </ul>
-              </section>
+              <section class="widget"><h3 class="widget-title">最近回复</h3><ul class="widget-list">{sidebarData.recentComments.map((c) => <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>)}</ul></section>
             )}
             {sidebarData.categories && sidebarData.categories.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">分类</h3>
-                <ul class="widget-list">
-                  {sidebarData.categories.map((cat) => <li><a href={cat.permalink}>{cat.name} ({cat.count})</a ></li>)}
-                </ul>
-              </section>
+              <section class="widget"><h3 class="widget-title">分类</h3><ul class="widget-list">{sidebarData.categories.map((cat) => <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>)}</ul></section>
             )}
-
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
                 {isLoggedIn ? (
                   <>
-                    <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a ></li>
+                    <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
                     <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
                   </>
                 ) : (
-                  <li class="last"><a href={urls.loginUrl}>登录</a ></li>
+                  <li class="last"><a href={urls.loginUrl}>登录</a></li>
                 )}
-                <li><a href={urls.feedUrl}>文章 RSS</a ></li>
-                <li><a href={urls.commentsFeedUrl}>评论 RSS</a ></li>
+                <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
               </ul>
             </section>
           </div>
@@ -224,9 +174,8 @@ const isIndex = currentPath === '/';
       </div>
     </div>
   </div>
-
   <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a >. 由 <a href="#">Typecho CF</a > 强力驱动.
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
 
@@ -246,7 +195,6 @@ const isIndex = currentPath === '/';
       });
     }
   });
-  
   document.addEventListener('swup:contentReplaced', () => {
     const btn = document.getElementById('mobile-menu-btn');
     const list = document.getElementById('mobile-menu-list');
