@@ -13,7 +13,9 @@
     "theme.json",
     "normalize.css",
     "grid.css",
-    "style.css",
+    "variables.css",
+    "layout.css",
+    "components.css",
     "screenshot.png",
     "components/"
   ]
