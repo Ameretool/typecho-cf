@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件二：layout.css - 纯净版 (基于原生导航 + 移动端吸顶)
+   文件二：layout.css - 页面布局、导航、文章、评论区、侧边栏
    ========================================================================== */
 
 /* ============================================================
@@ -17,7 +17,7 @@
 #search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.5; }
 
 /* ============================================================
- * 2. 移动端专属布局 (核心：固定吸顶 + 居中)
+ * 2. 移动端专属布局 (固定吸顶 + 隐藏描述/搜索)
  * ============================================================ */
 @media (max-width: 768px) {
   /* 导航栏固定吸顶 */
@@ -36,10 +36,14 @@
   /* 给 body 留出导航的高度，防止遮挡内容 */
   body { padding-top: 120px !important; }
 
-  /* 移动端文字居中和排版 */
+  /* 移动端 Logo 居中 */
   #header .site-name { text-align: center; }
   #logo { font-size: 2em !important; }
-  .description { display: none !important; /* 手机端隐藏描述 */ }
+  
+  /* 直接干掉描述文字 */
+  #header .description {
+    display: none !important;
+  }
   
   /* 导航菜单居中，平铺 */
   #nav-menu {
@@ -47,14 +51,20 @@
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
+    width: 100%;
   }
   #nav-menu a {
     float: none;
     margin: 0 4px 5px 4px;
-    border: 1px solid var(--border-color); /* 恢复边框 */
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     height: 30px;
     line-height: 28px;
+  }
+
+  /* 隐藏移动端搜索框 */
+  .site-search, #search {
+    display: none !important;
   }
 }
 
@@ -63,7 +73,7 @@
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
 /* ============================================================
- * 3. 主内容区、文章、评论等 (保持原样)
+ * 3. 主内容区、文章、评论等
  * ============================================================ */
 .post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; }
@@ -131,3 +141,32 @@ img.alignright { margin: 0 0 0 15px; }
 
 @media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; } }
 @media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
+
+/* ============================================================
+ * 4. 主题设置面板样式 (保持原样)
+ * ============================================================ */
+.theme-settings-wrapper { position: relative; display: inline-block; z-index: 9999; }
+.theme-settings-toggle { background: transparent; border: none; color: var(--text-color, #444); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; transition: transform 0.3s, color 0.3s; }
+.theme-settings-toggle:hover { transform: rotate(30deg); color: var(--accent-color, #3354AA); }
+.theme-settings-panel { position: absolute; right: 0; width: 260px; background: var(--card-bg, #fff); border: 1px solid var(--border-color, #eee); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; text-align: left; z-index: 10000; }
+.theme-settings-wrapper.active .theme-settings-panel { display: block; }
+.setting-group { margin-bottom: 16px; }
+.setting-group:last-child { margin-bottom: 0; }
+.setting-title { font-size: 13px; color: var(--text-color, #333); opacity: 0.7; margin-bottom: 8px; }
+.setting-options { display: flex; gap: 8px; }
+.opt-btn { flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color, #eee); border-radius: 20px; color: var(--text-color, #333); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
+.opt-btn:hover { background: var(--bg-color, #f5f5f5); }
+.font-btn:nth-child(1) { font-size: 12px; }
+.font-btn:nth-child(2) { font-size: 14px; }
+.font-btn:nth-child(3) { font-size: 16px; }
+.color-options { justify-content: space-between; }
+.color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
+.color-btn:hover { transform: scale(1.1); }
+.color-btn.blue { background: linear-gradient(135deg, #dcecf9, #ffffff) !important; border: 1px solid #b0cde0 !important; }
+.color-btn.green { background: #7c3aed !important; }
+.color-btn.orange { background: #555555 !important; }
+.color-btn.purple { background: #9c4f7a !important; }
+html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
+html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; }
+html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
+html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
