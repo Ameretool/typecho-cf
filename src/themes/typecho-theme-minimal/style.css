@@ -4,7 +4,7 @@
    @project   Typecho Blog Theme (Astro Version)
    @author    Ameretool
    @link      https://hbw.me
-   @version   3.0.0 (Bootstrap导航 + 斑马线 + 双圆角折叠 + 10色扩展)
+   @version   3.1.0 (Bootstrap导航 + 斑马线 + 双圆角折叠 + 10色扩展)
    @update    2026-10-31
    ========================================================================== */
 
@@ -13,6 +13,7 @@
    ========================================================================== */
 :root {
   --font-size-base: 16px;
+  /* 👈 兜底：清新冰蓝 */
   --bg-color:     linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); 
   --text-color:   #2c3e50; 
   --card-bg:      #e1f0fa;
@@ -23,18 +24,80 @@
 /* ============================================================
  * 2. 亮色模式预设
  * ============================================================ */
-[data-color="blue"] { --accent-color: #2563eb; --text-color: #2c3e50; --border-color: #d0e3f0; --card-bg: #e1f0fa; --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); }
-[data-color="green"] { --accent-color: #7c3aed; --text-color: #1f2937; --border-color: #e5e7eb; --card-bg: #f9fafb; --bg-color: #ffffff; }
-[data-color="orange"] { --accent-color: #555555; --text-color: #333333; --border-color: #c0c4cc; --card-bg: #eef0f3; --bg-color: linear-gradient(135deg, #e9ecf1 0%, #ffffff 100%); }
-[data-color="purple"] { --accent-color: #9c4f7a; --text-color: #3e3339; --border-color: #c4a9b6; --card-bg: #ece0e7; --bg-color: linear-gradient(135deg, #f0e4e9 0%, #ffffff 100%); }
+/* ☀️ 亮色 1：清新冰蓝 */
+[data-color="blue"] { 
+  --accent-color: #2563eb;  
+  --text-color: #2c3e50;   
+  --border-color: #d0e3f0; 
+  --card-bg: #e1f0fa;      
+  --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%);
+}
+
+/* ☀️ 亮色 2：纯白极简 */
+[data-color="green"] { 
+  --accent-color: #7c3aed;  
+  --text-color: #1f2937;   
+  --border-color: #e5e7eb; 
+  --card-bg: #f9fafb;      
+  --bg-color: #ffffff;      
+}
+
+/* ☀️ 亮色 3：浅灰极简 */
+[data-color="orange"] { 
+  --accent-color: #555555; 
+  --text-color: #333333; 
+  --border-color: #c0c4cc; 
+  --card-bg: #eef0f3; 
+  --bg-color: linear-gradient(135deg, #e9ecf1 0%, #ffffff 100%);
+}
+
+/* ☀️ 亮色 4：藕荷粉 */
+[data-color="purple"] { 
+  --accent-color: #9c4f7a; 
+  --text-color: #3e3339; 
+  --border-color: #c4a9b6; 
+  --card-bg: #ece0e7; 
+  --bg-color: linear-gradient(135deg, #f0e4e9 0%, #ffffff 100%);
+}
 
 /* ============================================================
  * 3. 暗黑模式预设
  * ============================================================ */
-html[data-mode="dark"][data-color="blue"] { --accent-color: #60a5fa; --text-color: #adbac7; --border-color: #444c56; --card-bg: #2d333b; --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%); }
-html[data-mode="dark"][data-color="green"] { --accent-color: #a78bfa; --text-color: #e2e8f0; --border-color: #334155; --card-bg: #1e293b; --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-html[data-mode="dark"][data-color="orange"] { --accent-color: #5b9bd5; --text-color: #b8c6d9; --border-color: #3e4a60; --card-bg: #2a3446; --bg-color: linear-gradient(135deg, #111822 0%, #2a3446 100%); }
-html[data-mode="dark"][data-color="purple"] { --accent-color: #c8a878; --text-color: #d4c8b8; --border-color: #4a4238; --card-bg: #38322a; --bg-color: linear-gradient(135deg, #181411 0%, #38322a 100%); }
+/* 🌙 暗色 1：GitHub 暗色 */
+html[data-mode="dark"][data-color="blue"] {
+  --accent-color: #60a5fa; 
+  --text-color: #adbac7; 
+  --border-color: #444c56; 
+  --card-bg: #2d333b;
+  --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%);
+}
+
+/* 🌙 暗色 2：赛博极光紫 */
+html[data-mode="dark"][data-color="green"] {
+  --accent-color: #a78bfa; 
+  --text-color: #e2e8f0;   
+  --border-color: #334155; 
+  --card-bg: #1e293b;
+  --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* 🌙 暗色 3：护眼暗蓝 */
+html[data-mode="dark"][data-color="orange"] {
+  --accent-color: #5b9bd5; 
+  --text-color: #b8c6d9; 
+  --border-color: #3e4a60; 
+  --card-bg: #2a3446;
+  --bg-color: linear-gradient(135deg, #111822 0%, #2a3446 100%);
+}
+
+/* 🌙 暗色 4：护眼暗棕 */
+html[data-mode="dark"][data-color="purple"] {
+  --accent-color: #c8a878; 
+  --text-color: #d4c8b8; 
+  --border-color: #4a4238; 
+  --card-bg: #38322a;
+  --bg-color: linear-gradient(135deg, #181411 0%, #38322a 100%);
+}
 
 /* ==========================================================================
    4. 字号预设
@@ -51,13 +114,16 @@ html, body {
   background-attachment: fixed !important;
   background-size: cover !important;
   color: var(--text-color);
+  /* 全局防溢出保护 */
   overflow-x: hidden !important; 
 }
+
 body {
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
   font-size: var(--font-size-base);
   transition: color 0.4s ease, background 0.4s ease;
 }
+
 a { color: var(--accent-color); text-decoration: none; transition: color 0.2s; }
 a:hover, a:active { color: var(--text-color); }
 
@@ -69,26 +135,64 @@ a:hover, a:active { color: var(--text-color); }
    6. 表格与代码块
    ========================================================================== */
 table { 
-  border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; margin-bottom: 16px !important; border: none !important; 
-  box-shadow: 0 0 0 2px var(--border-color) !important; border-radius: 6px !important; font-size: 15px !important; 
-  display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch;
+  border-collapse: separate !important; 
+  border-spacing: 0 !important; 
+  width: 100% !important; 
+  margin-bottom: 16px !important; 
+  border: none !important; 
+  box-shadow: 0 0 0 2px var(--border-color) !important; 
+  border-radius: 6px !important; 
+  font-size: 15px !important; 
+  display: block !important; 
+  overflow-x: auto !important; 
+  -webkit-overflow-scrolling: touch;
 }
+
 table th, table td { 
-  padding: 12px 16px !important; border: none !important; vertical-align: middle !important; 
+  padding: 12px 16px !important; 
+  border: none !important; 
+  vertical-align: middle !important; 
   box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; 
-  white-space: nowrap !important; word-break: keep-all !important;
+  white-space: nowrap !important; 
+  word-break: keep-all !important;
 }
+
 table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; }
 table th { background-color: var(--card-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--text-color) !important; }
 
-table tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.025) !important; }
-html[data-mode="dark"] table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03) !important; }
+/* 👇 表格斑马线 */
+table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.025) !important; 
+}
+html[data-mode="dark"] table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03) !important; 
+}
+
 table tbody tr:hover { background-color: var(--card-bg) !important; }
 table td code { background-color: rgba(175, 184, 193, 0.2) !important; color: var(--text-color) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important; font-size: 85% !important; }
 
-pre { background-color: var(--card-bg) !important; padding: 16px !important; border-radius: 6px !important; max-width: 100% !important; white-space: pre !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-pre code { background-color: transparent !important; padding: 0 !important; color: var(--text-color) !important; white-space: pre !important; font-size: .92857em !important; }
-p code, li code { white-space: pre-wrap !important; word-break: break-all !important; }
+pre { 
+  background-color: var(--card-bg) !important; 
+  padding: 16px !important; 
+  border-radius: 6px !important; 
+  max-width: 100% !important;
+  white-space: pre !important; 
+  overflow-x: auto !important; 
+  -webkit-overflow-scrolling: touch;
+}
+
+pre code { 
+  background-color: transparent !important; 
+  padding: 0 !important; 
+  color: var(--text-color) !important; 
+  white-space: pre !important; 
+  font-size: .92857em !important; 
+}
+
+p code, li code {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
 
 blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.8; }
 
@@ -99,7 +203,7 @@ textarea { resize: vertical; }
 .post-meta a:hover, .post-content a:hover, .widget a:hover, .comment-content a:hover { border-bottom-color: transparent; }
 
 /* ==========================================================================
-   7. 头部导航 (覆盖旧版，强制 Flex 布局)
+   7. 头部导航
    ========================================================================== */
 #header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
 #logo { color: var(--text-color) !important; font-size: 2.5em; }
@@ -131,6 +235,7 @@ textarea { resize: vertical; }
 .more a { border: none; }
 .protected .text { width: 50%; }
 
+/* 分页 */
 .page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
 .page-navigator li { display: inline-block; margin: 0 4px; }
 .page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
@@ -228,11 +333,11 @@ img.alignright { margin: 0 0 0 15px; }
 .color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
 .color-btn:hover { transform: scale(1.1); }
 
+/* 🌟 面板圆点颜色 */
 .color-btn.blue { background: linear-gradient(135deg, #dcecf9, #ffffff) !important; border: 1px solid #b0cde0 !important; }
 .color-btn.green { background: #7c3aed !important; }
 .color-btn.orange { background: #555555 !important; }
 .color-btn.purple { background: #9c4f7a !important; }
-
 html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
 html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; }
 html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
@@ -331,10 +436,10 @@ html[data-mode="dark"] .details-orange { background-color: rgba(251, 146, 60, 0.
 
 
 /* ==========================================================================
-   16. Bootstrap 风格头部与移动端汉堡菜单 (最终覆盖版)
+   16. Bootstrap 风格头部与移动端独立汉堡菜单
    ========================================================================== */
 
-/* 导航固定与毛玻璃 */
+/* 1. 导航固定与毛玻璃 */
 .site-header-sticky {
   position: sticky !important;
   top: 0;
@@ -349,12 +454,12 @@ html[data-mode="dark"] .site-header-sticky {
   background: rgba(34, 39, 46, 0.85) !important;
 }
 
-/* 布局 Flex 化 */
+/* 2. 布局 Flex 化 */
 .header-flex { display: flex; justify-content: space-between; align-items: center; }
 .header-left { display: flex; align-items: center; gap: 20px; }
 .header-right { display: flex; align-items: center; gap: 15px; }
 
-/* Logo 完美对齐 (覆盖老版 #logo) */
+/* 3. Logo 完美对齐 */
 .brand-logo {
   display: flex !important;
   align-items: center !important;
@@ -374,7 +479,7 @@ html[data-mode="dark"] .site-header-sticky {
   margin: 0 !important;
 }
 
-/* 桌面端导航 (覆盖老版 #nav-menu 的浮动和边框) */
+/* 4. 桌面端导航 */
 .desktop-nav { margin: 0 !important; display: flex; align-items: center; gap: 5px; }
 .desktop-nav a {
   padding: 6px 12px !important;
@@ -394,7 +499,7 @@ html[data-mode="dark"] .site-header-sticky {
   color: var(--accent-color) !important;
 }
 
-/* 搜索框 */
+/* 5. 搜索框 */
 .site-search form { margin: 0 !important; position: relative !important; }
 .site-search input {
   height: 34px !important;
@@ -415,20 +520,21 @@ html[data-mode="dark"] .site-header-sticky {
   border: none !important;
 }
 
-/* 辅助类 */
+/* 6. 辅助类 */
 @media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
-/* 移动端专属布局 */
+/* 7. 移动端专属布局 (不依赖 details，完美下拉) */
 @media (max-width: 768px) {
   .site-header-sticky { padding: 10px 0 !important; }
   .site-logo-img { height: 24px !important; }
   .brand-logo { font-size: 1.2em !important; gap: 6px !important; }
 
-  /* 汉堡菜单按钮 */
-  .mobile-menu-container { display: block; position: relative; margin: 0 !important; }
-  .mobile-menu-btn {
-    list-style: none;
+  /* 移动端菜单容器 */
+  .mobile-menu-wrapper { position: relative; display: block; }
+
+  /* 极其干净的小方块汉堡按钮 */
+  .my-mobile-btn {
     width: 36px;
     height: 36px;
     border: 1px solid var(--border-color);
@@ -440,36 +546,3 @@ html[data-mode="dark"] .site-header-sticky {
     color: var(--text-color);
     background: var(--card-bg);
     padding: 0;
-    margin: 0;
-  }
-  .mobile-menu-btn::-webkit-details-marker { display: none; }
-
-  /* 下拉菜单面板 */
-  .mobile-menu-dropdown {
-    position: absolute;
-    top: 45px;
-    right: 0;
-    width: 140px;
-    background: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    z-index: 10000;
-  }
-  .mobile-menu-dropdown a {
-    padding: 10px 12px;
-    color: var(--text-color) !important;
-    text-decoration: none;
-    border-radius: 6px;
-    text-align: center;
-    font-size: 14px;
-  }
-  .mobile-menu-dropdown a:hover, 
-  .mobile-menu-dropdown a.current {
-    background: var(--card-bg);
-    color: var(--accent-color) !important;
-  }
-}
