@@ -74,7 +74,7 @@ html[data-mode="dark"] .site-header-sticky {
   border: none !important;
   height: auto !important;
   line-height: normal !important;
-  float: none !important; /* 干掉旧的浮动 */
+  float: none !important;
   background: transparent !important;
   font-size: 15px !important;
 }
@@ -113,7 +113,6 @@ html[data-mode="dark"] .site-header-sticky {
  * 2. 移动端专属布局 (小于 768px)
  * ============================================================ */
 @media (max-width: 768px) {
-  /* 隐藏掉老版可能残留的标题居中 */
   #header { padding-left: 0 !important; text-align: left !important; }
   
   .site-header-sticky { padding: 10px 0 !important; }
@@ -139,37 +138,57 @@ html[data-mode="dark"] .site-header-sticky {
     margin: 0;
   }
 
-  /* 下拉菜单面板 (默认隐藏) */
+  /* 👇 方案二：全宽毛玻璃抽屉 👇 */
   .my-mobile-dropdown {
     position: absolute;
-    top: 45px;
-    right: 0;
-    width: 140px;
-    background: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    padding: 6px;
+    top: 45px; 
+    left: 50%; 
+    width: 100vw; 
+    
+    /* 毛玻璃效果 */
+    background: rgba(255, 255, 255, 0.95) !important; 
+    backdrop-filter: blur(15px); 
+    -webkit-backdrop-filter: blur(15px); 
+    
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 15px 20px;
     display: none; 
     flex-direction: column;
     z-index: 10000;
+    
+    /* 弹出动画 */
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
   }
   
-  /* 只有加上 .show 类时才显示出来 */
-  .my-mobile-dropdown.show { display: flex; }
+  /* 暗黑模式下的半透明背景 */
+  html[data-mode="dark"] .my-mobile-dropdown {
+    background: rgba(34, 39, 46, 0.95) !important;
+  }
+  
+  /* 点击后显示 */
+  .my-mobile-dropdown.show { 
+    display: flex; 
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 
-  /* 下拉菜单里的链接 */
+  /* 菜单里的链接：加大间距，居中 */
   .my-mobile-dropdown a {
-    padding: 10px 12px;
+    padding: 14px 12px; 
     color: var(--text-color) !important;
     text-decoration: none;
-    border-radius: 6px;
+    border-radius: 8px;
     text-align: center;
-    font-size: 14px;
+    font-size: 16px; 
+    font-weight: 500;
+    transition: background 0.2s;
   }
   .my-mobile-dropdown a:hover, 
   .my-mobile-dropdown a.current {
-    background: var(--card-bg);
+    background: var(--bg-color);
     color: var(--accent-color) !important;
   }
 }
