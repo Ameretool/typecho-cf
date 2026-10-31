@@ -1,0 +1,679 @@
+/* ==========================================================================
+   Typecho 默认主题   - 核心样式表 (style.css)
+   
+   @project   Typecho Blog Theme (Astro Version)
+   @author    Ameretool
+   @link      https://hbw.me
+   @version   2.8.0 (防溢出修复 + 斑马线表格 + 完美圆角折叠面板)
+   @update    2026-10-28
+   ========================================================================== */
+
+/* ==========================================================================
+   1. 基础变量定义 (兜底亮色渐变)
+   ========================================================================== */
+:root {
+  --font-size-base: 16px;
+  /* 👈 兜底：清新冰蓝 */
+  --bg-color:     linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); 
+  --text-color:   #2c3e50; 
+  --card-bg:      #e1f0fa;
+  --border-color: #d0e3f0;
+  --accent-color: #2563eb; 
+}
+
+/* ============================================================
+ * 2. 亮色模式预设
+ * ============================================================ */
+/* ☀️ 亮色 1：清新冰蓝 */
+[data-color="blue"] { 
+  --accent-color: #2563eb;  
+  --text-color: #2c3e50;   
+  --border-color: #d0e3f0; 
+  --card-bg: #e1f0fa;      
+  --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%);
+}
+
+/* ☀️ 亮色 2：纯白极简 */
+[data-color="green"] { 
+  --accent-color: #7c3aed;  
+  --text-color: #1f2937;   
+  --border-color: #e5e7eb; 
+  --card-bg: #f9fafb;      
+  --bg-color: #ffffff;      
+}
+
+/* ☀️ 亮色 3：浅灰极简 */
+[data-color="orange"] { 
+  --accent-color: #555555; 
+  --text-color: #333333; 
+  --border-color: #c0c4cc; 
+  --card-bg: #eef0f3; 
+  --bg-color: linear-gradient(135deg, #e9ecf1 0%, #ffffff 100%);
+}
+
+/* ☀️ 亮色 4：藕荷粉 */
+[data-color="purple"] { 
+  --accent-color: #9c4f7a; 
+  --text-color: #3e3339; 
+  --border-color: #c4a9b6; 
+  --card-bg: #ece0e7; 
+  --bg-color: linear-gradient(135deg, #f0e4e9 0%, #ffffff 100%);
+}
+
+/* ============================================================
+ * 3. 暗黑模式预设
+ * ============================================================ */
+/* 🌙 暗色 1：GitHub 暗色 */
+html[data-mode="dark"][data-color="blue"] {
+  --accent-color: #60a5fa; 
+  --text-color: #adbac7; 
+  --border-color: #444c56; 
+  --card-bg: #2d333b;
+  --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%);
+}
+
+/* 🌙 暗色 2：赛博极光紫 */
+html[data-mode="dark"][data-color="green"] {
+  --accent-color: #a78bfa; 
+  --text-color: #e2e8f0;   
+  --border-color: #334155; 
+  --card-bg: #1e293b;
+  --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* 🌙 暗色 3：护眼暗蓝 */
+html[data-mode="dark"][data-color="orange"] {
+  --accent-color: #5b9bd5; 
+  --text-color: #b8c6d9; 
+  --border-color: #3e4a60; 
+  --card-bg: #2a3446;
+  --bg-color: linear-gradient(135deg, #111822 0%, #2a3446 100%);
+}
+
+/* 🌙 暗色 4：护眼暗棕 */
+html[data-mode="dark"][data-color="purple"] {
+  --accent-color: #c8a878; 
+  --text-color: #d4c8b8; 
+  --border-color: #4a4238; 
+  --card-bg: #38322a;
+  --bg-color: linear-gradient(135deg, #181411 0%, #38322a 100%);
+}
+
+/* ==========================================================================
+   4. 字号预设
+   ========================================================================== */
+[data-font="small"]  { --font-size-base: 14px; }
+[data-font="medium"] { --font-size-base: 16px; }
+[data-font="large"]  { --font-size-base: 18px; }
+
+/* ==========================================================================
+   5. 全局基础样式
+   ========================================================================== */
+html, body {
+  background: var(--bg-color) !important;
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  color: var(--text-color);
+  /* 全局防溢出保护 */
+  overflow-x: hidden !important; 
+}
+
+body {
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
+  font-size: var(--font-size-base);
+  transition: color 0.4s ease, background 0.4s ease;
+}
+
+a { color: var(--accent-color); text-decoration: none; transition: color 0.2s; }
+a:hover, a:active { color: var(--text-color); }
+
+.logout-form { display: inline; margin: 0; padding: 0; }
+.logout-form button { padding: 0; border: 0; background: transparent; color: var(--accent-color); font: inherit; cursor: pointer; }
+.logout-form button:hover, .logout-form button:active { color: var(--text-color); }
+
+/* ==========================================================================
+   6. 表格与代码块
+   ========================================================================== */
+table { 
+  border-collapse: separate !important; 
+  border-spacing: 0 !important; 
+  width: 100% !important; 
+  margin-bottom: 16px !important; 
+  border: none !important; 
+  box-shadow: 0 0 0 2px var(--border-color) !important; 
+  border-radius: 6px !important; 
+  font-size: 15px !important; 
+  display: block !important; 
+  overflow-x: auto !important; 
+  -webkit-overflow-scrolling: touch;
+}
+
+table th, table td { 
+  padding: 12px 16px !important; 
+  border: none !important; 
+  vertical-align: middle !important; 
+  box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; 
+  white-space: nowrap !important; 
+  word-break: keep-all !important;
+}
+
+table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; }
+table th { background-color: var(--card-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--text-color) !important; }
+
+/* 👇 表格斑马线 (偶数行极浅底色，完美适配 4 亮 4 暗主题) */
+table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.025) !important; 
+}
+html[data-mode="dark"] table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03) !important; 
+}
+
+/* 表格悬停 */
+table tbody tr:hover { background-color: var(--card-bg) !important; }
+
+table td code { background-color: rgba(175, 184, 193, 0.2) !important; color: var(--text-color) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important; font-size: 85% !important; }
+
+pre { 
+  background-color: var(--card-bg) !important; 
+  padding: 16px !important; 
+  border-radius: 6px !important; 
+  max-width: 100% !important;
+  white-space: pre !important; 
+  overflow-x: auto !important; 
+  -webkit-overflow-scrolling: touch;
+}
+
+pre code { 
+  background-color: transparent !important; 
+  padding: 0 !important; 
+  color: var(--text-color) !important; 
+  white-space: pre !important; 
+  font-size: .92857em !important; 
+}
+
+/* 段落中的行内代码强制换行，防止撑破页面 */
+p code, li code {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
+
+blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.8; }
+
+/* 表单输入 */
+input[type="text"], input[type="email"], input[type="url"], input[type="password"], textarea { padding: 5px; border: 1px solid var(--border-color); width: 100%; border-radius: 2px; -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; background: var(--card-bg); color: var(--text-color); }
+textarea { resize: vertical; }
+
+.post-meta a, .post-content a, .widget a, .comment-content a { border-bottom: 1px solid var(--border-color); }
+.post-meta a:hover, .post-content a:hover, .widget a:hover, .comment-content a:hover { border-bottom-color: transparent; }
+
+/* ==========================================================================
+   7. 头部导航
+   ========================================================================== */
+#header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
+#logo { color: var(--text-color) !important; font-size: 2.5em; }
+#logo img { max-height: 64px; }
+.description { margin: .5em 0 0; color: var(--text-color); opacity: 0.6; font-style: italic; }
+#nav-menu { margin: 25px 0 0; padding: 0; }
+#nav-menu a { display: block; margin-right: -1px; padding: 0 20px; border: 1px solid var(--border-color); border-bottom: none; height: 32px; line-height: 32px; color: var(--text-color); float: left; }
+#nav-menu a:hover, #nav-menu .current { background: var(--card-bg); }
+#search { position: relative; margin-top: 15px; }
+#search input { padding-right: 30px; }
+#search button { position: absolute; right: 4px; top: 2px; border: none; padding: 0; width: 24px; height: 24px; background: transparent; cursor: pointer; direction: ltr; font-size: 0; color: transparent; }
+#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.5; }
+
+/* ==========================================================================
+   8. 主内容区
+   ========================================================================== */
+.post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
+.post-title { margin: .83em 0; font-size: 1.4em; }
+.post-title a { color: var(--accent-color) !important; }
+.post-meta { margin-top: -0.5em; padding: 0; color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.post-meta li { display: inline-block; margin: 0 8px 0 0; padding-left: 12px; border-left: 1px solid var(--border-color); }
+.post-meta li:first-child { margin-left: 0; padding-left: 0; border: none; }
+.post-content { font-size: var(--font-size-base); line-height: 1.8; color: var(--text-color) !important; }
+.post .tags { clear: both; }
+.post-near { list-style: none; margin: 30px 0; padding: 0; color: var(--text-color); opacity: 0.6; }
+.post-near li { margin: 10px 0; }
+.archive-title { margin: 1em 0 -1em; padding-top: 20px; color: var(--text-color); opacity: 0.6; font-size: 1em; }
+.more { text-align: center; }
+.more a { border: none; }
+.protected .text { width: 50%; }
+
+/* 分页 */
+.page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
+.page-navigator li { display: inline-block; margin: 0 4px; }
+.page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
+.page-navigator a:hover { background: var(--card-bg); text-decoration: none; }
+.page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
+
+/* ==========================================================================
+   9. 评论列表
+   ========================================================================== */
+#comments { padding-top: 15px; }
+.comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
+.comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
+.comment-list li.comment-level-odd { background: var(--card-bg); }
+.comment-list li.comment-level-even { background: transparent; } 
+.comment-list li.comment-by-author { background: rgba(255, 235, 59, 0.1); }
+.comment-list li .comment-reply { text-align: right; font-size: .92857em; }
+.comment-meta a { color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.comment-author { display: block; margin-bottom: 3px; color: var(--text-color); }
+.comment-author .avatar { float: left; margin-right: 10px; }
+.comment-author cite { font-weight: bold; font-style: normal; }
+.comment-list .respond { margin-top: 15px; border-top: 1px solid var(--border-color); }
+.respond .cancel-comment-reply { float: right; margin-top: 15px; font-size: .92857em; }
+#comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
+#comment-form .required:after { content: " *"; color: #C00; }
+
+/* ==========================================================================
+   10. 侧栏与页脚
+   ========================================================================== */
+#secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
+.widget { margin-bottom: 30px; }
+.widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
+.widget-list { list-style: none; padding: 0; }
+.widget-list li { margin: 6px 0 !important; line-height: 1.8 !important; }
+.widget-list a { color: var(--accent-color) !important; }
+.widget-list a:hover { color: var(--text-color) !important; }
+.widget-list li ul { margin-left: 15px; }
+#footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
+
+/* ==========================================================================
+   11. 内容格式与响应式
+   ========================================================================== */
+.error-page { margin-top: 100px; margin-bottom: 100px; }
+.post-content, .comment-content { line-height: 1.8; word-wrap: break-word; }
+.post-content h2, .comment-content h2 { font-size: 1.28571em; }
+.post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
+.post-content a img, .comment-content a img { background: var(--bg-color); position: relative; border-radius: 6px; bottom: -4px; }
+.post-content hr, .comment-content hr { margin: 2em auto; width: 100px; border: 1px solid var(--border-color); border-width: 2px 0 0 0; }
+.aligncenter, div.aligncenter { display: block; margin-left: auto; margin-right: auto; }
+.alignleft { float: left; }
+.alignright { float: right; }
+img.alignleft { margin: 0 15px 0 0; }
+img.alignright { margin: 0 0 0 15px; }
+
+/* 辅助类 */
+.hidden { display: none !important; visibility: hidden; }
+.sr-only { border: 0; height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
+.sr-only.focusable:active, .sr-only.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
+.invisible { visibility: hidden; }
+
+@media (max-width: 767px) {
+  body { font-size: var(--font-size-base); }
+  #nav-menu a { float: none; display: inline-block; margin: 0 -2px; }
+  .container { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 768px) {
+  #header, .post-title, .post-meta { text-align: center; }
+  #header { padding-left: 30px; }
+  #nav-menu { margin: 25px 0 0 -10px; }
+}
+@media (min-width: 1200px) {
+  .container { width: 80%; max-width: 1280px; margin: 0 auto; }
+}
+@media (min-width: 992px) {
+  #secondary {
+    border-left: 1px solid var(--border-color) !important;
+    padding-left: 24px !important;
+  }
+}
+
+/* ==========================================================================
+   12. 主题设置面板
+   ========================================================================== */
+.theme-settings-wrapper { position: relative; display: inline-block; z-index: 9999; }
+.theme-settings-toggle { background: transparent; border: none; color: var(--text-color, #444); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; transition: transform 0.3s, color 0.3s; }
+.theme-settings-toggle:hover { transform: rotate(30deg); color: var(--accent-color, #3354AA); }
+.theme-settings-panel { position: absolute; right: 0; width: 260px; background: var(--card-bg, #fff); border: 1px solid var(--border-color, #eee); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; text-align: left; z-index: 10000; }
+.theme-settings-wrapper.active .theme-settings-panel { display: block; }
+.setting-group { margin-bottom: 16px; }
+.setting-group:last-child { margin-bottom: 0; }
+.setting-title { font-size: 13px; color: var(--text-color, #333); opacity: 0.7; margin-bottom: 8px; }
+.setting-options { display: flex; gap: 8px; }
+.opt-btn { flex: 1; padding: 8px 0; background: transparent; border: 1px solid var(--border-color, #eee); border-radius: 20px; color: var(--text-color, #333); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
+.opt-btn:hover { background: var(--bg-color, #f5f5f5); }
+.font-btn:nth-child(1) { font-size: 12px; }
+.font-btn:nth-child(2) { font-size: 14px; }
+.font-btn:nth-child(3) { font-size: 16px; }
+.color-options { justify-content: space-between; }
+.color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--border-color, #eee); transition: transform 0.2s; }
+.color-btn:hover { transform: scale(1.1); }
+
+/* 🌟 面板圆点颜色完美同步 */
+.color-btn.blue { background: linear-gradient(135deg, #dcecf9, #ffffff) !important; border: 1px solid #b0cde0 !important; }
+.color-btn.green { background: #7c3aed !important; }
+.color-btn.orange { background: #555555 !important; }
+.color-btn.purple { background: #9c4f7a !important; }
+
+/* 暗黑模式下的圆点颜色 */
+html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
+html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; }
+html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
+html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
+
+/* ==========================================================================
+   13. 夜间模式主体颜色强制同步
+   ========================================================================== */
+html[data-mode="dark"] .post-title, 
+html[data-mode="dark"] .post-title a,
+html[data-mode="dark"] .post-title a:visited {
+  color: var(--accent-color) !important; 
+}
+html[data-mode="dark"] .post-meta,
+html[data-mode="dark"] .post-meta li,
+html[data-mode="dark"] .post-meta a,
+html[data-mode="dark"] .post-meta time {
+  color: var(--text-color) !important; 
+  opacity: 0.7;
+}
+html[data-mode="dark"] .post-content,
+html[data-mode="dark"] .post-content p {
+  color: var(--text-color) !important; 
+}
+
+/* ==========================================================================
+   14. 全局折叠面板美化 (完美双圆角 + 伪元素左侧彩色线)
+   ========================================================================== */
+
+/* 1. 外层：圆角、全边框、浅背景 */
+details {
+  position: relative; /* 为伪元素做定位 */
+  background-color: rgba(0, 0, 0, 0.02) !important; 
+  border: 1px solid var(--border-color) !important; 
+  border-radius: 8px !important; 
+  padding: 12px 16px !important;
+  margin-bottom: 16px !important;
+}
+
+/* 👇 用伪元素画左侧粗线，不破坏圆角。颜色自动跟随你面板选的主题色 */
+details::before {
+  content: "";
+  position: absolute;
+  left: -1px; /* 盖住原本的细边框 */
+  top: -1px;
+  bottom: -1px;
+  width: 4px; /* 左侧蓝线宽度 */
+  background-color: var(--accent-color); 
+  border-top-left-radius: 8px; /* 跟随外层圆角 */
+  border-bottom-left-radius: 8px;
+}
+
+/* 2. 内层嵌套：同样保留全边框和圆角 */
+details details {
+  background-color: rgba(0, 0, 0, 0.02) !important; /* 给点背景让内框圆角可见 */
+  border: 1px solid var(--border-color) !important; 
+  border-radius: 6px !important; /* 内层圆角稍微小一点 */
+  padding: 10px 14px !important;
+  margin-top: 15px !important;
+  margin-bottom: 10px !important;
+}
+
+/* 内层左侧蓝线稍微变细 */
+details details::before {
+  width: 3px;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+/* 暗黑模式背景适配 */
+html[data-mode="dark"] details {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+html[data-mode="dark"] details details {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* 3. 标题和箭头 */
+details summary {
+  cursor: pointer;
+  font-weight: 600 !important;
+  color: var(--text-color) !important;
+  outline: none;
+  list-style: none;
+  user-select: none;
+}
+details summary::-webkit-details-marker {
+  display: none; 
+}
+details summary::before {
+  content: "▶";
+  font-size: 0.7em;
+  color: var(--accent-color) !important; /* 箭头自动跟随主题色 */
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+details[open] > summary::before {
+  transform: rotate(90deg); 
+}
+
+
+/* ============================================================
+ * 【折叠面板 - 全量 10 色主题扩展】
+ * ============================================================ */
+
+/* 1. 默认蓝 (Primary) */
+.details-primary::before { background-color: var(--accent-color) !important; }
+.details-primary > summary::before { color: var(--accent-color) !important; }
+
+/* 2. 成功绿 (Success) */
+.details-success::before { background-color: #198754 !important; }
+.details-success > summary::before { color: #198754 !important; }
+.details-success { background-color: rgba(25, 135, 84, 0.05) !important; } 
+html[data-mode="dark"] .details-success::before { background-color: #34d399 !important; }
+html[data-mode="dark"] .details-success > summary::before { color: #34d399 !important; }
+html[data-mode="dark"] .details-success { background-color: rgba(52, 211, 153, 0.1) !important; }
+
+/* 3. 危险红 (Danger) */
+.details-danger::before { background-color: #dc3545 !important; }
+.details-danger > summary::before { color: #dc3545 !important; }
+.details-danger { background-color: rgba(220, 53, 69, 0.05) !important; }
+html[data-mode="dark"] .details-danger::before { background-color: #f87171 !important; }
+html[data-mode="dark"] .details-danger > summary::before { color: #f87171 !important; }
+html[data-mode="dark"] .details-danger { background-color: rgba(248, 113, 113, 0.1) !important; }
+
+/* 4. 警告黄 (Warning) */
+.details-warning::before { background-color: #ffc107 !important; }
+.details-warning > summary::before { color: #ffc107 !important; }
+.details-warning { background-color: rgba(255, 193, 7, 0.05) !important; }
+html[data-mode="dark"] .details-warning::before { background-color: #fbbf24 !important; }
+html[data-mode="dark"] .details-warning > summary::before { color: #fbbf24 !important; }
+html[data-mode="dark"] .details-warning { background-color: rgba(251, 191, 36, 0.1) !important; }
+
+/* 5. 信息青 (Info) */
+.details-info::before { background-color: #0dcaf0 !important; }
+.details-info > summary::before { color: #0dcaf0 !important; }
+.details-info { background-color: rgba(13, 202, 240, 0.05) !important; }
+html[data-mode="dark"] .details-info::before { background-color: #22d3ee !important; }
+html[data-mode="dark"] .details-info > summary::before { color: #22d3ee !important; }
+html[data-mode="dark"] .details-info { background-color: rgba(34, 211, 238, 0.1) !important; }
+
+/* 6. 次要灰 (Secondary) */
+.details-secondary::before { background-color: #6c757d !important; }
+.details-secondary > summary::before { color: #6c757d !important; }
+.details-secondary { background-color: rgba(108, 117, 125, 0.05) !important; }
+html[data-mode="dark"] .details-secondary::before { background-color: #94a3b8 !important; }
+html[data-mode="dark"] .details-secondary > summary::before { color: #94a3b8 !important; }
+html[data-mode="dark"] .details-secondary { background-color: rgba(148, 163, 184, 0.1) !important; }
+
+/* 7. 深色黑 (Dark) */
+.details-dark::before { background-color: #212529 !important; }
+.details-dark > summary::before { color: #212529 !important; }
+.details-dark { background-color: rgba(33, 37, 41, 0.05) !important; }
+html[data-mode="dark"] .details-dark::before { background-color: #ffffff !important; }
+html[data-mode="dark"] .details-dark > summary::before { color: #ffffff !important; }
+html[data-mode="dark"] .details-dark { background-color: rgba(255, 255, 255, 0.1) !important; }
+
+/* 8. 扩展紫 (Purple) */
+.details-purple::before { background-color: #7c3aed !important; }
+.details-purple > summary::before { color: #7c3aed !important; }
+.details-purple { background-color: rgba(124, 58, 237, 0.05) !important; }
+html[data-mode="dark"] .details-purple::before { background-color: #a78bfa !important; }
+html[data-mode="dark"] .details-purple > summary::before { color: #a78bfa !important; }
+html[data-mode="dark"] .details-purple { background-color: rgba(167, 139, 250, 0.1) !important; }
+
+/* 9. 扩展粉 (Pink) */
+.details-pink::before { background-color: #db2777 !important; }
+.details-pink > summary::before { color: #db2777 !important; }
+.details-pink { background-color: rgba(219, 39, 119, 0.05) !important; }
+html[data-mode="dark"] .details-pink::before { background-color: #f472b6 !important; }
+html[data-mode="dark"] .details-pink > summary::before { color: #f472b6 !important; }
+html[data-mode="dark"] .details-pink { background-color: rgba(244, 114, 182, 0.1) !important; }
+
+/* 10. 扩展橙 (Orange) */
+.details-orange::before { background-color: #ea580c !important; }
+.details-orange > summary::before { color: #ea580c !important; }
+.details-orange { background-color: rgba(234, 88, 12, 0.05) !important; }
+html[data-mode="dark"] .details-orange::before { background-color: #fb923c !important; }
+html[data-mode="dark"] .details-orange > summary::before { color: #fb923c !important; }
+html[data-mode="dark"] .details-orange { background-color: rgba(251, 146, 60, 0.1) !important; }
+
+/* ============================================================
+ * 【Bootstrap 风格头部与移动端汉堡菜单】
+ * ============================================================ */
+
+/* 1. 导航固定与毛玻璃 */
+.site-header-sticky {
+  position: sticky !important;
+  top: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 0 !important;
+}
+html[data-mode="dark"] .site-header-sticky {
+  background: rgba(34, 39, 46, 0.85) !important;
+}
+
+/* 2. 布局 Flex 化 */
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 3. Logo 完美对齐 */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text-color) !important;
+  font-weight: 700;
+  font-size: 1.3em;
+  line-height: 1;
+}
+.site-logo-img {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin: 0;
+}
+
+/* 4. 桌面端导航 */
+.desktop-nav a {
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--text-color) !important;
+  text-decoration: none;
+  font-weight: 500;
+  border: none !important;
+}
+.desktop-nav a:hover, .desktop-nav a.current {
+  background: var(--card-bg);
+  color: var(--accent-color) !important;
+}
+
+/* 5. 搜索框 */
+.site-search form { margin: 0; }
+.site-search input {
+  height: 32px;
+  border-radius: 20px !important;
+  padding: 0 30px 0 12px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-color) !important;
+  font-size: 13px;
+  width: 160px;
+}
+.site-search button {
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* 6. 辅助类控制 PC/移动端显示隐藏 */
+@media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
+@media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
+
+/* ============================================================
+ * 移动端专属布局 (小于 768px)
+ * ============================================================ */
+@media (max-width: 768px) {
+  .site-header-sticky { padding: 10px 0 !important; }
+  
+  .site-logo-img { height: 24px; }
+  .brand-logo { font-size: 1.2em; gap: 6px; }
+
+  /* 汉堡菜单按钮 */
+  .mobile-menu-container {
+    display: block;
+    position: relative;
+  }
+  .mobile-menu-btn {
+    list-style: none;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    background: transparent;
+  }
+  .mobile-menu-btn::-webkit-details-marker { display: none; }
+
+  /* 下拉菜单面板 */
+  .mobile-menu-dropdown {
+    position: absolute;
+    top: 45px;
+    right: 0;
+    width: 140px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    z-index: 10000;
+  }
+  .mobile-menu-dropdown a {
+    padding: 10px 12px;
+    color: var(--text-color) !important;
+    text-decoration: none;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 14px;
+  }
+  .mobile-menu-dropdown a:hover, 
+  .mobile-menu-dropdown a.current {
+    background: var(--card-bg);
+    color: var(--accent-color) !important;
+  }
+}
