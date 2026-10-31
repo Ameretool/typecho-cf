@@ -27,7 +27,7 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'post' }}
 >
-  <!-- 头部导航 -->
+  <!-- 头部导航 (吸顶固定) -->
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
       <div class="header-flex">
@@ -43,6 +43,7 @@ const totalComments = commentPagination.totalComments;
             ))}
           </nav>
         </div>
+
         <div class="header-right">
           <div class="site-search kit-hidden-tb">
             <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
