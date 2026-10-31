@@ -27,11 +27,10 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'post' }}
 >
-  <!-- 头部导航 (已带吸顶固定) -->
+  <!-- 头部导航 -->
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
       <div class="header-flex">
-        
         <div class="header-left">
           <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
             <img src="/logo.png" alt="Logo" class="site-logo-img" />
@@ -44,7 +43,6 @@ const totalComments = commentPagination.totalComments;
             ))}
           </nav>
         </div>
-
         <div class="header-right">
           <div class="site-search kit-hidden-tb">
             <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
@@ -97,12 +95,10 @@ const totalComments = commentPagination.totalComments;
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </header>
 
-  <!-- 文章主体内容 -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -140,7 +136,6 @@ const totalComments = commentPagination.totalComments;
             )}
           </article>
 
-          {/* 评论区 */}
           {(!post.hasPassword || post.passwordVerified) && (
             <div id="comments">
               {totalComments > 0 && (
@@ -194,8 +189,6 @@ const totalComments = commentPagination.totalComments;
                     <p><button type="submit" class="submit">提交评论</button></p>
                   </form>
                 </div>
-                
-                {/* 仅保留控制评论回复的 JS，全局导航 JS 已移至 Base.astro */}
                 <script is:inline>
                   var TypechoComment = {
                     dom: function (id) { return document.getElementById(id); },
@@ -236,7 +229,6 @@ const totalComments = commentPagination.totalComments;
           </ul>
         </div>
 
-        {/* 侧边栏 */}
         {sidebarData && (
           <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
             {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
