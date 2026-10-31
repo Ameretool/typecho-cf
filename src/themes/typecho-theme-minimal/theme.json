@@ -6,7 +6,14 @@
   "authorUrl": "https://typecho.org/",
   "version": "1.0.0",
   "stylesheet": "style.css",
-  "stylesheets": ["normalize.css", "grid.css"],
+  "stylesheets": [
+    "style.css",
+    "normalize.css",
+    "grid.css",
+    "variables.css",
+    "layout.css",
+    "components.css"
+  ],
   "homepage": "https://github.com/eslizn/typecho-cf",
   "license": "GPL-2.0",
   "tags": ["minimal", "classic", "typecho"],
