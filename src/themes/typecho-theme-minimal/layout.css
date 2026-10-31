@@ -3,87 +3,195 @@
    ========================================================================== */
 
 /* ============================================================
- * 1. 头部导航 (Bootstrap 风格 Flex 布局)
+ * 1. 头部导航 (Bootstrap 风格 Flex 布局 + 吸顶固定)
  * ============================================================ */
+
+/* 导航固定与毛玻璃 */
 .site-header-sticky {
-  position: sticky !important;
-  top: 0;
-  z-index: 9999;
+  position: sticky !important; /* 👈 核心：粘性定位，滚动时固定在顶部 */
+  top: 0 !important;
+  z-index: 9999 !important; 
   background: rgba(255, 255, 255, 0.85) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-color);
   padding: 12px 0 !important;
+  transition: all 0.3s ease;
 }
 html[data-mode="dark"] .site-header-sticky {
   background: rgba(34, 39, 46, 0.85) !important;
 }
 
-.header-flex { display: flex; justify-content: space-between; align-items: center; }
-.header-left { display: flex; align-items: center; gap: 20px; }
-.header-right { display: flex; align-items: center; gap: 15px; }
+/* Flex 布局控制 */
+.header-flex { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+}
+.header-left { 
+  display: flex; 
+  align-items: center; 
+  gap: 20px; 
+}
+.header-right { 
+  display: flex; 
+  align-items: center; 
+  gap: 15px; 
+}
 
+/* Logo 完美对齐 */
 .brand-logo {
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  gap: 8px !important; text-decoration: none !important; color: var(--text-color) !important;
-  font-weight: 700 !important; font-size: 1.4em !important; line-height: 1 !important; margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  color: var(--text-color) !important;
+  font-weight: 700 !important;
+  font-size: 1.4em !important;
+  line-height: 1 !important;
+  margin: 0 !important;
 }
-.site-logo-img { height: 28px !important; width: auto !important; object-fit: contain !important; margin: 0 !important; }
+.site-logo-img {
+  height: 28px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+}
 
-.desktop-nav { margin: 0 !important; display: flex; align-items: center; gap: 5px; }
+/* 桌面端导航菜单 */
+.desktop-nav { 
+  margin: 0 !important; 
+  display: flex; 
+  align-items: center; 
+  gap: 5px; 
+}
 .desktop-nav a {
-  padding: 6px 12px !important; border-radius: 6px !important; color: var(--text-color) !important;
-  text-decoration: none !important; font-weight: 500 !important; border: none !important;
-  height: auto !important; line-height: normal !important; float: none !important;
-  background: transparent !important; font-size: 15px !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  color: var(--text-color) !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  border: none !important;
+  height: auto !important;
+  line-height: normal !important;
+  float: none !important;
+  background: transparent !important;
+  font-size: 15px !important;
 }
-.desktop-nav a:hover, .desktop-nav a.current { background: var(--card-bg) !important; color: var(--accent-color) !important; }
+.desktop-nav a:hover, .desktop-nav a.current {
+  background: var(--card-bg) !important;
+  color: var(--accent-color) !important;
+}
 
+/* 搜索框 */
 .site-search form { margin: 0 !important; position: relative !important; }
 .site-search input {
-  height: 34px !important; border-radius: 20px !important; padding: 0 35px 0 15px !important;
-  border: 1px solid var(--border-color) !important; background: var(--bg-color) !important;
-  font-size: 13px !important; width: 180px !important; margin: 0 !important;
+  height: 34px !important;
+  border-radius: 20px !important;
+  padding: 0 35px 0 15px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-color) !important;
+  font-size: 13px !important;
+  width: 180px !important;
+  margin: 0 !important;
 }
-.site-search button { position: absolute !important; right: 10px !important; top: 50% !important; transform: translateY(-50%) !important; background: transparent !important; border: none !important; }
+.site-search button {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+}
 
+/* 辅助类控制 PC/移动端显示隐藏 */
 @media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
+
 /* ============================================================
- * 2. 移动端专属布局 (方案一：右上角小卡片)
+ * 2. 移动端专属布局 (全屏毛玻璃抽屉菜单)
  * ============================================================ */
 @media (max-width: 768px) {
   .site-header-sticky { padding: 10px 0 !important; }
   .site-logo-img { height: 24px !important; }
   .brand-logo { font-size: 1.2em !important; gap: 6px !important; }
 
-  .mobile-menu-wrapper { position: relative; display: block; }
+  .mobile-menu-wrapper { 
+    position: relative; 
+    display: block; 
+    z-index: 10000; /* 按钮必须层级最高，这样点击才有效 */
+  }
 
+  /* 汉堡按钮 */
   .my-mobile-btn {
-    width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-    color: var(--text-color); background: var(--card-bg); padding: 0; margin: 0;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    background: var(--card-bg);
+    padding: 0;
+    margin: 0;
   }
 
-  /* 小卡片菜单 */
+  /* 👇 全屏下拉菜单面板 👇 */
   .my-mobile-dropdown {
-    position: absolute; top: 45px; right: 0; width: 120px;
-    background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15); padding: 6px;
-    display: none; flex-direction: column; z-index: 10000;
+    position: fixed; /* 固定定位，无视父级干扰 */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    
+    /* 高级毛玻璃背景 */
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    
+    display: none; /* 默认隐藏 */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px; /* 菜单项之间的间距 */
+    z-index: 9999; /* 盖住页面内容，但低于汉堡按钮 */
   }
-  .my-mobile-dropdown.show { display: flex; }
 
-  .my-mobile-dropdown a {
-    padding: 10px 12px; color: var(--text-color) !important; text-decoration: none;
-    border-radius: 6px; text-align: center; font-size: 14px;
+  /* 暗黑模式下的全屏背景 */
+  html[data-mode="dark"] .my-mobile-dropdown {
+    background: rgba(34, 39, 46, 0.95) !important;
   }
-  .my-mobile-dropdown a:hover, .my-mobile-dropdown a.current { background: var(--card-bg); color: var(--accent-color) !important; }
+
+  /* 点击汉堡按钮后显示 */
+  .my-mobile-dropdown.show { 
+    display: flex; 
+  }
+
+  /* 菜单里的链接（居中、大字号） */
+  .my-mobile-dropdown a {
+    color: var(--text-color) !important;
+    text-decoration: none;
+    font-size: 20px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  
+  .my-mobile-dropdown a:hover,
+  .my-mobile-dropdown a.current {
+    background: var(--card-bg);
+    color: var(--accent-color) !important;
+  }
 }
 
+
 /* ============================================================
- * 3. 主内容区与文章列表 (不加全局居中，防止影响旧页面)
+ * 3. 主内容区与文章列表
  * ============================================================ */
 .post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; }
@@ -100,15 +208,24 @@ html[data-mode="dark"] .site-header-sticky {
 .more a { border: none; }
 .protected .text { width: 50%; }
 
-/* 分页 */
+/* 移动端文章标题、时间居中 */
+@media (max-width: 768px) {
+  .post-title, .post-meta { text-align: center !important; }
+}
+
+
+/* ============================================================
+ * 4. 分页
+ * ============================================================ */
 .page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
 .page-navigator li { display: inline-block; margin: 0 4px; }
 .page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
 .page-navigator a:hover { background: var(--card-bg); text-decoration: none; }
 .page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
 
+
 /* ============================================================
- * 4. 评论列表
+ * 5. 评论列表
  * ============================================================ */
 #comments { padding-top: 15px; }
 .comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
@@ -126,8 +243,9 @@ html[data-mode="dark"] .site-header-sticky {
 #comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
 #comment-form .required:after { content: " *"; color: #C00; }
 
+
 /* ============================================================
- * 5. 侧栏与页脚
+ * 6. 侧栏与页脚
  * ============================================================ */
 #secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
 .widget { margin-bottom: 30px; }
@@ -139,10 +257,13 @@ html[data-mode="dark"] .site-header-sticky {
 .widget-list li ul { margin-left: 15px; }
 #footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
 
-@media (min-width: 992px) { #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; } }
+@media (min-width: 992px) { 
+  #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; } 
+}
+
 
 /* ============================================================
- * 6. 内容格式
+ * 7. 内容格式
  * ============================================================ */
 .error-page { margin-top: 100px; margin-bottom: 100px; }
 .post-content, .comment-content { line-height: 1.8; word-wrap: break-word; }
@@ -156,5 +277,10 @@ html[data-mode="dark"] .site-header-sticky {
 img.alignleft { margin: 0 15px 0 0; }
 img.alignright { margin: 0 0 0 15px; }
 
-@media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; } }
-@media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
+@media (max-width: 767px) {
+  body { font-size: var(--font-size-base); }
+  .container { padding-left: 16px; padding-right: 16px; }
+}
+@media (min-width: 1200px) { 
+  .container { width: 80%; max-width: 1280px; margin: 0 auto; } 
+}
