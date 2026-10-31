@@ -27,9 +27,11 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'post' }}
 >
+  <!-- 头部导航 (已带吸顶固定) -->
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
       <div class="header-flex">
+        
         <div class="header-left">
           <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
             <img src="/logo.png" alt="Logo" class="site-logo-img" />
@@ -95,10 +97,12 @@ const totalComments = commentPagination.totalComments;
             </div>
           </div>
         </div>
+
       </div>
     </div>
   </header>
 
+  <!-- 文章主体内容 -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -136,6 +140,7 @@ const totalComments = commentPagination.totalComments;
             )}
           </article>
 
+          {/* 评论区 */}
           {(!post.hasPassword || post.passwordVerified) && (
             <div id="comments">
               {totalComments > 0 && (
@@ -146,4 +151,125 @@ const totalComments = commentPagination.totalComments;
                   </ol>
                   {commentPagination.enabled && commentPagination.totalPages > 1 && (
                     <nav class="page-navigator comment-page-navigator" aria-label="评论分页">
-                      {commentPagination.prevUrl && <a class="prev" href={commentPagination.prevUrl} rel="prev">
+                      {commentPagination.prevUrl && <a class="prev" href={commentPagination.prevUrl} rel="prev">上一页</a>}
+                      {commentPagination.pages.map((pageNumber) => (
+                        pageNumber === commentPagination.currentPage
+                          ? <span class="current" aria-current="page">{pageNumber}</span>
+                          : <a href={commentPagination.pageUrls[pageNumber]}>{pageNumber}</a>
+                      ))}
+                      {commentPagination.nextUrl && <a class="next" href={commentPagination.nextUrl} rel="next">下一页</a>}
+                    </nav>
+                  )}
+                </>
+              )}
+
+              {commentOptions.allowComment ? (
+                <div id="respond" class="respond">
+                  <div class="cancel-comment-reply">
+                    <a id="cancel-comment-reply-link" href="javascript:void(0)" style="display:none" onclick="return TypechoComment.cancelReply()">取消回复</a>
+                  </div>
+                  <h3 id="response">添加新评论</h3>
+                  <form method="post" action="/api/comment" id="comment-form" role="form">
+                    <input type="hidden" name="cid" value={String(post.cid)} />
+                    <input type="hidden" name="parent" id="comment-parent" value="0" />
+                    {post.hasPassword && post.passwordVerified && (
+                      <input type="hidden" name="password" value={Astro.url.searchParams.get('password') || ''} />
+                    )}
+                    {commentOptions.securityToken && (
+                      <input type="hidden" name="_" value={commentOptions.securityToken} />
+                    )}
+                    {isLoggedIn ? (
+                      <>
+                        <p>登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a>.</p>
+                        <form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出 &raquo;</button></form>
+                      </>
+                    ) : (
+                      <>
+                        <p><label for="author" class="required">称呼</label><input type="text" name="author" id="author" class="text" required /></p>
+                        <p><label for="mail" class:list={[{ required: commentOptions.requireMail }]}>Email</label><input type="email" name="mail" id="mail" class="text" required={commentOptions.requireMail} /></p>
+                        <p><label for="url">网站</label><input type="url" name="url" id="url" class="text" placeholder="http://" /></p>
+                      </>
+                    )}
+                    <p><label for="textarea" class="required">内容</label><textarea rows="8" cols="50" name="text" id="textarea" class="textarea" required></textarea></p>
+                    <p><button type="submit" class="submit">提交评论</button></p>
+                  </form>
+                </div>
+                
+                {/* 仅保留控制评论回复的 JS，全局导航 JS 已移至 Base.astro */}
+                <script is:inline>
+                  var TypechoComment = {
+                    dom: function (id) { return document.getElementById(id); },
+                    reply: function (commentId, coid) {
+                      var comment = this.dom(commentId);
+                      var respond = this.dom('respond');
+                      var cancelLink = this.dom('cancel-comment-reply-link');
+                      var parentInput = this.dom('comment-parent');
+                      if (!comment || !respond || !parentInput) return true;
+                      parentInput.value = coid;
+                      comment.appendChild(respond);
+                      if (cancelLink) cancelLink.style.display = '';
+                      try { this.dom('textarea').focus(); } catch (e) {}
+                      return false;
+                    },
+                    cancelReply: function () {
+                      var respond = this.dom('respond');
+                      var cancelLink = this.dom('cancel-comment-reply-link');
+                      var parentInput = this.dom('comment-parent');
+                      var comments = this.dom('comments');
+                      if (!respond || !comments || !parentInput) return false;
+                      parentInput.value = '0';
+                      if (cancelLink) cancelLink.style.display = 'none';
+                      comments.appendChild(respond);
+                      return false;
+                    }
+                  };
+                </script>
+              ) : (
+                <h3>评论已关闭</h3>
+              )}
+            </div>
+          )}
+
+          <ul class="post-near">
+            <li>上一篇: {prevPost ? (<a href={prevPost.permalink}>{prevPost.title}</a>) : '没有了'}</li>
+            <li>下一篇: {nextPost ? (<a href={nextPost.permalink}>{nextPost.title}</a>) : '没有了'}</li>
+          </ul>
+        </div>
+
+        {/* 侧边栏 */}
+        {sidebarData && (
+          <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+            {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+              <section class="widget"><h3 class="widget-title">最新文章</h3><ul class="widget-list">{sidebarData.recentPosts.map((p) => (<li><a href={p.permalink}>{p.title}</a></li>))}</ul></section>
+            )}
+            {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+              <section class="widget"><h3 class="widget-title">最近回复</h3><ul class="widget-list">{sidebarData.recentComments.map((c) => (<li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>))}</ul></section>
+            )}
+            {sidebarData.categories && sidebarData.categories.length > 0 && (
+              <section class="widget"><h3 class="widget-title">分类</h3><ul class="widget-list">{sidebarData.categories.map((cat) => (<li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>))}</ul></section>
+            )}
+            <section class="widget">
+              <h3 class="widget-title">其它</h3>
+              <ul class="widget-list">
+                {isLoggedIn ? (
+                  <>
+                    <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
+                    <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                  </>
+                ) : (
+                  <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                )}
+                <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+              </ul>
+            </section>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
+  </footer>
+</Base>
