@@ -1,10 +1,14 @@
 /* ==========================================================================
-   文件二：layout.css
+   文件二：layout.css - 页面布局、导航、文章、评论区、侧边栏
    ========================================================================== */
 
-/* 1. 头部导航 (强制吸顶 + 毛玻璃) */
+/* ============================================================
+ * 1. 头部导航 (绝对吸顶 + 毛玻璃)
+ * ============================================================ */
+
+/* 强制 fixed 钉死，防止任何父级干扰 */
 .site-header-sticky {
-  position: fixed !important; /* 👈 改用 fixed 绝对固定，防止被父级干扰 */
+  position: fixed !important; 
   top: 0 !important;
   left: 0;
   width: 100%;
@@ -15,76 +19,88 @@
   border-bottom: 1px solid var(--border-color);
   padding: 12px 0 !important;
 }
-/* 因为导航栏 fixed 了，给 body 加个顶部内边距，防止文章被挡住 */
+/* 因为导航 fixed 腾空了，body 需要顶下去一点，防止遮挡内容 */
 body { padding-top: 64px !important; } 
-html[data-mode="dark"] .site-header-sticky { background: rgba(34, 39, 46, 0.85) !important; }
 
-/* 布局控制 */
+html[data-mode="dark"] .site-header-sticky {
+  background: rgba(34, 39, 46, 0.85) !important;
+}
+
+/* Flex 布局控制 */
 .header-flex { display: flex; justify-content: space-between; align-items: center; }
 .header-left { display: flex; align-items: center; gap: 20px; }
 .header-right { display: flex; align-items: center; gap: 15px; }
 
-/* Logo */
-.brand-logo { display: flex !important; align-items: center !important; gap: 8px !important; text-decoration: none !important; color: var(--text-color) !important; font-weight: 700 !important; font-size: 1.4em !important; margin: 0 !important; }
-.site-logo-img { height: 28px !important; width: auto !important; }
+/* Logo 完美对齐 */
+.brand-logo {
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  gap: 8px !important; text-decoration: none !important; color: var(--text-color) !important;
+  font-weight: 700 !important; font-size: 1.4em !important; line-height: 1 !important; margin: 0 !important;
+}
+.site-logo-img { height: 28px !important; width: auto !important; object-fit: contain !important; margin: 0 !important; }
 
-/* 桌面导航 */
-.desktop-nav { display: flex; align-items: center; gap: 5px; }
-.desktop-nav a { padding: 6px 12px !important; border-radius: 6px !important; color: var(--text-color) !important; text-decoration: none !important; font-weight: 500 !important; font-size: 15px !important; }
+/* 桌面端导航 */
+.desktop-nav { margin: 0 !important; display: flex; align-items: center; gap: 5px; }
+.desktop-nav a {
+  padding: 6px 12px !important; border-radius: 6px !important; color: var(--text-color) !important;
+  text-decoration: none !important; font-weight: 500 !important; border: none !important;
+  height: auto !important; line-height: normal !important; float: none !important;
+  background: transparent !important; font-size: 15px !important;
+}
 .desktop-nav a:hover, .desktop-nav a.current { background: var(--card-bg) !important; color: var(--accent-color) !important; }
 
 /* 搜索框 */
-.site-search input { height: 34px !important; border-radius: 20px !important; padding: 0 35px 0 15px !important; border: 1px solid var(--border-color) !important; background: var(--bg-color) !important; font-size: 13px !important; width: 180px !important; }
+.site-search form { margin: 0 !important; position: relative !important; }
+.site-search input {
+  height: 34px !important; border-radius: 20px !important; padding: 0 35px 0 15px !important;
+  border: 1px solid var(--border-color) !important; background: var(--bg-color) !important;
+  font-size: 13px !important; width: 180px !important; margin: 0 !important;
+}
+.site-search button { position: absolute !important; right: 10px !important; top: 50% !important; transform: translateY(-50%) !important; background: transparent !important; border: none !important; }
 
+/* 辅助类 */
 @media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
 /* ============================================================
- * 移动端专属布局 (优雅下拉 + 不遮挡)
+ * 2. 移动端专属布局 (原生 details 下拉)
  * ============================================================ */
 @media (max-width: 768px) {
-  body { padding-top: 56px !important; } /* 手机端头部稍微矮一点 */
+  body { padding-top: 56px !important; }
   .site-header-sticky { padding: 10px 0 !important; }
   .site-logo-img { height: 24px !important; }
   .brand-logo { font-size: 1.2em !important; gap: 6px !important; }
 
   .mobile-menu-wrapper { position: relative; display: block; }
 
+  /* 隐藏默认小三角 */
   .my-mobile-btn {
-    width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 8px;
+    list-style: none; outline: none;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border-color); border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    background: var(--card-bg); color: var(--text-color); cursor: pointer;
+    cursor: pointer; color: var(--text-color); background: var(--card-bg);
+    padding: 0; margin: 0;
   }
+  .my-mobile-btn::-webkit-details-marker { display: none; }
 
-  /* 👇 核心修改：不再用全屏，改成右上角下拉卡片 👇 */
+  /* 下拉菜单面板 (由 details 自动控制，不需要 JS) */
   .my-mobile-dropdown {
-    position: absolute; 
-    top: 45px; 
-    right: 0; 
-    width: 130px; /* 固定宽度 */
-    background: var(--card-bg); 
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    padding: 6px;
-    display: none; 
-    flex-direction: column;
-    z-index: 10000;
+    position: absolute; top: 45px; right: 0; width: 130px;
+    background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); padding: 6px;
+    display: flex; flex-direction: column; z-index: 10000;
   }
-  
-  html[data-mode="dark"] .my-mobile-dropdown { background: var(--card-bg); }
-
-  .my-mobile-dropdown.show { display: flex; }
 
   .my-mobile-dropdown a {
     padding: 10px 12px; color: var(--text-color) !important; text-decoration: none;
     border-radius: 6px; text-align: center; font-size: 14px;
   }
-  .my-mobile-dropdown a:hover, .my-mobile-dropdown a.current { background: var(--bg-color); color: var(--accent-color) !important; }
+  .my-mobile-dropdown a:hover, .my-mobile-dropdown a.current { background: var(--card-bg); color: var(--accent-color) !important; }
 }
 
 /* ============================================================
- * 3. 主内容区 (保持原样)
+ * 3. 主内容区与文章列表
  * ============================================================ */
 .post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; }
@@ -101,6 +117,7 @@ html[data-mode="dark"] .site-header-sticky { background: rgba(34, 39, 46, 0.85) 
 .more a { border: none; }
 .protected .text { width: 50%; }
 
+/* 移动端文章居中 */
 @media (max-width: 768px) { .post-title, .post-meta { text-align: center !important; } }
 
 /* 分页 */
@@ -140,7 +157,7 @@ html[data-mode="dark"] .site-header-sticky { background: rgba(34, 39, 46, 0.85) 
 
 @media (min-width: 992px) { #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; } }
 
-/* 7. 内容格式 */
+/* 内容格式 */
 .post-content h2, .comment-content h2 { font-size: 1.28571em; }
 .post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
 .post-content a img, .comment-content a img { background: var(--bg-color); position: relative; border-radius: 6px; bottom: -4px; }
