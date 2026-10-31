@@ -7,7 +7,6 @@
   "version": "1.0.0",
   "stylesheet": "style.css",
   "stylesheets": [
-    "style.css",
     "normalize.css",
     "grid.css",
     "variables.css",
