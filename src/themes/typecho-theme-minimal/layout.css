@@ -17,7 +17,7 @@
 #search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.5; }
 
 /* ============================================================
- * 2. 移动端专属布局 (固定吸顶 + 隐藏描述/搜索)
+ * 2. 移动端专属布局 (强制覆盖：吸顶 + 居中 + 隐藏搜索)
  * ============================================================ */
 @media (max-width: 768px) {
   /* 导航栏固定吸顶 */
@@ -33,38 +33,51 @@
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   }
 
-  /* 给 body 留出导航的高度，防止遮挡内容 */
+  /* 留出头部高度 */
   body { padding-top: 120px !important; }
 
-  /* 移动端 Logo 居中 */
-  #header .site-name { text-align: center; }
+  /* Logo 居中，描述隐藏 */
+  #header .site-name { text-align: center !important; width: 100% !important; }
   #logo { font-size: 2em !important; }
+  #header .description { display: none !important; }
   
-  /* 直接干掉描述文字 */
-  #header .description {
-    display: none !important;
-  }
-  
-  /* 导航菜单居中，平铺 */
-  #nav-menu {
-    margin: 15px 0 0 0 !important;
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    width: 100%;
-  }
-  #nav-menu a {
-    float: none;
-    margin: 0 4px 5px 4px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    height: 30px;
-    line-height: 28px;
+  /* 💥 核心修复：暴力隐藏搜索框 (不管它在什么层级) 💥 */
+  #header .site-search, 
+  #header #search, 
+  .site-search, 
+  #search { 
+    display: none !important; 
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* 隐藏移动端搜索框 */
-  .site-search, #search {
-    display: none !important;
+  /* 导航菜单居中、平铺换行 */
+  #nav-menu {
+    margin: 15px 0 0 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    padding: 0 10px !important;
+  }
+  #nav-menu a {
+    float: none !important;
+    margin: 0 4px 5px 4px !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    height: 30px !important;
+    line-height: 28px !important;
+    padding: 0 15px !important;
+  }
+
+  /* 夜间模式按钮绝对定位到右上角 */
+  #header .theme-settings-wrapper {
+    position: absolute !important;
+    right: 15px !important;
+    top: 20px !important;
+    margin: 0 !important;
   }
 }
 
@@ -89,6 +102,7 @@
 .more { text-align: center; }
 .more a { border: none; }
 
+/* 移动端文章标题、时间居中 */
 @media (max-width: 768px) { .post-title, .post-meta { text-align: center !important; } }
 
 /* 分页 */
@@ -143,7 +157,7 @@ img.alignright { margin: 0 0 0 15px; }
 @media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
 
 /* ============================================================
- * 4. 主题设置面板样式 (保持原样)
+ * 4. 主题设置面板样式
  * ============================================================ */
 .theme-settings-wrapper { position: relative; display: inline-block; z-index: 9999; }
 .theme-settings-toggle { background: transparent; border: none; color: var(--text-color, #444); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; transition: transform 0.3s, color 0.3s; }
