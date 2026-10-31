@@ -21,15 +21,19 @@ const isIndex = currentPath === '/';
   <header id="header" class="clearfix site-header-sticky">
     <div class="container">
       
+      <!-- 👇 Bootstrap 风格布局 -->
       <div class="header-flex">
         
-        <!-- 左侧：Logo + 桌面导航 -->
+        <!-- 左侧：Logo + 桌面端导航 -->
         <div class="header-left">
+          <!-- Logo 区域 -->
           <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
+            <!-- 你的小图标，请确保图片在 public 文件夹里，名字叫 logo.png -->
             <img src="/logo.png" alt="Logo" class="site-logo-img" />
             <span>{options.title}</span>
           </a>
           
+          <!-- 桌面端导航菜单 -->
           <nav id="nav-menu" class="desktop-nav kit-hidden-tb" role="navigation">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             {pages.map((page) => (
@@ -38,9 +42,10 @@ const isIndex = currentPath === '/';
           </nav>
         </div>
 
-        <!-- 右侧：搜索 + 设置 + 手机汉堡菜单 -->
+        <!-- 右侧：搜索 + 移动端汉堡 + 设置面板 -->
         <div class="header-right">
           
+          <!-- 桌面端搜索框 -->
           <div class="site-search kit-hidden-tb">
             <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
               <label for="s" class="sr-only">搜索关键字</label>
@@ -49,7 +54,7 @@ const isIndex = currentPath === '/';
             </form>
           </div>
 
-          <!-- 👇 移动端独立菜单 (纯按钮，不再使用 details) 👇 -->
+          <!-- 👇 移动端独立菜单 👇 -->
           <div class="mobile-menu-wrapper kit-hidden-pc">
             <button id="mobile-menu-btn" class="my-mobile-btn" aria-label="打开菜单">
               <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -79,6 +84,7 @@ const isIndex = currentPath === '/';
               </svg>
             </button>
             
+            <!-- 面板内部按钮 -->
             <div class="theme-settings-panel" style="top: 45px; right: 0; bottom: auto;">
               <div class="setting-group">
                 <div class="setting-title">界面模式</div>
@@ -113,7 +119,7 @@ const isIndex = currentPath === '/';
     </div>
   </header>
 
-  <!-- 下面的文章列表等保持不变 -->
+  <!-- 下面的文章列表代码保持原样，不需要动 -->
   <div id="body">
     <div class="container">
       <div class="row">
@@ -231,7 +237,7 @@ const isIndex = currentPath === '/';
   </footer>
 </Base>
 
-<!-- 👇 移动端菜单控制脚本 👇 -->
+<!-- 👇 移动端菜单控制脚本（必须保留，控制点击展开） 👇 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('mobile-menu-btn');
@@ -249,7 +255,7 @@ const isIndex = currentPath === '/';
     }
   });
   
-  // 兼容 Swup 的无刷新跳转
+  // 兼容 Swup 无刷新跳转
   document.addEventListener('swup:contentReplaced', () => {
     const btn = document.getElementById('mobile-menu-btn');
     const list = document.getElementById('mobile-menu-list');
