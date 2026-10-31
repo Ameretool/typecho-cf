@@ -1,0 +1,356 @@
+---
+/**
+ * Default theme — Index (home page) component
+ */
+import Base from '@/layouts/Base.astro';
+import type { ThemeIndexProps } from '@/lib/theme-props';
+import { formatDate, buildAuthorLink } from '@/lib/content';
+import { renderContentExcerpt } from '@/lib/markdown';
+
+type Props = ThemeIndexProps;
+
+const {
+  options, urls, user, isLoggedIn, pages, sidebarData, currentPath, pluginCtx,
+  posts, pagination,
+} = Astro.props;
+
+const isIndex = currentPath === '/';
+---
+<Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
+  
+  <header id="header" class="clearfix site-header-sticky">
+    <div class="container">
+      <!-- 👇 Bootstrap 风格：Flex 两端对齐 -->
+      <div class="header-flex">
+        
+        <!-- 左侧：Logo + 导航 -->
+        <div class="header-left">
+          <a id="logo" href={urls.siteUrl + '/'} class="brand-logo">
+            <!-- 这里换成你的小 Logo 图片路径 -->
+            <img src="/logo.png" alt="Logo" class="site-logo-img" />
+            <span>{options.title}</span>
+          </a>
+          
+          <nav id="nav-menu" class="desktop-nav kit-hidden-tb" role="navigation">
+            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+            {pages.map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
+          </nav>
+        </div>
+
+        <!-- 右侧：搜索 + 设置面板 -->
+        <div class="header-right">
+          <!-- 搜索框 -->
+          <div class="site-search kit-hidden-tb">
+            <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+              <label for="s" class="sr-only">搜索关键字</label>
+              <input type="text" id="s" name="s" class="text" placeholder="搜索..." />
+              <button type="submit" class="submit">搜索</button>
+            </form>
+          </div>
+
+          <!-- 🌟 设置面板 🌟 -->
+          <div class="theme-settings-wrapper">
+            <button class="theme-settings-toggle" aria-label="主题设置">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </button>
+            <!-- 弹出的面板 -->
+            <div class="theme-settings-panel" style="top: 45px; right: 0; bottom: auto;">
+              <div class="setting-group">
+                <div class="setting-title">界面模式</div>
+                <div class="setting-options">
+                  <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
+                  <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
+                  <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <div class="setting-title">主题预设</div>
+                <div class="setting-options color-options">
+                  <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
+                  <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
+                  <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
+                  <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <div class="setting-title">字号预设</div>
+                <div class="setting-options">
+                  <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
+                  <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
+                  <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 手机端导航（隐藏搜索，显示菜单） -->
+      <div class="mobile-nav-container kit-hidden-pc">
+        <nav id="nav-menu-mobile" role="navigation">
+          <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+          {pages.map((page) => (
+            <a href={page.permalink} title={page.title}>{page.title}</a>
+          ))}
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- 下面的主体内容与 Sidebar 保持不变 -->
+  <div id="body">
+    <div class="container">
+      <div class="row">
+        <div class="col-mb-12 col-8" id="main" role="main">
+          {posts.length === 0 ? (
+            <article class="post">
+              <h2 class="post-title">暂时没有文章</h2>
+              <div class="post-content"><p>这里还没有任何文章，请通过管理后台发布第一篇文章。</p></div>
+            </article>
+          ) : (
+            posts.map((post) => {
+              let excerpt = post.excerpt || '';
+              const rawContent = post.content || post.excerpt || '';
+              if (rawContent) {
+                const cleanContent = rawContent
+                  .replace(/<p class="more">.*?<\/p>/g, '')
+                  .replace(/- 阅读剩余部分 -/g, '')
+                  .trim();
+                excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
+              }
+              
+              return (
+                <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+                  <h2 class="post-title" itemprop="name headline">
+                    <a itemprop="url" href={post.permalink}>{post.title}</a>
+                  </h2>
+                  <ul class="post-meta">
+                    <li itemprop="author" itemscope itemtype="http://schema.org/Person">
+                      作者: <a itemprop="name" href={post.author ? buildAuthorLink(post.author.uid, urls.siteUrl) : '#'} rel="author">
+                        {post.author?.screenName || post.author?.name || '未知'}
+                      </a>
+                    </li>
+                    <li>
+                      时间: <time datetime={new Date((post.created) * 1000).toISOString()} itemprop="datePublished">
+                        {formatDate(post.created, 'Y-m-d', options.timezone)}
+                      </time>
+                    </li>
+                    {post.categories.length > 0 && (
+                      <li>
+                        分类: {post.categories.map((c, i) => (
+                          <>{i > 0 && ', '}<a href={c.permalink}>{c.name}</a></>
+                        ))}
+                      </li>
+                    )}
+                    <li itemprop="interactionCount">
+                      <a itemprop="discussionUrl" href={`${post.permalink}#comments`}>
+                        {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
+                      </a>
+                    </li>
+                  </ul>
+                  <div class="post-content" itemprop="articleBody" set:html={excerpt} />
+                </article>
+              );
+            })
+          )}
+
+          {pagination.totalPages > 1 && (
+            <nav class="page-navigator">
+              {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
+              {pagination.hasNext && <a class="next" href={pagination.nextUrl!}>后一页 &raquo;</a>}
+            </nav>
+          )}
+        </div>
+
+        {sidebarData && (
+          <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
+            {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">最新文章</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentPosts.map((p) => <li><a href={p.permalink}>{p.title}</a></li>)}
+                </ul>
+              </section>
+            )}
+            {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">最近回复</h3>
+                <ul class="widget-list">
+                  {sidebarData.recentComments.map((c) => <li><a href={c.permalink}>{c.author}</a>: {c.excerpt}</li>)}
+                </ul>
+              </section>
+            )}
+            {sidebarData.categories && sidebarData.categories.length > 0 && (
+              <section class="widget">
+                <h3 class="widget-title">分类</h3>
+                <ul class="widget-list">
+                  {sidebarData.categories.map((cat) => <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>)}
+                </ul>
+              </section>
+            )}
+
+            <section class="widget">
+              <h3 class="widget-title">其它</h3>
+              <ul class="widget-list">
+                {isLoggedIn ? (
+                  <>
+                    <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
+                    <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
+                  </>
+                ) : (
+                  <li class="last"><a href={urls.loginUrl}>登录</a></li>
+                )}
+                <li><a href={urls.feedUrl}>文章 RSS</a></li>
+                <li><a href={urls.commentsFeedUrl}>评论 RSS</a></li>
+              </ul>
+            </section>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" role="contentinfo">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
+  </footer>
+</Base>
+
+<style>
+/* ============================================================
+ * 【Bootstrap 风格头部与固定导航】
+ * ============================================================ */
+
+/* 1. 导航固定与毛玻璃 */
+.site-header-sticky {
+  position: sticky !important;
+  top: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.85) !important; /* 亮色毛玻璃 */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 0 !important;
+}
+html[data-mode="dark"] .site-header-sticky {
+  background: rgba(34, 39, 46, 0.85) !important; /* 暗色毛玻璃 */
+}
+
+/* 2. 布局 Flex 化 */
+.header-flex {
+  display: flex;
+  justify-content: space-between; /* 左右两端对齐 */
+  align-items: center;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Logo与导航的间距 */
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* 搜索框与设置按钮的间距 */
+}
+
+/* 3. Logo 样式 */
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text-color) !important;
+  font-weight: 700;
+  font-size: 1.2em;
+}
+.site-logo-img {
+  height: 26px; /* 控制小 Logo 高度 */
+  width: auto;
+  border-radius: 4px;
+}
+
+/* 4. 桌面端导航样式 */
+.desktop-nav a {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--text-color) !important;
+  text-decoration: none;
+  font-weight: 500;
+  border: none !important;
+  transition: background 0.2s;
+}
+.desktop-nav a:hover, .desktop-nav a.current {
+  background: var(--card-bg);
+  color: var(--accent-color) !important;
+}
+
+/* 5. 搜索框美化 */
+.site-search form {
+  margin: 0;
+}
+.site-search input {
+  height: 32px;
+  border-radius: 20px !important;
+  padding: 0 30px 0 12px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-color) !important;
+  font-size: 13px;
+  width: 160px;
+}
+.site-search button {
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* 6. 手机端适配 (隐藏桌面导航，显示移动端菜单) */
+@media (max-width: 768px) {
+  .site-header-sticky {
+    padding: 10px 16px !important;
+  }
+  
+  /* 手机端隐藏原有描述，让出空间 */
+  .description { display: none !important; }
+
+  /* 手机端导航改为底部横向滑动，或者平铺 */
+  .mobile-nav-container {
+    margin-top: 10px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-nav-container::-webkit-scrollbar { display: none; }
+  
+  .mobile-nav-container nav a {
+    display: inline-block;
+    padding: 6px 12px;
+    margin-right: 5px;
+    font-size: 14px;
+    color: var(--text-color);
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .mobile-nav-container nav a.current {
+    background: var(--card-bg);
+    color: var(--accent-color);
+  }
+
+  .site-logo-img { height: 22px; }
+  .brand-logo { font-size: 1.1em; }
+}
+
+/* 辅助类 */
+@media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
+@media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
+</style>
