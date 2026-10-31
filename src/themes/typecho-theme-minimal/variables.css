@@ -1,0 +1,60 @@
+/* ==========================================================================
+   文件一：variables.css - 变量、亮暗模式预设、全局基础
+   ========================================================================== */
+
+/* 1. 基础变量定义 (兜底亮色渐变) */
+:root {
+  --font-size-base: 16px;
+  --bg-color:     linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); 
+  --text-color:   #2c3e50; 
+  --card-bg:      #e1f0fa;
+  --border-color: #d0e3f0;
+  --accent-color: #2563eb; 
+}
+
+/* 2. 亮色模式预设 */
+[data-color="blue"] { --accent-color: #2563eb; --text-color: #2c3e50; --border-color: #d0e3f0; --card-bg: #e1f0fa; --bg-color: linear-gradient(135deg, #dcecf9 0%, #f7fdff 100%); }
+[data-color="green"] { --accent-color: #7c3aed; --text-color: #1f2937; --border-color: #e5e7eb; --card-bg: #f9fafb; --bg-color: #ffffff; }
+[data-color="orange"] { --accent-color: #555555; --text-color: #333333; --border-color: #c0c4cc; --card-bg: #eef0f3; --bg-color: linear-gradient(135deg, #e9ecf1 0%, #ffffff 100%); }
+[data-color="purple"] { --accent-color: #9c4f7a; --text-color: #3e3339; --border-color: #c4a9b6; --card-bg: #ece0e7; --bg-color: linear-gradient(135deg, #f0e4e9 0%, #ffffff 100%); }
+
+/* 3. 暗黑模式预设 */
+html[data-mode="dark"][data-color="blue"] { --accent-color: #60a5fa; --text-color: #adbac7; --border-color: #444c56; --card-bg: #2d333b; --bg-color: linear-gradient(135deg, #161b22 0%, #2d333b 100%); }
+html[data-mode="dark"][data-color="green"] { --accent-color: #a78bfa; --text-color: #e2e8f0; --border-color: #334155; --card-bg: #1e293b; --bg-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+html[data-mode="dark"][data-color="orange"] { --accent-color: #5b9bd5; --text-color: #b8c6d9; --border-color: #3e4a60; --card-bg: #2a3446; --bg-color: linear-gradient(135deg, #111822 0%, #2a3446 100%); }
+html[data-mode="dark"][data-color="purple"] { --accent-color: #c8a878; --text-color: #d4c8b8; --border-color: #4a4238; --card-bg: #38322a; --bg-color: linear-gradient(135deg, #181411 0%, #38322a 100%); }
+
+/* 4. 字号预设 */
+[data-font="small"]  { --font-size-base: 14px; }
+[data-font="medium"] { --font-size-base: 16px; }
+[data-font="large"]  { --font-size-base: 18px; }
+
+/* 5. 全局基础样式 */
+html, body {
+  background: var(--bg-color) !important;
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  color: var(--text-color);
+  overflow-x: hidden !important; 
+}
+body {
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
+  font-size: var(--font-size-base);
+  transition: color 0.4s ease, background 0.4s ease;
+}
+a { color: var(--accent-color); text-decoration: none; transition: color 0.2s; }
+a:hover, a:active { color: var(--text-color); }
+
+.logout-form { display: inline; margin: 0; padding: 0; }
+.logout-form button { padding: 0; border: 0; background: transparent; color: var(--accent-color); font: inherit; cursor: pointer; }
+.logout-form button:hover, .logout-form button:active { color: var(--text-color); }
+
+/* 6. 辅助类与夜间强制同步 */
+.hidden { display: none !important; visibility: hidden; }
+.sr-only { border: 0; height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
+.sr-only.focusable:active, .sr-only.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
+.invisible { visibility: hidden; }
+
+html[data-mode="dark"] .post-title, html[data-mode="dark"] .post-title a, html[data-mode="dark"] .post-title a:visited { color: var(--accent-color) !important; }
+html[data-mode="dark"] .post-meta, html[data-mode="dark"] .post-meta li, html[data-mode="dark"] .post-meta a, html[data-mode="dark"] .post-meta time { color: var(--text-color) !important; opacity: 0.7; }
+html[data-mode="dark"] .post-content, html[data-mode="dark"] .post-content p { color: var(--text-color) !important; }
