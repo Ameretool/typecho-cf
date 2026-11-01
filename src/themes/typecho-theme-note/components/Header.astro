@@ -6,52 +6,51 @@ const isIndex = currentPath === '/';
 ---
 
 <header id="header" class="clearfix">
-  <div class="container">
-    <div class="row">
-      
-      <!-- 左侧：Logo 图片与描述 -->
-      <div class="site-name col-mb-12 col-9">
-        <h1 id="logo">
-          <a href={urls.siteUrl + '/'}>
-           <img src="/logo.png" alt={options.title} style="max-height: 40px !important; width: auto !important;" />
-          </a>
-        </h1>
-        <p class="description">{options.description}</p>
-      </div>
-
-      <!-- 右侧：电脑端搜索 + 主题按钮 -->
-      <div class="site-search col-3 kit-hidden-tb desktop-search-box">
-        <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-          <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
-        </form>
-        <div class="desktop-theme-switcher">
-          <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-          <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-          <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
-        </div>
-      </div>
-
-      <!-- 底部：导航菜单与移动端按钮 -->
-      <div class="col-mb-12 nav-wrapper">
+  <div class="container header-container">
+    
+    <!-- 左侧：Logo + 标题 + 导航 + 描述 -->
+    <div class="header-left">
+      <!-- 第一行：图标 + 标题 + 导航 -->
+      <div class="nav-row">
+        <a href={urls.siteUrl + '/'} class="site-logo">
+          <img src="/logo.png" alt={options.title} />
+          <span class="site-title">{options.title}</span>
+        </a>
+        
         <nav id="nav-menu" class="clearfix" role="navigation">
           <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
           {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
             <a href={page.permalink} title={page.title}>{page.title}</a>
           ))}
         </nav>
-
-        <!-- 移动端：下拉菜单按钮 -->
-        <div class="mobile-theme-switcher">
-          <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
-          <div id="mobile-theme-menu" class="mobile-theme-menu">
-            <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
-            <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
-            <button class="theme-opt-mobile" data-mode="system">💻 系统</button>
-          </div>
-        </div>
       </div>
-
+      
+      <!-- 第二行：小字体描述（只在电脑端显示） -->
+      <p class="description">{options.description}</p>
     </div>
+
+    <!-- 右侧：搜索 + 主题按钮 -->
+    <div class="header-right desktop-search-box">
+      <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+        <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
+      </form>
+      <div class="desktop-theme-switcher">
+        <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
+        <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
+        <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+      </div>
+    </div>
+
+    <!-- 移动端：下拉菜单按钮 -->
+    <div class="mobile-theme-switcher">
+      <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
+      <div id="mobile-theme-menu" class="mobile-theme-menu">
+        <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
+        <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
+        <button class="theme-opt-mobile" data-mode="system">💻 系统</button>
+      </div>
+    </div>
+
   </div>
 </header>
 
