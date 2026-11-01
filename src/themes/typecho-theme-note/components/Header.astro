@@ -1,50 +1,43 @@
 ---
-/**
- * Default theme — Header component
- */
 import type { ThemePageProps } from '@/lib/theme-props';
-
 const { options, urls, pages, currentPath } = Astro.props;
 const isIndex = currentPath === '/';
 ---
 
 <header id="header" class="clearfix">
-  <div class="container">
+  <div class="container" style="position: relative;">
     <div class="row">
+      
       <!-- 左侧：站点名称与描述 -->
       <div class="site-name col-mb-12 col-9">
         <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
         <p class="description">{options.description}</p>
       </div>
 
-      <!-- 右侧：搜索框与电脑端主题按钮 -->
-      <div class="site-search col-3 kit-hidden-tb">
+      <!-- 右侧：电脑端搜索 + 主题按钮 -->
+      <div class="site-search col-3 kit-hidden-tb desktop-only-flex">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-          <label for="s" class="sr-only">搜索关键字</label>
-          <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-          <button type="submit" class="submit">搜索</button>
+          <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
         </form>
-
-        <!-- 👇 电脑端：把主题按钮强行塞到搜索框下方靠右 👇 -->
         <div class="desktop-theme-switcher">
-          <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-          <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-          <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+          <button class="theme-opt" data-mode="light" title="亮色">☀️</button>
+          <button class="theme-opt" data-mode="dark" title="暗色">🌙</button>
+          <button class="theme-opt" data-mode="system" title="系统">💻</button>
         </div>
       </div>
 
-      <!-- 导航栏区域 -->
-      <div class="col-mb-12" style="position: relative;">
+      <!-- 导航栏 -->
+      <div class="col-mb-12 nav-wrapper">
         <nav id="nav-menu" class="clearfix" role="navigation">
           <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
           {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
-            <a href={page.permalink} title={page.title}>{page.title}</a>
+            <a href={page.permalink}>{page.title}</a>
           ))}
         </nav>
 
-        <!-- 👇 移动端：下拉菜单按钮 👇 -->
+        <!-- 移动端：主题按钮 -->
         <div class="mobile-theme-switcher">
-          <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
+          <button id="mobile-theme-btn" class="mobile-theme-toggle">🌓</button>
           <div id="mobile-theme-menu" class="mobile-theme-menu">
             <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
             <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
@@ -57,17 +50,14 @@ const isIndex = currentPath === '/';
   </div>
 </header>
 
-<!-- 👇 暗黑模式 JS 脚本 👇 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const pcOpts = document.querySelectorAll('.theme-opt');
     const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
     const allOpts = [...pcOpts, ...mobileOpts];
-    
     const mobileBtn = document.getElementById('mobile-theme-btn');
     const mobileMenu = document.getElementById('mobile-theme-menu');
     const htmlEl = document.documentElement;
-
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
 
     function applyTheme(mode) {
@@ -77,28 +67,14 @@ const isIndex = currentPath === '/';
       } else {
         htmlEl.setAttribute('data-mode', mode);
       }
-      
-      pcOpts.forEach(opt => {
-        if (opt.dataset.mode === mode) {
-          opt.classList.add('active');
-        } else {
-          opt.classList.remove('active');
-        }
-      });
-
+      pcOpts.forEach(opt => opt.classList.toggle('active', opt.dataset.mode === mode));
       mobileOpts.forEach(opt => {
-        if (opt.dataset.mode === mode) {
-          opt.style.color = 'var(--accent-color)';
-          opt.style.fontWeight = 'bold';
-        } else {
-          opt.style.color = 'var(--text-color)';
-          opt.style.fontWeight = 'normal';
-        }
+        opt.style.color = opt.dataset.mode === mode ? 'var(--accent-color)' : 'var(--text-color)';
+        opt.style.fontWeight = opt.dataset.mode === mode ? 'bold' : 'normal';
       });
     }
 
     applyTheme(currentMode);
-
     allOpts.forEach(opt => {
       opt.addEventListener('click', () => {
         currentMode = opt.dataset.mode;
