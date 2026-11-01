@@ -1,6 +1,6 @@
 ---
 /**
- * 独立导航组件 Header.astro（无内联 CSS）
+ * 独立导航组件 Header.astro
  */
 import type { ThemeIndexProps } from '@/lib/theme-props';
 
@@ -15,8 +15,7 @@ const { options, urls, pages, currentPath } = Astro.props;
 const isIndex = currentPath === '/';
 ---
 
-<!-- 加入 class 方便外部 CSS 控制 -->
-<header id="header" class="site-header site-header-sticky clearfix">
+<header id="header" class="site-header clearfix">
   <div class="container">
     <div class="row">
       <div class="site-name col-mb-12 col-9">
@@ -32,7 +31,7 @@ const isIndex = currentPath === '/';
         </form>
       </div>
       
-      <div class="col-mb-12">
+      <div class="col-mb-12" style="position: relative;">
         <nav id="nav-menu" class="clearfix" role="navigation">
           <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
           
@@ -40,15 +39,15 @@ const isIndex = currentPath === '/';
             <a href={page.permalink} title={page.title}>{page.title}</a>
           ))}
 
-          <!-- 电脑端 -->
-          <div class="desktop-theme-switcher">
+          <!-- 👇 电脑端：三个按钮靠右平铺 👇 -->
+          <div class="desktop-theme-switcher" style="position: absolute; right: 0; top: 0; display: flex; gap: 6px;">
             <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
             <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
             <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
           </div>
 
-          <!-- 移动端 -->
-          <div class="mobile-theme-switcher">
+          <!-- 👇 移动端：一个下拉按钮 👇 -->
+          <div class="mobile-theme-switcher" style="position: absolute; right: 0; top: 0;">
             <button id="mobile-theme-btn" class="mobile-theme-toggle">🌓</button>
             <div id="mobile-theme-menu" class="mobile-theme-menu" style="display: none;">
               <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
@@ -62,7 +61,7 @@ const isIndex = currentPath === '/';
   </div>
 </header>
 
-<!-- 脚本保留，因为这是组件行为 -->
+<!-- 切换逻辑 JS -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const pcOpts = document.querySelectorAll('.theme-opt');
@@ -83,21 +82,14 @@ const isIndex = currentPath === '/';
         htmlEl.setAttribute('data-mode', mode);
       }
       
-      // 注意：因为移除了内联样式，这里的逻辑依然可以直接操作 style，或者你可以在 CSS 里用 `.active` 类去控制
       pcOpts.forEach(opt => {
-        if(opt.dataset.mode === mode) {
-          opt.classList.add('active'); // 建议改为用 class 控制样式
-        } else {
-          opt.classList.remove('active');
-        }
+        if(opt.dataset.mode === mode) opt.classList.add('active');
+        else opt.classList.remove('active');
       });
 
       mobileOpts.forEach(opt => {
-        if(opt.dataset.mode === mode) {
-          opt.classList.add('active');
-        } else {
-          opt.classList.remove('active');
-        }
+        if(opt.dataset.mode === mode) opt.classList.add('active');
+        else opt.classList.remove('active');
       });
     }
 
