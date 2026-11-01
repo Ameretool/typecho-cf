@@ -1,1 +1,23 @@
 /* 样式已拆分至 variables.css, components.css, sidebar.css */
+
+/* ============================================================
+ * 主容器宽度控制（恢复 80% 布局）
+ * 说明：由于 grid.css 已移除了 container 的 max-width 限制，
+ * 现统一在此处控制宽度。手机端保持 100% 满宽，电脑端限制为 80%。
+ * ============================================================ */
+
+/* 默认（手机端）：占满 100% 宽度 */
+.container {
+  width: 100% !important; 
+  max-width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* 电脑端（屏幕 >= 768px）：使用 80% 宽度，并设置最大宽度防止在大屏上无限拉长 */
+@media (min-width: 768px) {
+  .container {
+    width: 80% !important;
+    max-width: 1280px !important; /* 如果你想更窄一点，可以改成 1200px 或 1100px */
+  }
+}
