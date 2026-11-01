@@ -107,3 +107,29 @@ details[open] > summary::before { transform: rotate(90deg); }
 .live-photo-text { font-size: 12px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-weight: 500; letter-spacing: 0.5px; color: #000; line-height: 1; margin-top: 1px; }
 .post-list .live-photo-wrapper, .archive-list .live-photo-wrapper { display: block; width: 100%; height: auto; overflow: hidden; background: #000; }
 .post-list .live-photo-wrapper img, .post-list .live-photo-wrapper video, .archive-list .live-photo-wrapper img, .archive-list .live-photo-wrapper video { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; object-fit: cover; }
+
+/* ============================================================
+ * 新增：修复主题切换按钮的原始方块样式
+ * ============================================================ */
+.theme-opt, .mobile-theme-toggle {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  color: var(--text-color) !important;
+  padding: 4px 8px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+}
+
+.mobile-theme-menu {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  margin-top: 8px !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  z-index: 1000 !important;
+}
