@@ -58,17 +58,15 @@ const isIndex = currentPath === '/';
   </div>
 </header>
 
-<!-- 暗黑模式控制脚本 -->
+<!-- 暗黑模式 JS -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const pcOpts = document.querySelectorAll('.theme-opt');
     const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
     const allOpts = [...pcOpts, ...mobileOpts];
-    
     const mobileBtn = document.getElementById('mobile-theme-btn');
     const mobileMenu = document.getElementById('mobile-theme-menu');
     const htmlEl = document.documentElement;
-
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
 
     function applyTheme(mode) {
@@ -78,15 +76,10 @@ const isIndex = currentPath === '/';
       } else {
         htmlEl.setAttribute('data-mode', mode);
       }
-      
       pcOpts.forEach(opt => {
-        if (opt.dataset.mode === mode) {
-          opt.classList.add('active');
-        } else {
-          opt.classList.remove('active');
-        }
+        if (opt.dataset.mode === mode) opt.classList.add('active');
+        else opt.classList.remove('active');
       });
-
       mobileOpts.forEach(opt => {
         if (opt.dataset.mode === mode) {
           opt.style.color = 'var(--accent-color)';
@@ -99,7 +92,6 @@ const isIndex = currentPath === '/';
     }
 
     applyTheme(currentMode);
-
     allOpts.forEach(opt => {
       opt.addEventListener('click', () => {
         currentMode = opt.dataset.mode;
