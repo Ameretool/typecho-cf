@@ -46,11 +46,30 @@ const totalComments = commentPagination.totalComments;
           </form>
         </div>
         <div class="col-mb-12">
-          <nav id="nav-menu" class="clearfix" role="navigation">
+          <nav id="nav-menu" class="clearfix" role="navigation" style="position: relative; min-height: 32px;">
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
             {pages.map((p) => (
               <a href={p.permalink} title={p.title}>{p.title}</a>
             ))}
+
+            <!-- 👇 电脑端：平铺三个按钮 -->
+            <div class="desktop-theme-switcher">
+              <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
+              <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
+              <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+            </div>
+
+            <!-- 👇 移动端：下拉菜单 -->
+            <div class="mobile-theme-switcher">
+              <!-- 手机端的触发按钮 -->
+              <button id="mobile-theme-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; line-height: 1.2;">🌓</button>
+              <!-- 手机端的下拉面板 -->
+              <div id="mobile-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
+                <button class="theme-opt-mobile" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">☀️ 亮色</button>
+                <button class="theme-opt-mobile" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">🌙 暗色</button>
+                <button class="theme-opt-mobile" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">💻 系统</button>
+              </div>
+            </div>
           </nav>
         </div>
       </div>
@@ -314,4 +333,36 @@ const totalComments = commentPagination.totalComments;
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
     由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
-</Base>
+
+  <!-- 👇 暗黑模式控制脚本 -->
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', () => {
+      const pcOpts = document.querySelectorAll('.theme-opt');
+      const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
+      const allOpts = [...pcOpts, ...mobileOpts];
+      
+      const mobileBtn = document.getElementById('mobile-theme-btn');
+      const mobileMenu = document.getElementById('mobile-theme-menu');
+
+      const htmlEl = document.documentElement;
+      let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
+
+      function applyTheme(mode) {
+        if (mode === 'system') {
+          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
+        } else {
+          htmlEl.setAttribute('data-mode', mode);
+        }
+        
+        pcOpts.forEach(opt => {
+          if(opt.dataset.mode === mode) {
+            opt.style.background = 'transparent'; 
+            opt.style.borderColor = 'var(--accent-color)'; 
+            opt.style.color = 'var(--accent-color)'; 
+            opt.style.boxShadow = 'inset 0 0 0 1px var(--accent-color)';
+            opt.style.opacity = '1';
+          } else {
+            opt.style.background = 'transparent';
+            opt.style.borderColor = 'var(--border-color)';
+            opt.style.color = 'var(--
