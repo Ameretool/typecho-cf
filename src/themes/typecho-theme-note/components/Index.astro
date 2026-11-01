@@ -67,7 +67,6 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 
 <Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
   
-  <!-- 👇 直接使用抽离的 Header 组件 👇 -->
   <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
 
   <div id="body">
@@ -212,28 +211,3 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 </Base>
-
-<style>
-/* 覆盖层和 z-index 调整 */
-.card-overlay { z-index: 1; }
-.post-author a, .post-meta-details a, .post-meta-details span a { position: relative; z-index: 3; }
-
-/* 单图自适应 */
-.post-images[data-count="1"] { grid-template-columns: 1fr; }
-.post-images[data-count="1"] img { max-height: 300px; width: auto; margin: 0 auto; }
-.post-images[data-count="1"] .live-photo { width: 100%; height: auto; }
-
-/* 多图正方形网格 */
-.post-images[data-count="2"] { grid-template-columns: 1fr 1fr; }
-.post-images[data-count="2"] img, .post-images[data-count="2"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
-.post-images[data-count="3"], .post-images[data-count="5"], .post-images[data-count="6"], .post-images[data-count="7"], .post-images[data-count="8"], .post-images[data-count="9"] { grid-template-columns: repeat(3, 1fr); }
-.post-images[data-count="3"] img, .post-images[data-count="3"] .live-photo, .post-images[data-count="5"] img, .post-images[data-count="5"] .live-photo, .post-images[data-count="6"] img, .post-images[data-count="6"] .live-photo, .post-images[data-count="7"] img, .post-images[data-count="7"] .live-photo, .post-images[data-count="8"] img, .post-images[data-count="8"] .live-photo, .post-images[data-count="9"] img, .post-images[data-count="9"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
-.post-images[data-count="4"] { grid-template-columns: 1fr 1fr; }
-.post-images[data-count="4"] img, .post-images[data-count="4"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
-
-@media (max-width: 768px) {
-  .post-images { max-width: 100% !important; margin-left: 0 !important; }
-  .post-excerpt { padding: 0 16px 0 16px !important; }
-  .post-header { flex-wrap: wrap; }
-}
-</style>
