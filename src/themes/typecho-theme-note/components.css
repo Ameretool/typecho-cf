@@ -132,26 +132,17 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 
 /* ==========================================================================
- * 7. Header 头部比例、Logo 大小及主题按钮布局
+ * 7. Header 头部比例、Logo 大小及主题按钮布局（最终精准对齐版）
  * ========================================================================== */
 
-/* 🌟 限制 Logo 的大小，紧凑高级 */
+/* 🌟 限制 Logo 大小 */
 #logo img {
   max-height: 40px !important;
   width: auto !important;
   vertical-align: middle !important;
 }
-
-/* 如果是纯文字 Logo 微调字号 */
-#logo {
-  font-size: 2.2em !important; 
-  margin: 0 !important;
-}
-
-/* 头部整体上边距微调 */
-#header {
-  padding-top: 20px !important;
-}
+#logo { font-size: 2.2em !important; margin: 0 !important; }
+#header { padding-top: 20px !important; }
 
 /* 搜索框美化 */
 #search input {
@@ -160,9 +151,7 @@ details[open] > summary::before { transform: rotate(90deg); }
   padding: 0 12px !important;
   font-size: 14px !important;
 }
-#search button {
-  top: 5px !important;
-}
+#search button { top: 5px !important; }
 
 /* --- 基础按钮外观（去边框） --- */
 .theme-opt, .mobile-theme-toggle, .theme-opt-mobile {
@@ -189,26 +178,20 @@ details[open] > summary::before { transform: rotate(90deg); }
 @media (min-width: 769px) {
   .mobile-theme-switcher, .mobile-theme-menu { display: none !important; }
   
-  #header .container {
-    position: relative !important;
+  /* 给右侧的包裹容器加上 flex，让搜索框和按钮上下排列，靠右对齐 */
+  .site-search {
+    display: flex !important;
+    flex-direction: column !important; /* 垂直排列 */
+    align-items: flex-end !important;  /* 靠右对齐 */
   }
-
-  /* 主题按钮绝对定位吸附在右上角 */
+  
+  /* 让按钮和搜索框之间留点空隙 */
   .desktop-theme-switcher {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    position: absolute !important;
-    right: 0 !important; 
-    top: 0 !important; 
-    z-index: 10 !important;
-  }
-  
-  /* 搜索框和按钮同行靠右对齐 */
-  .site-search {
-    display: flex !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
+    margin-top: 8px !important; /* 搜索框下方 8px */
+    position: static !important; /* 取消绝对定位 */
   }
 }
 
@@ -216,7 +199,6 @@ details[open] > summary::before { transform: rotate(90deg); }
 @media (max-width: 768px) {
   .desktop-theme-switcher { display: none !important; }
 
-  /* 吸顶头部 */
   #header {
     position: fixed !important;
     top: 0 !important; left: 0 !important; width: 100% !important;
@@ -229,23 +211,10 @@ details[open] > summary::before { transform: rotate(90deg); }
   }
   body { padding-top: 60px !important; }
 
-  /* 隐藏搜索框 */
-  #header .site-search, #header .search-form, #header #search { 
-    display: none !important;
-  }
+  #header .site-search, #header .search-form, #header #search { display: none !important; }
+  #header .site-name { text-align: center !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+  #header .description { display: none !important; }
 
-  /* Logo 居中隐藏简介 */
-  #header .site-name { 
-    text-align: center !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-  #header .description {
-    display: none !important;
-  }
-
-  /* 导航栏居中 */
   #nav-menu {
     display: flex !important;
     justify-content: center !important;
@@ -261,7 +230,6 @@ details[open] > summary::before { transform: rotate(90deg); }
     padding: 0 12px !important;
   }
 
-  /* 移动端按钮靠右 */
   .mobile-theme-switcher {
     display: block !important;
     position: absolute !important;
@@ -271,7 +239,6 @@ details[open] > summary::before { transform: rotate(90deg); }
     z-index: 1000 !important;
   }
 
-  /* 移动端下拉菜单 */
   .mobile-theme-menu {
     position: absolute !important;
     top: 100% !important;
@@ -287,7 +254,6 @@ details[open] > summary::before { transform: rotate(90deg); }
   }
   .mobile-theme-menu.open { display: block !important; }
 
-  /* 下拉菜单图标化 */
   .theme-opt-mobile {
     font-size: 0 !important; 
     padding: 10px 15px !important;
