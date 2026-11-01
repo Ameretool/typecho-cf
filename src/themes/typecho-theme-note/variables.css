@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件一：variables.css - 颜色变量、全局基础、头部导航、移动端固定吸顶
+   文件一：variables.css - 颜色变量、全局基础、头部与导航
    ========================================================================== */
 
 /* ============================================================
@@ -34,12 +34,23 @@ html[data-mode="dark"] {
 }
 
 /* ============================================================
- * 2. 全局基础样式（修复页面横向偏移）
+ * 2. 全局基础样式
  * ============================================================ */
-html { 
-  -webkit-tap-highlight-color: transparent; 
-  /* 👇 核心修复：切断全局横向溢出，防止页面被挤偏 */
-  overflow-x: hidden !important; 
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+#main, #footer {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  will-change: opacity, transform;
+}
+html.is-animating #main, #footer {
+  opacity: 0;
+  transform: translateY(20px);
+}
+html.is-leaving #main, #footer {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 body {
@@ -48,16 +59,38 @@ body {
   font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
   font-size: 100%;
   transition: background-color 0.3s ease, color 0.3s ease;
-  /* 👇 核心修复：限制最大宽度并切断横向溢出 */
-  max-width: 100vw !important;
-  overflow-x: hidden !important; 
 }
 
 a { color: var(--accent-color); text-decoration: none; }
 a:hover, a:active { color: var(--text-color); }
 
+button {
+  -webkit-appearance: button;
+  background-color: var(--accent-color);
+  border: none;
+  color: #ffffff;
+  padding: 5px 15px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 6px;
+}
+
+.meta-tags {
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.logout-form { display: inline; margin: 0; padding: 0; }
+.logout-form button { padding: 0; border: 0; background: transparent; color: var(--accent-color); font: inherit; cursor: pointer; }
+.logout-form button:hover, .logout-form button:active { color: var(--text-color); }
+
 /* ============================================================
- * 3. 头部导航与搜索 (桌面端)
+ * 3. 头部导航与搜索
  * ============================================================ */
 #header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
 #logo { color: var(--text-color); font-size: 2.5em; }
@@ -66,10 +99,16 @@ a:hover, a:active { color: var(--text-color); }
 
 #nav-menu { margin: 25px 0 0; padding: 0; }
 #nav-menu a {
-  display: block; margin-right: -1px; padding: 0 20px;
-  border: 1px solid var(--border-color); border-bottom: none;
-  height: 32px; line-height: 32px; color: var(--text-color);
-  background: var(--bg-color); float: left;
+  display: block;
+  margin-right: -1px;
+  padding: 0 20px;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  height: 32px;
+  line-height: 32px;
+  color: var(--text-color);
+  background: var(--bg-color);
+  float: left;
   transition: background 0.2s ease, color 0.2s ease;
 }
 #nav-menu a:hover { background: var(--card-bg); color: var(--accent-color); }
@@ -77,63 +116,18 @@ a:hover, a:active { color: var(--text-color); }
 
 #search { position: relative; margin-top: 15px; }
 #search input { padding-right: 30px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
-#search button { position: absolute; right: 4px; top: 2px; border: none; padding: 0; width: 24px; height: 24px; background: transparent; cursor: pointer; font-size: 0; color: transparent; }
-#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.6; }
-
-/* ============================================================
- * 4. 移动端响应式 (固定吸顶 + 隐藏搜索 + 按钮对齐)
- * ============================================================ */
-@media (max-width: 768px) {
-  /* 头部固定吸顶 */
-  #header {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0;
-    width: 100%;
-    z-index: 9999;
-    background: var(--bg-color) !important;
-    padding: 10px 0 !important;
-    margin-bottom: 0 !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  }
-
-  /* 留出头部高度 */
-  body { padding-top: 120px !important; }
-
-  /* Logo 居中，隐藏描述 */
-  #header .site-name { text-align: center !important; width: 100% !important; padding-left: 0 !important; }
-  #logo { font-size: 2em !important; }
-  .description { display: none !important; }
-  
-  /* 隐藏搜索框 */
-  #search, .site-search { display: none !important; }
-
-  /* 导航菜单居中平铺 */
-  #nav-menu {
-    margin: 15px 0 0 0 !important;
-    display: flex !important;
-    justify-content: center !important;
-    flex-wrap: wrap !important;
-    width: 100% !important;
-    padding: 0 10px !important;
-    position: relative; /* 为右侧夜间模式按钮定位做参照物 */
-  }
-  #nav-menu a {
-    float: none !important;
-    margin: 0 4px 5px 4px !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 4px !important;
-    height: 30px !important;
-    line-height: 28px !important;
-    padding: 0 15px !important;
-  }
-
-  /* 👇 修复：强制夜间模式按钮固定在导航栏右侧并垂直居中 👇 */
-  #header .theme-settings-wrapper {
-    position: absolute !important;
-    right: 10px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important; /* 垂直居中 */
-    margin: 0 !important;
-  }
+#search button {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  border: none;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+  direction: ltr;
+  font-size: 0;
+  color: transparent;
 }
+#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.6; }
