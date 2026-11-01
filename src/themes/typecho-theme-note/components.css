@@ -132,10 +132,10 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 
 /* ==========================================================================
- * 7. Header 头部比例、Logo 大小及主题按钮布局（最终精准对齐版）
+ * Header Buttons - Force Display Version
  * ========================================================================== */
 
-/* 🌟 限制 Logo 大小 */
+/* Logo Size Limit */
 #logo img {
   max-height: 40px !important;
   width: auto !important;
@@ -144,7 +144,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 #logo { font-size: 2.2em !important; margin: 0 !important; }
 #header { padding-top: 20px !important; }
 
-/* 搜索框美化 */
+/* Search Input Style */
 #search input {
   height: 34px !important;
   border-radius: 6px !important;
@@ -153,8 +153,10 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 #search button { top: 5px !important; }
 
-/* --- 基础按钮外观（去边框） --- */
+/* Base Button Styles */
 .theme-opt, .mobile-theme-toggle, .theme-opt-mobile {
+  display: inline-block !important;
+  visibility: visible !important;
   background: transparent !important;
   border: none !important; 
   outline: none !important;
@@ -174,28 +176,30 @@ details[open] > summary::before { transform: rotate(90deg); }
   opacity: 1 !important;
 }
 
-/* --- 电脑端 (> 768px) --- */
+/* Desktop Layout */
 @media (min-width: 769px) {
   .mobile-theme-switcher, .mobile-theme-menu { display: none !important; }
-  
-  /* 给右侧的包裹容器加上 flex，让搜索框和按钮上下排列，靠右对齐 */
-  .site-search {
-    display: flex !important;
-    flex-direction: column !important; /* 垂直排列 */
-    align-items: flex-end !important;  /* 靠右对齐 */
-  }
-  
-  /* 让按钮和搜索框之间留点空隙 */
+
+  /* Force display and align right */
   .desktop-theme-switcher {
     display: flex !important;
+    visibility: visible !important;
     align-items: center !important;
+    justify-content: flex-end !important;
     gap: 8px !important;
-    margin-top: 8px !important; /* 搜索框下方 8px */
-    position: static !important; /* 取消绝对定位 */
+    position: absolute !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999 !important;
+  }
+  
+  /* Ensure container is relative for absolute positioning */
+  #header .container {
+    position: relative !important;
   }
 }
 
-/* --- 移动端 (<= 768px) --- */
+/* Mobile Layout */
 @media (max-width: 768px) {
   .desktop-theme-switcher { display: none !important; }
 
@@ -268,7 +272,7 @@ details[open] > summary::before { transform: rotate(90deg); }
     font-size: 20px !important;
     line-height: 1;
   }
-  .theme-opt-mobile[data-mode="light"]::before  { content: "☀️" !important; }
-  .theme-opt-mobile[data-mode="dark"]::before   { content: "🌙" !important; }
-  .theme-opt-mobile[data-mode="system"]::before { content: "💻" !important; }
+  .theme-opt-mobile[data-mode="light"]::before  { content: "L" !important; color: orange; font-weight: bold; }
+  .theme-opt-mobile[data-mode="dark"]::before   { content: "D" !important; color: blue; font-weight: bold; }
+  .theme-opt-mobile[data-mode="system"]::before { content: "S" !important; color: gray; font-weight: bold; }
 }
