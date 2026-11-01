@@ -1,7 +1,1 @@
 /* 样式已拆分至 variables.css, layout.css, components.css */
-@media (max-width: 768px) {
-  /* 隐藏移动端中间巨大的 HB 文字（站点标题） */
-  #logo {
-    display: none !important;
-  }
-}
