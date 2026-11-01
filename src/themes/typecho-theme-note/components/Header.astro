@@ -8,9 +8,9 @@ const isIndex = currentPath === '/';
 <header id="header" class="clearfix">
   <div class="container header-container">
     
-    <!-- 左侧：Logo + 标题 + 导航 + 描述 -->
+    <!-- 左侧大盒子：包含图标、文字和导航 -->
     <div class="header-left">
-      <!-- 导航行：图标 + 标题 + 导航菜单 -->
+      <!-- 第一行：图标 + 标题 + 导航 -->
       <div class="nav-row">
         <a href={urls.siteUrl + '/'} class="site-logo">
           <img src="/logo.png" alt={options.title} />
@@ -25,11 +25,11 @@ const isIndex = currentPath === '/';
         </nav>
       </div>
       
-      <!-- 电脑端专属：小字体描述 -->
+      <!-- 第二行：描述 (仅电脑端显示) -->
       <p class="description">{options.description}</p>
     </div>
 
-    <!-- 右侧：电脑端搜索 + 主题按钮 -->
+    <!-- 右侧电脑端区域：搜索 + 主题按钮 -->
     <div class="header-right desktop-search-box">
       <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
         <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
@@ -41,7 +41,7 @@ const isIndex = currentPath === '/';
       </div>
     </div>
 
-    <!-- 移动端：下拉菜单按钮 -->
+    <!-- 移动端专属主题按钮：绝对定位在最右边 -->
     <div class="mobile-theme-switcher">
       <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
       <div id="mobile-theme-menu" class="mobile-theme-menu">
