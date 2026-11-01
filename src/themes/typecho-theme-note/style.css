@@ -1,11 +1,11 @@
 /* ============================================================
- * 2. 切换按钮的基础外观（彻底去掉边框，用背景色区分）
+ * 2. 切换按钮的基础外观（去边框，背景色标识选中）
  * ============================================================ */
 .theme-opt,
 .mobile-theme-toggle,
 .theme-opt-mobile {
   background: transparent !important;
-  border: none !important; /* 强制去掉所有边框 */
+  border: none !important; /* 彻底去掉边框 */
   outline: none !important;
   border-radius: 6px !important;
   color: var(--text-color) !important;
@@ -22,33 +22,80 @@
   opacity: 1;
 }
 
-/* 选中状态：不用边框，改用淡灰色背景+强调色文字 */
+/* 选中状态：只留背景和颜色，不要边框 */
 .theme-opt.active {
-  border: none !important;
   color: var(--accent-color) !important;
-  background: rgba(128, 128, 128, 0.15) !important;
+  background: rgba(128, 128, 128, 0.15) !important; 
   opacity: 1 !important;
 }
 
 /* ============================================================
- * 3. 电脑端（> 768px）：对齐搜索框（搜索框不动）
+ * 3. 电脑端（> 768px）：搜索框只留图标 + 按钮完美同排
  * ============================================================ */
 @media (min-width: 769px) {
+  /* 让头部变相对定位，给右侧区域垫底 */
   #header {
     position: relative !important;
   }
 
-  .desktop-theme-switcher {
-    display: flex !important;
+  /* 抓取包裹搜索框的容器，将其变成弹性盒子，放到右上角 */
+  #header .site-search,
+  #header .search-form,
+  #header form {
     position: absolute !important;
     right: 0 !important;
-    /* 👇 核心：12px 刚好和搜索框在同一水平线，如果差一点，微调此值 👇 */
-    top: 12px !important; 
-    gap: 8px !important;
+    top: 10px !important; /* 整个右侧区域的高度位置 */
+    display: flex !important;
     align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 12px !important; /* 搜索框和按钮之间的间距 */
     z-index: 1000 !important;
+    background: transparent !important;
+    border: none !important;
   }
 
+  /* 👇 核心：把搜索框变窄，只留图标 👇 */
+  #header .site-search input,
+  #header .search-form input,
+  #header form input[type="text"],
+  #header form input[type="search"] {
+    width: 30px !important;          /* 缩成一个小方块 */
+    height: 30px !important;
+    padding: 0 !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    color: transparent !important;   /* 隐藏输入的文本 */
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    
+    /* 如果你能找到主题原本的搜索图标，可以用 background 把图标放进去。
+       如果没图标，这里就用伪元素或者背景色代替 */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 16px !important;
+  }
+
+  /* 鼠标悬浮/点击时，搜索框展开（可选，提升体验） */
+  #header .site-search input:focus,
+  #header .search-form input:focus,
+  #header form input[type="text"]:focus {
+    width: 150px !important;
+    color: var(--text-color) !important;
+    padding: 0 10px !important;
+    cursor: text !important;
+    background-position: right 8px center !important; /* 图标移到右侧 */
+  }
+
+  /* 主题按钮的容器 */
+  .desktop-theme-switcher {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  /* 隐藏移动端元素 */
   .mobile-theme-switcher,
   .mobile-theme-menu {
     display: none !important;
@@ -56,12 +103,12 @@
 }
 
 /* ============================================================
- * 4. 移动端（<= 768px）：对齐导航栏
+ * 4. 移动端（<= 768px）：隐藏搜索框，导航与按钮对齐
  * ============================================================ */
 @media (max-width: 768px) {
   .desktop-theme-switcher { display: none !important; }
 
-  /* 强制头部固定在顶部 */
+  /* 强制头部吸顶 */
   #header {
     position: fixed !important;
     top: 0 !important;
@@ -80,7 +127,8 @@
   /* 隐藏搜索框和描述 */
   #header .description,
   #header .site-search,
-  #header #search {
+  #header .search-form,
+  #header form {
     display: none !important;
   }
 
@@ -91,7 +139,7 @@
     padding-left: 0 !important;
   }
 
-  /* 导航菜单居中平铺 */
+  /* 导航菜单居中 */
   #nav-menu {
     display: flex !important;
     justify-content: center !important;
@@ -109,15 +157,15 @@
     padding: 0 12px !important;
   }
 
-  /* 👇 核心：80px 刚好与导航栏在同一水平线，如果差一点，微调此值 👇 */
+  /* 移动端主题按钮 */
   .mobile-theme-switcher {
     display: block !important;
     position: absolute !important;
-    right: 10px !important;
-    top: 80px !important; 
+    right: 15px !important;
+    top: 75px !important; /* 与导航栏基本对齐 */
   }
 
-  /* 下拉菜单容器 */
+  /* 下拉菜单 */
   .mobile-theme-menu {
     position: absolute !important;
     top: 100% !important;
@@ -135,7 +183,7 @@
     display: block !important;
   }
 
-  /* 下拉菜单去文字、只留大图标 */
+  /* 下拉图标化 */
   .theme-opt-mobile {
     font-size: 0 !important; 
     padding: 10px 15px !important;
