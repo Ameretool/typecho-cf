@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件二：components.css - 文章主体、表格、代码块、折叠面板、LivePhoto
+   文件二：components.css - 文章主体、表格、代码块、折叠面板、LivePhoto、头部按钮
    ========================================================================== */
 
 /* ============================================================
@@ -109,9 +109,31 @@ details[open] > summary::before { transform: rotate(90deg); }
 .post-list .live-photo-wrapper img, .post-list .live-photo-wrapper video, .archive-list .live-photo-wrapper img, .archive-list .live-photo-wrapper video { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; object-fit: cover; }
 
 /* ==========================================================================
- * 6. 主题切换按钮：极简去边框 & 完美对齐布局
+ * 6. Index 首页文章九宫格布局
  * ========================================================================== */
+.card-overlay { z-index: 1; }
+.post-author a, .post-meta-details a, .post-meta-details span a { position: relative; z-index: 3; }
 
+.post-images[data-count="1"] { grid-template-columns: 1fr; }
+.post-images[data-count="1"] img { max-height: 300px; width: auto; margin: 0 auto; }
+.post-images[data-count="1"] .live-photo { width: 100%; height: auto; }
+
+.post-images[data-count="2"] { grid-template-columns: 1fr 1fr; }
+.post-images[data-count="2"] img, .post-images[data-count="2"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
+.post-images[data-count="3"], .post-images[data-count="5"], .post-images[data-count="6"], .post-images[data-count="7"], .post-images[data-count="8"], .post-images[data-count="9"] { grid-template-columns: repeat(3, 1fr); }
+.post-images[data-count="3"] img, .post-images[data-count="3"] .live-photo, .post-images[data-count="5"] img, .post-images[data-count="5"] .live-photo, .post-images[data-count="6"] img, .post-images[data-count="6"] .live-photo, .post-images[data-count="7"] img, .post-images[data-count="7"] .live-photo, .post-images[data-count="8"] img, .post-images[data-count="8"] .live-photo, .post-images[data-count="9"] img, .post-images[data-count="9"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
+.post-images[data-count="4"] { grid-template-columns: 1fr 1fr; }
+.post-images[data-count="4"] img, .post-images[data-count="4"] .live-photo { aspect-ratio: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 768px) {
+  .post-images { max-width: 100% !important; margin-left: 0 !important; }
+  .post-excerpt { padding: 0 16px 0 16px !important; }
+  .post-header { flex-wrap: wrap; }
+}
+
+/* ==========================================================================
+ * 7. Header 头部及主题按钮布局
+ * ========================================================================== */
 /* 基础按钮外观（彻底去边框，极淡背景） */
 .theme-opt, .mobile-theme-toggle, .theme-opt-mobile {
   background: transparent !important;
