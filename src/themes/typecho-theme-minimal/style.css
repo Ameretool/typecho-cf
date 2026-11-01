@@ -1,1 +1,29 @@
 /* 样式已拆分至 variables.css, layout.css, components.css */
+/* ============================================================
+ * 手机端专属：彻底消灭那个巨大的“HB”文字
+ * ============================================================ */
+@media (max-width: 768px) {
+  /* 暴力隐藏站点名称所在的整个区块 */
+  .site-name, 
+  #logo, 
+  a#logo {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 因为大标题没了，把导航栏和右侧齿轮的顶部间距缩小，让它们顶上去 */
+  .col-mb-12 > div {
+    margin-top: 0 !important;
+  }
+  
+  /* 确保导航栏居中或者正常显示 */
+  #nav-menu {
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 15px !important;
+    float: none !important;
+  }
+}
