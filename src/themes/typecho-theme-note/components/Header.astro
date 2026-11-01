@@ -1,4 +1,3 @@
-
 ---
 /**
  * Default theme — Header component
@@ -12,34 +11,22 @@ const isIndex = currentPath === '/';
 <header id="header" class="clearfix">
   <div class="container">
     <div class="row">
-      <!-- 右侧：搜索框 + 主题按钮 同行 -->
-      <div class="col-3 kit-hidden-tb" style="display: flex; justify-content: space-between; align-items: center;">
-        <!-- 搜索框 -->
-        <div class="site-search" style="flex: 1;">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
-        </div>
-
-        <!-- 电脑端：平铺三个按钮 -->
-        <div class="desktop-theme-switcher">
-          <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-          <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-          <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
-        </div>
+      
+      <!-- 1. 左侧：站点名称与描述 -->
+      <div class="site-name col-mb-12 col-9">
+        <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+        <p class="description">{options.description}</p>
       </div>
 
-      <!-- 右侧：搜索框 + 主题按钮 -->
-      <div class="site-search col-3 kit-hidden-tb" style="position: relative;">
+      <!-- 2. 右侧：搜索框与电脑端主题按钮 -->
+      <div class="site-search col-3 kit-hidden-tb">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
           <label for="s" class="sr-only">搜索关键字</label>
           <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
           <button type="submit" class="submit">搜索</button>
         </form>
 
-        <!-- 👇 电脑端：把主题按钮强行塞到搜索框下方靠右 👇 -->
+        <!-- 电脑端：三个主题切换按钮 -->
         <div class="desktop-theme-switcher">
           <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
           <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
@@ -47,7 +34,7 @@ const isIndex = currentPath === '/';
         </div>
       </div>
 
-      <!-- 导航栏区域 -->
+      <!-- 3. 底部：导航菜单与移动端按钮 -->
       <div class="col-mb-12" style="position: relative;">
         <nav id="nav-menu" class="clearfix" role="navigation">
           <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
@@ -56,7 +43,7 @@ const isIndex = currentPath === '/';
           ))}
         </nav>
 
-        <!-- 👇 移动端：下拉菜单按钮（放在导航栏同行最右侧） 👇 -->
+        <!-- 移动端：下拉主题切换菜单 -->
         <div class="mobile-theme-switcher">
           <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
           <div id="mobile-theme-menu" class="mobile-theme-menu">
@@ -66,11 +53,12 @@ const isIndex = currentPath === '/';
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </header>
 
-<!-- 👇 暗黑模式 JS 脚本 👇 -->
+<!-- 暗黑模式控制脚本 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const pcOpts = document.querySelectorAll('.theme-opt');
