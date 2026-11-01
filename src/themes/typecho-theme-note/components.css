@@ -260,7 +260,7 @@ details[open] > summary::before { transform: rotate(90deg); }
   .site-title { display: none !important; }
   .site-logo img { max-height: 24px !important; display: block !important; }
 
-  /* 导航菜单紧紧靠左 */
+  /* 🌟 导航菜单：靠左，16px，加粗 */
   #nav-menu {
     display: flex !important;
     justify-content: flex-start !important; 
@@ -270,27 +270,27 @@ details[open] > summary::before { transform: rotate(90deg); }
     padding: 0 !important;
     float: none !important;
   }
-  #nav-menu a {
-  font-size: 16px !important; /* 和正文字体一样大 */
-  font-weight: 500 !important; /* 正常状态中等字重 */
-  padding: 0 !important;
-  margin: 0 !important;
-  float: none !important;
-  transition: all 0.2s ease !important;
-}
 
-/* 选中的页面：强制加粗，并高亮颜色 */
-#nav-menu a.current {
-  font-weight: 700 !important; /* 选中状态加粗 */
-  color: var(--accent-color) !important;
-}
+  #nav-menu a {
+    font-size: 16px !important; /* 正文字号 */
+    font-weight: 500 !important; /* 中等字重 */
+    padding: 0 !important;
+    margin: 0 !important;
+    float: none !important;
+    color: var(--text-color) !important;
+    opacity: 0.7 !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  /* 🌟 选中和悬浮状态：强制加粗 */
   #nav-menu a:hover, #nav-menu a.current {
-    border-bottom: none !important;
+    font-weight: 700 !important;
+    opacity: 1 !important;
     color: var(--accent-color) !important;
-    font-weight: bold !important;
+    border-bottom: none !important;
   }
 
-  /* 移动端主题球：绝对定位在右上角，不占位 */
+  /* 移动端主题球：绝对定位在右上角 */
   .mobile-theme-switcher {
     display: block !important;
     position: absolute !important;
