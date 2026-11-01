@@ -102,7 +102,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 
 /* ==========================================================================
-   7. Header Layout (Single Row & Compact Optimized)
+   7. Header Layout (Ultimate Compact Version)
    ========================================================================== */
 
 /* --- PC端整体布局 --- */
@@ -124,9 +124,10 @@ details[open] > summary::before { transform: rotate(90deg); }
   flex-direction: column;
 }
 
+/* --- 单行排列：Logo + 标题 + 导航 --- */
 .nav-row {
   display: flex;
-  align-items: baseline;
+  align-items: baseline; 
   gap: 30px;
 }
 
@@ -172,6 +173,7 @@ details[open] > summary::before { transform: rotate(90deg); }
   border-bottom: 2px solid var(--accent-color) !important;
 }
 
+/* 描述 */
 .description {
   margin: 12px 0 15px 0 !important;
   font-size: 13px !important; 
@@ -180,6 +182,7 @@ details[open] > summary::before { transform: rotate(90deg); }
   line-height: 1.5;
 }
 
+/* --- 右侧搜索和按钮 --- */
 .header-right {
   display: flex;
   flex-direction: column;
@@ -205,7 +208,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 
 /* ==========================================================================
- * 移动端 (<=768px)：极致紧凑靠左 (Media Query Start)
+ * Mobile (<=768px)
  * ========================================================================== */
 @media (max-width: 768px) {
   
@@ -224,78 +227,69 @@ details[open] > summary::before { transform: rotate(90deg); }
   }
   body { padding-top: 60px !important; }
 
-  /* 整体容器：紧凑靠左，右侧留球 */
+  /* 整个头部的容器 */
   .header-container {
     display: flex !important;
     flex-direction: row !important; 
     justify-content: space-between !important;
     align-items: center !important;
     padding: 0 15px !important;
+    position: relative;
   }
 
-  /* 左侧容器：横向排列，不再撑满 */
+  /* 左侧区域：取消撑满 */
   .header-left {
+    display: flex !important;
+    flex-direction: column !important;
     width: auto !important;
-    flex: none !important; 
-    flex-direction: row !important;
-    align-items: center !important;
+    flex: none !important;
   }
 
-  /* 图标 + 导航 一行 */
+  /* 第一行：图标和导航在一行 */
   .nav-row {
+    display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    gap: 15px !important; 
+    gap: 15px !important;
     width: auto !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
-  /* 移动端隐藏文字 HB */
-  .site-title {
-    display: none !important;
-  }
+  /* 隐藏文字 HB，只留图标 */
+  .site-title { display: none !important; }
+  .site-logo img { max-height: 24px !important; display: block !important; }
 
-  /* 移动端只显示图标，并缩小 */
-  .site-logo img {
-    max-height: 24px !important; 
-    display: block !important;
-  }
-
-  /* 导航靠左紧贴图标 */
+  /* 导航菜单紧紧靠左 */
   #nav-menu {
     display: flex !important;
     justify-content: flex-start !important; 
     gap: 15px !important; 
     width: auto !important; 
-    flex: none !important; 
-    margin-left: 0 !important; 
-    padding-bottom: 0 !important;
-    border-bottom: none !important;
+    margin: 0 !important; 
+    padding: 0 !important;
     float: none !important;
   }
-  
   #nav-menu a {
     font-size: 14px !important;
     padding: 0 !important;
     margin: 0 !important;
     float: none !important;
   }
-
   #nav-menu a:hover, #nav-menu a.current {
     border-bottom: none !important;
     color: var(--accent-color) !important;
     font-weight: bold !important;
   }
 
-  /* 移动端主题球靠最右侧 */
+  /* 移动端主题球：绝对定位在右上角，不占位 */
   .mobile-theme-switcher {
     display: block !important;
-    position: relative !important;
-    top: auto !important;
-    right: auto !important;
+    position: absolute !important;
+    right: 15px !important; 
+    top: 50% !important;
+    transform: translateY(-50%) !important;
     z-index: 1000 !important;
-    margin-left: auto !important; 
   }
   
   .mobile-theme-toggle {
@@ -328,7 +322,7 @@ details[open] > summary::before { transform: rotate(90deg); }
     color: var(--text-color) !important; cursor: pointer !important;
     font-size: 14px !important; white-space: nowrap !important;
   }
-} /* Media Query End */
+}
 
 /* 桌面端隐藏移动端专属球 */
 @media (min-width: 769px) {
