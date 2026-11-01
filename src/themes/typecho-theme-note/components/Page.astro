@@ -1,11 +1,9 @@
 ---
 /**
  * Default theme — Independent page component
- *
- * Renders a single page with optional comments.
- * Equivalent to the original [slug].astro template section.
  */
 import Base from '@/layouts/Base.astro';
+import Header from './Header.astro'; // 👈 引入抽离的头部组件
 import CommentList from './CommentList.astro';
 import type { ThemePageProps } from '@/lib/theme-props';
 import { formatDate } from '@/lib/content';
@@ -17,10 +15,7 @@ const {
   page, comments, commentOptions, commentPagination, gravatarMap,
 } = Astro.props;
 
-// 是否为首页
 const isIndex = currentPath === '/';
-
-// 评论总数
 const totalComments = commentPagination.totalComments;
 ---
 <Base
@@ -32,62 +27,8 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'page' }}
 >
-  <!-- 页头 -->
-  <header id="header" class="clearfix">
-    <div class="container">
-      <div class="row">
-        <!-- 站点名称与描述 -->
-        <div class="site-name col-mb-12 col-9">
-          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-          <p class="description">{options.description}</p>
-        </div>
-
-        <!-- 搜索框 -->
-        <div class="site-search col-3 kit-hidden-tb">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
-        </div>
-
-        <!-- 导航菜单 -->
-        <div class="col-mb-12">
-          <nav id="nav-menu" class="clearfix" role="navigation" style="position: relative; min-height: 32px;">
-            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-            {pages.map((p) => (
-              <a
-                class:list={[{ current: page.slug === p.slug }]}
-                href={p.permalink}
-                title={p.title}
-              >
-                {p.title}
-              </a>
-            ))}
-
-            <!-- 👇 电脑端：平铺三个按钮 -->
-            <div class="desktop-theme-switcher">
-              <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-              <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-              <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
-            </div>
-
-            <!-- 👇 移动端：下拉菜单 -->
-            <div class="mobile-theme-switcher">
-              <!-- 手机端的触发按钮 -->
-              <button id="mobile-theme-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; line-height: 1.2;">🌓</button>
-              <!-- 手机端的下拉面板 -->
-              <div id="mobile-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
-                <button class="theme-opt-mobile" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">☀️ 亮色</button>
-                <button class="theme-opt-mobile" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">🌙 暗色</button>
-                <button class="theme-opt-mobile" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">💻 系统</button>
-              </div>
-            </div>
-          </nav>
-        </div>
-      </div>
-    </div>
-  </header>
+  <!-- 👇 直接使用抽离的 Header 组件 👇 -->
+  <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
 
   <!-- 主体内容 -->
   <div id="body">
@@ -96,13 +37,11 @@ const totalComments = commentPagination.totalComments;
         <!-- 主内容区 -->
         <div class="col-mb-12 col-8 transition-fade" id="main" role="main">
           <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
-            <!-- 页面标题 -->
             <h1 class="post-title" itemprop="name headline">
               <a itemprop="url" href={page.permalink}>{page.title}</a>
             </h1>
 
             {page.hasPassword && !page.passwordVerified ? (
-              /* 需要密码且未验证：显示密码输入表单 */
               <div class="post-content">
                 <form method="get" action={page.permalink}>
                   <p>请输入密码访问此内容：</p>
@@ -111,7 +50,6 @@ const totalComments = commentPagination.totalComments;
                 </form>
               </div>
             ) : (
-              /* 正常显示页面正文内容 */
               <div class="post-content" itemprop="articleBody" set:html={page.content} />
             )}
           </article>
@@ -121,10 +59,7 @@ const totalComments = commentPagination.totalComments;
             <div id="comments">
               {totalComments > 0 && (
                 <>
-                  <!-- 评论数量标题 -->
                   <h3>{totalComments === 1 ? '仅有一条评论' : `已有 ${totalComments} 条评论`}</h3>
-
-                  <!-- 评论列表 -->
                   <ol class="comment-list">
                     <CommentList
                       comments={comments}
@@ -133,8 +68,6 @@ const totalComments = commentPagination.totalComments;
                       permalink={page.permalink}
                     />
                   </ol>
-
-                  <!-- 评论分页导航 -->
                   {commentPagination.enabled && commentPagination.totalPages > 1 && (
                     <nav class="page-navigator comment-page-navigator" aria-label="评论分页">
                       {commentPagination.prevUrl && <a class="prev" href={commentPagination.prevUrl} rel="prev">上一页</a>}
@@ -149,36 +82,26 @@ const totalComments = commentPagination.totalComments;
                 </>
               )}
 
-              <!-- 评论回复表单 -->
               <div id="respond" class="respond">
                 <h3 id="response">添加新评论</h3>
-
-                <!-- 取消回复按钮（回复某条评论时显示） -->
                 <div class="cancel-comment-reply" style="display:none">
                   <a id="cancel-comment-reply-link" href={`${page.permalink}#respond`} rel="nofollow"
                     onclick="return TypechoComment.cancelReply()">取消回复</a>
                 </div>
 
-                <!-- 评论提交表单 -->
                 <form method="post" action="/api/comment" id="comment-form" role="form">
-                  <!-- 文章 ID -->
                   <input type="hidden" name="cid" value={String(page.cid)} />
-                  <!-- 父评论 ID（回复某条评论时使用） -->
                   <input type="hidden" name="parent" id="comment-parent" value="0" />
-                  <!-- 密码验证通过时传递密码 -->
                   {page.hasPassword && page.passwordVerified && (
                     <input type="hidden" name="password" value={Astro.url.searchParams.get('password') || ''} />
                   )}
-                  <!-- 安全令牌 -->
                   {commentOptions.securityToken && (
                     <input type="hidden" name="_" value={commentOptions.securityToken} />
                   )}
 
                   {isLoggedIn ? (
-                    /* 已登录用户显示身份 */
                     <p>登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a></p>
                   ) : (
-                    /* 未登录用户填写称呼和邮箱 */
                     <>
                       <p>
                         <label for="author" class="required">称呼</label>
@@ -191,22 +114,17 @@ const totalComments = commentPagination.totalComments;
                     </>
                   )}
 
-                  <!-- 评论内容 -->
                   <p>
                     <label for="textarea" class="required">内容</label>
                     <textarea rows="8" cols="50" name="text" id="textarea" class="textarea" required></textarea>
                   </p>
-
-                  <!-- 提交按钮 -->
                   <p><button type="submit" class="submit">提交评论</button></p>
                 </form>
               </div>
 
-              <!-- 评论回复相关的前端逻辑（回复、取消回复） -->
               <script is:inline>
                 var TypechoComment = {
                   dom: function (id) { return document.getElementById(id); },
-                  // 回复某条评论：把评论表单移动到该评论下方
                   reply: function (commentId, coid) {
                     var comment = this.dom(commentId);
                     var respond = this.dom('respond');
@@ -219,7 +137,6 @@ const totalComments = commentPagination.totalComments;
                     try { this.dom('textarea').focus(); } catch (e) {}
                     return false;
                   },
-                  // 取消回复：把评论表单移回原位
                   cancelReply: function () {
                     var respond = this.dom('respond');
                     var cancelLink = this.dom('cancel-comment-reply-link');
@@ -240,7 +157,6 @@ const totalComments = commentPagination.totalComments;
         <!-- 侧边栏 -->
         {sidebarData && (
           <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
-            <!-- 最新文章 -->
             {sidebarData.recentPosts && sidebarData.recentPosts.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">最新文章</h3>
@@ -251,8 +167,6 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
-
-            <!-- 最近回复 -->
             {sidebarData.recentComments && sidebarData.recentComments.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">最近回复</h3>
@@ -263,8 +177,6 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
-
-            <!-- 分类 -->
             {sidebarData.categories && sidebarData.categories.length > 0 && (
               <section class="widget">
                 <h3 class="widget-title">分类</h3>
@@ -275,29 +187,12 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
-
-            <!-- 归档  隐藏-->
-           {/*
-            {sidebarData.archives && sidebarData.archives.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">归档</h3>
-                <ul class="widget-list">
-                  {sidebarData.archives.map((archive) => (
-                    <li><a href={archive.permalink}>{archive.date}</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-           */}
-            <!-- 其它（后台、登录、RSS） -->
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
                 {isLoggedIn ? (
                   <>
-                    <li class="last">
-                      <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
-                    </li>
+                    <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
                     <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
                   </>
                 ) : (
@@ -318,118 +213,4 @@ const totalComments = commentPagination.totalComments;
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
    由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
-
-  <!-- 👇 暗黑模式控制脚本 -->
-  <script is:inline>
-    document.addEventListener('DOMContentLoaded', () => {
-      const pcOpts = document.querySelectorAll('.theme-opt');
-      const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
-      const allOpts = [...pcOpts, ...mobileOpts];
-      
-      const mobileBtn = document.getElementById('mobile-theme-btn');
-      const mobileMenu = document.getElementById('mobile-theme-menu');
-
-      const htmlEl = document.documentElement;
-      let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
-
-      function applyTheme(mode) {
-        if (mode === 'system') {
-          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
-        } else {
-          htmlEl.setAttribute('data-mode', mode);
-        }
-        
-        pcOpts.forEach(opt => {
-          if(opt.dataset.mode === mode) {
-            opt.style.background = 'transparent'; 
-            opt.style.borderColor = 'var(--accent-color)'; 
-            opt.style.color = 'var(--accent-color)'; 
-            opt.style.boxShadow = 'inset 0 0 0 1px var(--accent-color)';
-            opt.style.opacity = '1';
-          } else {
-            opt.style.background = 'transparent';
-            opt.style.borderColor = 'var(--border-color)';
-            opt.style.color = 'var(--text-color)';
-            opt.style.boxShadow = 'none';
-            opt.style.opacity = '0.6';
-          }
-        });
-
-        mobileOpts.forEach(opt => {
-          if(opt.dataset.mode === mode) {
-            opt.style.color = 'var(--accent-color)';
-            opt.style.fontWeight = 'bold';
-            opt.style.background = 'var(--bg-color)';
-          } else {
-            opt.style.color = 'var(--text-color)';
-            opt.style.fontWeight = 'normal';
-            opt.style.background = 'transparent';
-          }
-        });
-      }
-
-      applyTheme(currentMode);
-
-      allOpts.forEach(opt => {
-        opt.addEventListener('click', () => {
-          currentMode = opt.dataset.mode;
-          localStorage.setItem('hbw-theme-pref', currentMode);
-          applyTheme(currentMode);
-          if(mobileMenu) mobileMenu.style.display = 'none';
-        });
-      });
-
-      if (mobileBtn && mobileMenu) {
-        mobileBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
-        });
-        document.addEventListener('click', (e) => {
-          if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
-            mobileMenu.style.display = 'none';
-          }
-        });
-      }
-    });
-  </script>
-
-  <style>
-  /* 🌟 电脑端平铺按钮容器：靠右绝对定位 */
-  .desktop-theme-switcher {
-    display: flex; 
-    gap: 6px; 
-    align-items: center; 
-    position: absolute; 
-    right: 0; 
-    top: 0;
-  }
-  /* 🌟 手机端下拉容器：默认隐藏 */
-  .mobile-theme-switcher { display: none; }
-
-  /* 🌟 电脑端按钮基础样式 */
-  .theme-opt {
-    background: transparent; 
-    border: 1px solid var(--border-color); 
-    border-radius: 6px; 
-    padding: 4px 8px; 
-    cursor: pointer; 
-    font-size: 14px; 
-    transition: all 0.3s ease;
-    line-height: 1.2;
-    opacity: 0.6;
-  }
-
-  /* 🌟 移动端响应式调整 */
-  @media (max-width: 767px) {
-    .desktop-theme-switcher { display: none; }
-    .mobile-theme-switcher { 
-      display: block; 
-      position: absolute; 
-      right: 0; 
-      top: 0; 
-    }
-    #nav-menu { padding-bottom: 40px; }
-  }
-  </style>
 </Base>
