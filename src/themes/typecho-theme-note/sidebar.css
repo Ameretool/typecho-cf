@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件三：sidebar.css - 评论区、侧边栏、页脚、辅助类
+   文件三：sidebar.css - 评论、侧栏、页脚、辅助类与响应式布局
    ========================================================================== */
 
 /* ============================================================
@@ -19,7 +19,6 @@
 .comment-children { margin: 0 -14px; padding: 0; }
 #comments > .comment-list > li > .comment-children > .comment-list > li { margin-left: 20px; border: 0px; padding: 14px 14px 0px 14px; }
 #comments .comment-list .comment-list .comment-list .comment-body { margin-left: 0; border: 0px; padding: 14px 14px 0px 14px; }
-
 .comment-list .respond { margin-top: 15px; border-top: 1px solid var(--border-color); }
 .respond .cancel-comment-reply { float: right; margin-top: 15px; font-size: .92857em; }
 #comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
@@ -28,11 +27,13 @@
 /* ============================================================
  * 2. 侧边栏与页脚
  * ============================================================ */
-#secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
+#secondary { padding-top: 15px; word-wrap: break-word; }
 .widget { margin-bottom: 30px; }
 .widget-list { list-style: none; padding: 0; }
 .widget-list li { margin: 5px 0; line-height: 1.6; }
 .widget-list li ul { margin-left: 15px; }
+
+#secondary { font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
 #secondary .widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
 #secondary .widget-list li { margin: 6px 0 !important; line-height: 1.8 !important; }
 #secondary .widget-list a { color: var(--accent-color) !important; }
@@ -45,9 +46,40 @@
 #footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
 
 /* ============================================================
- * 3. 辅助类
+ * 3. 杂项格式与辅助类
  * ============================================================ */
+.error-page { margin-top: 100px; margin-bottom: 100px; }
+.post-content, .comment-content { line-height: 1.8; word-wrap: break-word; color: var(--text-color); }
+.post-content h2, .comment-content h2 { font-size: 1.28571em; }
+.post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
+.post-content a img, .comment-content a img { background: var(--bg-color); position: relative; border-radius: 6px; bottom: -4px; }
+.post-content hr, .comment-content hr { margin: 2em auto; width: 100px; border: 1px solid var(--border-color); border-width: 2px 0 0 0; }
+
+.aligncenter, div.aligncenter { display: block; margin-left: auto; margin-right: auto; }
+.alignleft { float: left; }
+.alignright { float: right; }
+img.alignleft { margin: 0 15px 0 0; }
+img.alignright { margin: 0 0 0 15px; }
+
 .hidden { display: none !important; visibility: hidden; }
 .sr-only { border: 0; height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
 .sr-only.focusable:active, .sr-only.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
 .invisible { visibility: hidden; }
+
+/* 隐藏 minimal 遗留下来的设置面板 */
+.theme-settings-wrapper { display: none !important; }
+
+/* ============================================================
+ * 4. 响应式布局
+ * ============================================================ */
+@media (max-width: 767px) {
+  body { font-size: 100%; }
+  .container { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 768px) {
+  #header { padding-left: 30px; }
+  #nav-menu { margin: 25px 0 0 -10px; }
+}
+@media (min-width: 1200px) {
+  .container { width: 80%; max-width: 1280px; margin: 0 auto; }
+}
