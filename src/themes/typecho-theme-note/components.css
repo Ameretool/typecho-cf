@@ -105,9 +105,13 @@ details[open] > summary::before { transform: rotate(90deg); }
    7. Header Layout (BootCSS Optimized)
    ========================================================================== */
 
-/* --- Desktop General Header Styles --- */
+/* ==========================================================================
+   7. Header Layout (Single Row & Compact Optimized)
+   ========================================================================== */
+
+/* --- PC端整体布局 --- */
 #header {
-  padding: 25px 0 0 0; /* 增加顶部间距，不那么挤 */
+  padding: 25px 0 0 0;
   border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-color);
 }
@@ -124,23 +128,23 @@ details[open] > summary::before { transform: rotate(90deg); }
   flex-direction: column;
 }
 
-/* --- First Row: Logo + Title + Nav --- */
+/* --- 单行排列：Logo + 标题 + 导航 --- */
 .nav-row {
   display: flex;
-  align-items: center;
-  gap: 35px; /* 拉开 Logo 区和 导航 区的距离 */
+  align-items: baseline; /* 基线对齐，让大字号和小字号完美对齐 */
+  gap: 30px;
 }
 
 .site-logo {
   display: flex;
   align-items: center;
-  gap: 12px; /* 拉开图标和文字的间距 */
+  gap: 10px;
   text-decoration: none;
   color: var(--text-color);
 }
 
 .site-logo img {
-  max-height: 34px !important; /* 稍微缩小一点图标 */
+  max-height: 32px !important;
   width: auto !important;
 }
 
@@ -149,7 +153,7 @@ details[open] > summary::before { transform: rotate(90deg); }
   font-weight: 600;
 }
 
-/* 导航菜单扁平化 */
+/* 导航菜单扁平化，去除浮动，同行显示 */
 #nav-menu {
   display: flex;
   gap: 20px;
@@ -174,137 +178,118 @@ details[open] > summary::before { transform: rotate(90deg); }
   border-bottom: 2px solid var(--accent-color) !important;
 }
 
-/* --- Second Row: Description --- */
+/* 描述小字体 */
 .description {
-  margin: 12px 0 15px 0 !important; /* 增加底部间距 */
+  margin: 12px 0 15px 0 !important;
   font-size: 13px !important; 
   color: var(--text-color) !important;
   opacity: 0.6 !important;
   line-height: 1.5;
 }
 
-/* --- Right Side: Search & Theme --- */
+/* --- 右侧搜索和按钮 --- */
 .header-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  margin-bottom: 18px; /* 对齐左侧 */
+  margin-bottom: 18px;
 }
 
-#search {
-  width: 240px;
-  margin: 0 0 10px 0;
-}
-
+#search { width: 240px; margin: 0 0 10px 0; }
 #search input {
-  width: 100%;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--bg-color);
-  color: var(--text-color);
-  font-size: 13px;
-  box-sizing: border-box;
+  width: 100%; height: 32px; padding: 0 12px;
+  border: 1px solid var(--border-color); border-radius: 6px;
+  background: var(--bg-color); color: var(--text-color);
+  font-size: 13px; box-sizing: border-box;
 }
 
-.desktop-theme-switcher {
-  display: flex;
-  gap: 8px;
-}
+.desktop-theme-switcher { display: flex; gap: 8px; }
 
 .theme-opt {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-  padding: 0;
+  background: transparent; border: none; cursor: pointer;
+  font-size: 18px; opacity: 0.6; transition: opacity 0.2s; padding: 0;
 }
 .theme-opt:hover, .theme-opt.active { opacity: 1; }
 
 
 /* ================================
- * Mobile Layout (<=768px) - BootCSS Style
+ * 移动端 (<=768px)：极致紧凑单行
  * ================================ */
 @media (max-width: 768px) {
-  /* 隐藏电脑端多余元素 */
+  /* 隐藏描述和PC端搜索 */
   .desktop-search-box, .description { 
     display: none !important; 
   }
 
-  /* 移动端头部吸顶，去边框 */
+  /* 头部吸顶 */
   #header {
     position: fixed !important;
     top: 0 !important; left: 0 !important; width: 100% !important;
     z-index: 99999 !important;
-    padding: 12px 0 0 0 !important; /* 稍微增加顶部空隙 */
+    padding: 12px 0 !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    border-bottom: none !important; /* 去掉底边线 */
   }
-  body { padding-top: 85px !important; } /* 增加页面下推高度 */
+  body { padding-top: 60px !important; }
 
   .header-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* 整体保持横向 */
+    justify-content: space-between;
     align-items: center;
   }
 
-  /* 第一行：左侧 Logo，右侧球 */
+  /* 左侧容器：图标 + 导航 同行 */
   .header-left {
     width: 100%;
-    flex-direction: row; /* 改为横向排列 */
-    justify-content: center; /* 居中 */
+    flex-direction: row;
     align-items: center;
-    position: relative; /* 为右侧球做定位 */
   }
 
   .nav-row {
-    flex-direction: column; /* 内部变成上下结构（Logo行、导航行） */
-    gap: 10px;
+    flex-direction: row; /* 强制同行 */
+    align-items: center;
+    gap: 15px;
     width: 100%;
   }
 
-  .site-logo {
-    justify-content: center;
-    width: 100%;
+  /* 1. 移动端隐藏文字 HB */
+  .site-title {
+    display: none !important;
   }
 
-  /* 缩小移动端 Logo 和 文字 */
-  .site-logo img { max-height: 26px !important; }
-  .site-title { font-size: 1.1em; }
+  /* 2. 移动端只显示图标，并缩小 */
+  .site-logo img {
+    max-height: 24px !important; 
+    display: block;
+  }
 
-  /* 导航菜单放在第二行居中 */
+  /* 3. 导航菜单跟在图标后面 */
   #nav-menu {
     display: flex;
-    justify-content: center;
-    width: 100%;
+    justify-content: flex-start;
     gap: 15px;
-    border-bottom: 1px solid var(--border-color); /* 给导航行加底边线 */
-    padding-bottom: 8px;
+    width: auto;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-left: 10px;
   }
   #nav-menu a {
     font-size: 14px;
-    padding: 4px 0 !important;
-  }
-  #nav-menu a:hover, #nav-menu a.current {
-    border-bottom: none !important; /* 移动端不需要下划线 */
-    color: var(--accent-color) !important;
+    padding: 0 !important;
   }
 
-  /* 移动端主题按钮绝对定位在右上角 */
+  /* 4. 移动端主题球放最右侧 */
   .mobile-theme-switcher {
     display: block !important;
-    position: absolute !important;
-    right: 15px !important;
-    top: 0 !important; /* 与 Logo 同高 */
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
     z-index: 1000 !important;
   }
   .mobile-theme-toggle {
     background: transparent;
     border: none;
-    font-size: 22px;
+    font-size: 20px;
     cursor: pointer;
     opacity: 0.8;
   }
@@ -333,11 +318,9 @@ details[open] > summary::before { transform: rotate(90deg); }
   }
 }
 
-/* 桌面端隐藏移动端按钮 */
+/* 桌面端隐藏移动端专属球 */
 @media (min-width: 769px) {
   .mobile-theme-switcher, .mobile-theme-menu { 
     display: none !important; 
   }
 }
-
-
