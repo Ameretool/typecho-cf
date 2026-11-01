@@ -132,7 +132,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 
 /* ==========================================================================
- * 7. Header 头部及主题按钮布局
+ * 7. Header 头部及主题按钮布局（配合你的最新 HTML 结构）
  * ========================================================================== */
 /* 基础按钮外观（彻底去边框，极淡背景） */
 .theme-opt, .mobile-theme-toggle, .theme-opt-mobile {
@@ -159,7 +159,10 @@ details[open] > summary::before { transform: rotate(90deg); }
 @media (min-width: 769px) {
   .mobile-theme-switcher, .mobile-theme-menu { display: none !important; }
   
-  #header .container { position: relative !important; }
+  /* 关键：给头部的容器加上相对定位 */
+  #header .container { 
+    position: relative !important; 
+  }
 
   /* 绝对定位在导航栏右侧，top 值与导航栏齐平 */
   .desktop-theme-switcher {
@@ -191,13 +194,16 @@ details[open] > summary::before { transform: rotate(90deg); }
   body { padding-top: 60px !important; }
 
   /* 彻底隐藏移动端的：大字、搜索、描述 */
-  #header .site-name, #header .site-header,
+  #header .site-header,
   #header .site-search, #header .search-form,
-  #header #search, #header .description { 
+  #header #search, #header .description,
+  #header .site-name { 
     display: none !important;
   }
 
-  #header .container { position: relative !important; }
+  #header .container { 
+    position: relative !important; 
+  }
 
   /* 导航栏居中 */
   #nav-menu {
