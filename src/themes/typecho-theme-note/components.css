@@ -83,3 +83,139 @@ details[open] > summary::before { transform: rotate(90deg); }
 .details-purple::before { background-color: #7c3aed !important; } .details-purple > summary::before { color: #7c3aed !important; } .details-purple { background-color: rgba(124, 58, 237, 0.05) !important; } html[data-mode="dark"] .details-purple::before { background-color: #a78bfa !important; } html[data-mode="dark"] .details-purple > summary::before { color: #a78bfa !important; }
 .details-pink::before { background-color: #db2777 !important; } .details-pink > summary::before { color: #db2777 !important; } .details-pink { background-color: rgba(219, 39, 119, 0.05) !important; } html[data-mode="dark"] .details-pink::before { background-color: #f472b6 !important; } html[data-mode="dark"] .details-pink > summary::before { color: #f472b6 !important; }
 .details-orange::before { background-color: #ea580c !important; } .details-orange > summary::before { color: #ea580c !important; } .details-orange { background-color: rgba(234, 88, 12, 0.05) !important; } html[data-mode="dark"] .details-orange::before { background-color: #fb923c !important; } html[data-mode="dark"] .details-orange > summary::before { color: #fb923c !important; }
+
+/* ============================================================
+ * 5. 独立导航栏 (Header) 及 亮暗模式切换 (由原 Index 抽离)
+ * ============================================================ */
+
+#header {
+  position: relative;
+  padding: 20px 0;
+}
+
+#nav-menu {
+  position: relative;
+  min-height: 32px;
+}
+
+/* --- 电脑端主题切换按钮 --- */
+.desktop-theme-switcher {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.theme-opt {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--text-color);
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+/* 电脑端选中状态 (配合 Header.astro 中的 JS 脚本) */
+.theme-opt.active {
+  background: transparent;
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  box-shadow: inset 0 0 0 1px var(--accent-color);
+  opacity: 1;
+}
+
+/* --- 移动端主题切换下拉 --- */
+.mobile-theme-switcher {
+  display: none; /* 默认隐藏，在移动端媒体查询中显示 */
+}
+
+.mobile-theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.mobile-theme-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 110px;
+  overflow: hidden;
+}
+
+.theme-opt-mobile {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+/* 移动端选中状态 */
+.theme-opt-mobile.active {
+  color: var(--accent-color);
+  font-weight: bold;
+  background: var(--bg-color);
+}
+
+/* ============================================================
+ * 6. 导航栏及文章的移动端响应式 (屏幕 < 768px)
+ * ============================================================ */
+@media (max-width: 767px) {
+  /* 隐藏电脑端按钮 */
+  .desktop-theme-switcher {
+    display: none;
+  }
+  
+  /* 显示移动端下拉按钮 */
+  .mobile-theme-switcher {
+    display: block;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  /* 给悬浮按钮留出底部空间 */
+  #nav-menu {
+    padding-bottom: 40px;
+  }
+
+  /* 🌟 移动端固定吸顶 (你的核心需求) */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: var(--card-bg); /* 确保滑动时背景不透明 */
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    padding: 10px 0;
+  }
+
+  /* 顺便把首页的图片网格移动端调整也放这里统一管理 */
+  .post-images { max-width: 100% !important; margin-left: 0 !important; }
+  .post-excerpt { padding: 0 16px 0 16px !important; }
+  .post-header { flex-wrap: wrap; }
+}
+     
