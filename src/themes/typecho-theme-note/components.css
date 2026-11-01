@@ -1,10 +1,8 @@
 /* ==========================================================================
-   文件二：components.css - 文章主体、表格、代码块、折叠面板、LivePhoto、头部按钮
+   Typecho Note - components.css (Pure English Version)
    ========================================================================== */
 
-/* ============================================================
- * 1. 主内容区域与分页
- * ============================================================ */
+/* 1. Main Content & Pagination */
 .post { padding: 15px 0 0 0; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; color: var(--text-color); }
 .post-meta { margin-top: -0.5em; padding: 0; color: var(--text-color); opacity: 0.6; font-size: .92857em; }
@@ -29,9 +27,7 @@
 .page-navigator a:hover { background: var(--card-bg); text-decoration: none; }
 .page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
 
-/* ============================================================
- * 2. 表格样式（修复撑破 + 斑马线）
- * ============================================================ */
+/* 2. Table */
 table { border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; margin-bottom: 16px !important; border: none !important; box-shadow: 0 0 0 2px var(--table-border) !important; border-radius: 6px !important; font-size: 15px !important; display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
 table th, table td { padding: 12px 16px !important; border: none !important; vertical-align: middle !important; box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important; white-space: nowrap !important; word-break: keep-all !important; }
 table tr > *:last-child { box-shadow: 0 1px 0 0 var(--table-border) !important; }
@@ -41,9 +37,7 @@ table td code { background-color: var(--table-hover-bg) !important; color: var(-
 table tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.025) !important; }
 html[data-mode="dark"] table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03) !important; }
 
-/* ============================================================
- * 3. 代码块与内容格式
- * ============================================================ */
+/* 3. Code & Content */
 pre { background-color: var(--code-bg) !important; padding: 16px !important; border-radius: 6px !important; overflow: auto !important; white-space: pre-wrap !important; word-wrap: break-word !important; }
 pre code { background-color: transparent !important; padding: 0 !important; color: var(--code-text) !important; white-space: pre-wrap !important; word-wrap: break-word !important; font-size: .92857em !important; }
 blockquote { margin: 1em 0; padding-left: 1.5em; border-left: 4px solid var(--border-color); color: var(--text-color); opacity: 0.85; }
@@ -53,13 +47,10 @@ textarea { resize: vertical; }
 .post-meta a, .post-content a, .widget a, .comment-content a { border-bottom: 1px solid var(--border-color); }
 .post-meta a:hover, .post-content a:hover, .widget a:hover, .comment-content a:hover { border-bottom-color: transparent; }
 
-/* 强制正文字号 */
 .post-content p, .post-content li, .post-content blockquote, .post-content h2, .post-content h3 { font-size: 16px !important; line-height: 1.8 !important; }
 @media (max-width: 767px) { .post-content p, .post-content li { font-size: 16px !important; } }
 
-/* ============================================================
- * 4. 折叠面板 (双圆角 + 10色扩展)
- * ============================================================ */
+/* 4. Details Panel */
 details { position: relative; background-color: rgba(0, 0, 0, 0.025) !important; border: 1px solid var(--border-color) !important; border-radius: 8px !important; padding: 12px 16px !important; margin-bottom: 16px !important; }
 details::before { content: ""; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; background-color: var(--accent-color); border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
 details details { background-color: rgba(0, 0, 0, 0.02) !important; border: 1px solid var(--border-color) !important; border-radius: 6px !important; padding: 10px 14px !important; margin-top: 15px !important; margin-bottom: 10px !important; }
@@ -68,10 +59,9 @@ html[data-mode="dark"] details { background-color: rgba(255, 255, 255, 0.03) !im
 html[data-mode="dark"] details details { background-color: rgba(255, 255, 255, 0.02) !important; }
 details summary { cursor: pointer; font-weight: 600 !important; color: var(--text-color) !important; outline: none; list-style: none; user-select: none; }
 details summary::-webkit-details-marker { display: none; }
-details summary::before { content: "▶"; font-size: 0.7em; color: var(--accent-color) !important; display: inline-block; margin-right: 8px; transition: transform 0.2s ease; }
+details summary::before { content: "\25B6"; font-size: 0.7em; color: var(--accent-color) !important; display: inline-block; margin-right: 8px; transition: transform 0.2s ease; }
 details[open] > summary::before { transform: rotate(90deg); }
 
-/* 10 色扩展 */
 .details-primary::before { background-color: var(--accent-color) !important; } .details-primary > summary::before { color: var(--accent-color) !important; }
 .details-success::before { background-color: #198754 !important; } .details-success > summary::before { color: #198754 !important; } .details-success { background-color: rgba(25, 135, 84, 0.05) !important; } html[data-mode="dark"] .details-success::before { background-color: #34d399 !important; } html[data-mode="dark"] .details-success > summary::before { color: #34d399 !important; }
 .details-danger::before { background-color: #dc3545 !important; } .details-danger > summary::before { color: #dc3545 !important; } .details-danger { background-color: rgba(220, 53, 69, 0.05) !important; } html[data-mode="dark"] .details-danger::before { background-color: #f87171 !important; } html[data-mode="dark"] .details-danger > summary::before { color: #f87171 !important; }
@@ -83,9 +73,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .details-pink::before { background-color: #db2777 !important; } .details-pink > summary::before { color: #db2777 !important; } .details-pink { background-color: rgba(219, 39, 119, 0.05) !important; } html[data-mode="dark"] .details-pink::before { background-color: #f472b6 !important; } html[data-mode="dark"] .details-pink > summary::before { color: #f472b6 !important; }
 .details-orange::before { background-color: #ea580c !important; } .details-orange > summary::before { color: #ea580c !important; } .details-orange { background-color: rgba(234, 88, 12, 0.05) !important; } html[data-mode="dark"] .details-orange::before { background-color: #fb923c !important; } html[data-mode="dark"] .details-orange > summary::before { color: #fb923c !important; }
 
-/* ============================================================
- * 5. LivePhoto 实况照片样式
- * ============================================================ */
+/* 5. LivePhoto */
 .live-photo { position: relative; overflow: hidden; cursor: pointer; user-select: none !important; -webkit-user-select: none !important; -webkit-tap-highlight-color: transparent; touch-action: pan-y pinch-zoom; border-radius: 6px; }
 .live-photo-img, .live-photo-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; transform-origin: center center; border-radius: 6px; user-select: none; }
 .live-photo-img { z-index: 2; opacity: 1; transform: scale(1); transition: opacity 0.3s linear, transform 0.3s linear; }
@@ -99,9 +87,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .post-list .live-photo-wrapper, .archive-list .live-photo-wrapper { display: block; width: 100%; height: auto; overflow: hidden; background: #000; }
 .post-list .live-photo-wrapper img, .post-list .live-photo-wrapper video, .archive-list .live-photo-wrapper img, .archive-list .live-photo-wrapper video { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; object-fit: cover; }
 
-/* ==========================================================================
- * 6. Index 首页文章九宫格布局
- * ========================================================================== */
+/* 6. Index Grid */
 .card-overlay { z-index: 1; }
 .post-author a, .post-meta-details a, .post-meta-details span a { position: relative; z-index: 3; }
 .post-images[data-count="1"] { grid-template-columns: 1fr; }
@@ -119,69 +105,35 @@ details[open] > summary::before { transform: rotate(90deg); }
   .post-header { flex-wrap: wrap; }
 }
 
-/* ==========================================================================
- * 7. Header 头部比例、Logo 大小及主题按钮布局
- * ========================================================================== */
-
-/* 限制 Logo 的大小，紧凑高级 */
+/* 7. Header Layout */
 #logo img { max-height: 40px !important; width: auto !important; vertical-align: middle !important; }
 #logo { font-size: 2.2em !important; margin: 0 !important; }
 #header { padding-top: 20px !important; }
 
-/* 搜索框美化 */
 #search input { height: 34px !important; border-radius: 6px !important; padding: 0 12px !important; font-size: 14px !important; }
 #search button { top: 5px !important; }
 
-/* --- 基础按钮外观 --- */
 .theme-opt, .mobile-theme-toggle { background: transparent !important; border: none !important; outline: none !important; border-radius: 6px !important; color: var(--text-color) !important; padding: 4px 8px !important; cursor: pointer !important; font-size: 14px !important; line-height: 1.4 !important; opacity: 0.6; transition: all 0.2s; }
 .theme-opt:hover, .mobile-theme-toggle:hover { opacity: 1; }
 .theme-opt.active { color: var(--accent-color) !important; background: rgba(128, 128, 128, 0.08) !important; opacity: 1 !important; }
 
-/* --- 电脑端 (> 768px) --- */
 @media (min-width: 769px) {
   .mobile-theme-switcher, .mobile-theme-menu { display: none !important; }
-
-  /* 让搜索框和按钮上下排列并靠右 */
-  .site-search {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-end !important;
-  }
-
-  /* 按钮在搜索框下方 */
-  .desktop-theme-switcher {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    margin-top: 8px !important;
-  }
+  .site-search { display: flex !important; flex-direction: column !important; align-items: flex-end !important; }
+  .desktop-theme-switcher { display: flex !important; align-items: center !important; gap: 8px !important; margin-top: 8px !important; }
 }
 
-/* --- 移动端 (<= 768px) --- */
 @media (max-width: 768px) {
   .desktop-theme-switcher { display: none !important; }
-
-  /* 移动端吸顶 */
   #header { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; z-index: 99999 !important; background: var(--bg-color) !important; padding: 10px 0 !important; margin-bottom: 0 !important; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important; border-bottom: 1px solid var(--border-color) !important; }
   body { padding-top: 60px !important; }
-
-  /* 隐藏移动端的搜索框、描述，Logo居中 */
   #header .site-search { display: none !important; }
-  #header .description { display: none !important; }
   #header .site-name { text-align: center !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-
-  /* 导航栏居中 */
   #nav-menu { display: flex !important; justify-content: center !important; margin: 10px 0 0 0 !important; padding: 0 !important; }
   #nav-menu a { float: none !important; margin: 0 4px !important; border-radius: 4px !important; height: 30px !important; line-height: 28px !important; padding: 0 12px !important; }
-
-  /* 移动端主题按钮靠右 */
   .mobile-theme-switcher { display: block !important; position: absolute !important; right: 10px !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 1000 !important; }
-
-  /* 移动端下拉菜单 */
   .mobile-theme-menu { position: absolute !important; top: 100% !important; right: 0 !important; margin-top: 12px !important; background: var(--card-bg) !important; border: 1px solid var(--border-color) !important; border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important; z-index: 1000 !important; min-width: 100px !important; display: none; }
   .mobile-theme-menu.open { display: block !important; }
-
-  /* 下拉菜单项 */
   .theme-opt-mobile { display: block !important; width: 100% !important; padding: 10px 16px !important; text-align: left !important; background: transparent !important; border: none !important; color: var(--text-color) !important; cursor: pointer !important; font-size: 14px !important; }
   .theme-opt-mobile:hover { background: var(--border-color) !important; }
 }
