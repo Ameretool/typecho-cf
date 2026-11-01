@@ -271,11 +271,19 @@ details[open] > summary::before { transform: rotate(90deg); }
     float: none !important;
   }
   #nav-menu a {
-    font-size: 14px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    float: none !important;
-  }
+  font-size: 16px !important; /* 和正文字体一样大 */
+  font-weight: 500 !important; /* 正常状态中等字重 */
+  padding: 0 !important;
+  margin: 0 !important;
+  float: none !important;
+  transition: all 0.2s ease !important;
+}
+
+/* 选中的页面：强制加粗，并高亮颜色 */
+#nav-menu a.current {
+  font-weight: 700 !important; /* 选中状态加粗 */
+  color: var(--accent-color) !important;
+}
   #nav-menu a:hover, #nav-menu a.current {
     border-bottom: none !important;
     color: var(--accent-color) !important;
