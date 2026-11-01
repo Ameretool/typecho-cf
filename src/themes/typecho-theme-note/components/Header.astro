@@ -11,14 +11,13 @@ const isIndex = currentPath === '/';
 <header id="header" class="clearfix">
   <div class="container">
     <div class="row">
-      
-      <!-- 1. 左侧：站点名称与描述 -->
+      <!-- 左侧：站点名称与描述 -->
       <div class="site-name col-mb-12 col-9">
         <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
         <p class="description">{options.description}</p>
       </div>
 
-      <!-- 2. 右侧：搜索框与电脑端主题按钮 -->
+      <!-- 右侧：搜索框与电脑端主题按钮 -->
       <div class="site-search col-3 kit-hidden-tb">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
           <label for="s" class="sr-only">搜索关键字</label>
@@ -26,7 +25,7 @@ const isIndex = currentPath === '/';
           <button type="submit" class="submit">搜索</button>
         </form>
 
-        <!-- 电脑端：三个主题切换按钮 -->
+        <!-- 👇 电脑端：把主题按钮强行塞到搜索框下方靠右 👇 -->
         <div class="desktop-theme-switcher">
           <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
           <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
@@ -34,7 +33,7 @@ const isIndex = currentPath === '/';
         </div>
       </div>
 
-      <!-- 3. 底部：导航菜单与移动端按钮 -->
+      <!-- 导航栏区域 -->
       <div class="col-mb-12" style="position: relative;">
         <nav id="nav-menu" class="clearfix" role="navigation">
           <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
@@ -43,7 +42,7 @@ const isIndex = currentPath === '/';
           ))}
         </nav>
 
-        <!-- 移动端：下拉主题切换菜单 -->
+        <!-- 👇 移动端：下拉菜单按钮 👇 -->
         <div class="mobile-theme-switcher">
           <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
           <div id="mobile-theme-menu" class="mobile-theme-menu">
@@ -58,15 +57,17 @@ const isIndex = currentPath === '/';
   </div>
 </header>
 
-<!-- 暗黑模式 JS -->
+<!-- 👇 暗黑模式 JS 脚本 👇 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const pcOpts = document.querySelectorAll('.theme-opt');
     const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
     const allOpts = [...pcOpts, ...mobileOpts];
+    
     const mobileBtn = document.getElementById('mobile-theme-btn');
     const mobileMenu = document.getElementById('mobile-theme-menu');
     const htmlEl = document.documentElement;
+
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
 
     function applyTheme(mode) {
@@ -76,10 +77,15 @@ const isIndex = currentPath === '/';
       } else {
         htmlEl.setAttribute('data-mode', mode);
       }
+      
       pcOpts.forEach(opt => {
-        if (opt.dataset.mode === mode) opt.classList.add('active');
-        else opt.classList.remove('active');
+        if (opt.dataset.mode === mode) {
+          opt.classList.add('active');
+        } else {
+          opt.classList.remove('active');
+        }
       });
+
       mobileOpts.forEach(opt => {
         if (opt.dataset.mode === mode) {
           opt.style.color = 'var(--accent-color)';
@@ -92,6 +98,7 @@ const isIndex = currentPath === '/';
     }
 
     applyTheme(currentMode);
+
     allOpts.forEach(opt => {
       opt.addEventListener('click', () => {
         currentMode = opt.dataset.mode;
