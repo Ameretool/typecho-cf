@@ -102,10 +102,6 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 
 /* ==========================================================================
-   7. Header Layout (BootCSS Optimized)
-   ========================================================================== */
-
-/* ==========================================================================
    7. Header Layout (Single Row & Compact Optimized)
    ========================================================================== */
 
@@ -213,7 +209,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 
 /* ================================
- * 移动端 (<=768px)：极致紧凑单行
+ * 移动端 (<=768px)：极致紧凑靠左
  * ================================ */
 @media (max-width: 768px) {
   /* 隐藏描述和PC端搜索 */
@@ -231,25 +227,27 @@ details[open] > summary::before { transform: rotate(90deg); }
   }
   body { padding-top: 60px !important; }
 
+  /* 整体容器：两端对齐（左靠拢，右放球） */
   .header-container {
     display: flex;
-    flex-direction: row; /* 整体保持横向 */
+    flex-direction: row; 
     justify-content: space-between;
     align-items: center;
   }
 
-  /* 左侧容器：图标 + 导航 同行 */
+  /* 左侧容器：横向排列 */
   .header-left {
-    width: 100%;
+    width: auto; /* 不撑满，给右侧留空间 */
     flex-direction: row;
     align-items: center;
   }
 
+  /* 图标 + 导航 一行 */
   .nav-row {
-    flex-direction: row; /* 强制同行 */
+    flex-direction: row;
     align-items: center;
-    gap: 15px;
-    width: 100%;
+    gap: 15px; /* 图标和导航的间距 */
+    width: auto;
   }
 
   /* 1. 移动端隐藏文字 HB */
@@ -263,29 +261,39 @@ details[open] > summary::before { transform: rotate(90deg); }
     display: block;
   }
 
-  /* 3. 导航菜单跟在图标后面 */
+  /* 3. 核心修改：导航向左靠拢 */
   #nav-menu {
     display: flex;
-    justify-content: flex-start;
-    gap: 15px;
+    justify-content: flex-start; /* 靠左对齐 */
+    gap: 15px; /* 导航项之间的间距 */
     width: auto;
-    border-bottom: none;
+    margin-left: 10px; /* 和图标拉开一点点距离 */
     padding-bottom: 0;
-    margin-left: 10px;
+    border-bottom: none;
   }
+  
   #nav-menu a {
     font-size: 14px;
     padding: 0 !important;
+    float: none !important;
   }
 
-  /* 4. 移动端主题球放最右侧 */
+  #nav-menu a:hover, #nav-menu a.current {
+    border-bottom: none !important;
+    color: var(--accent-color) !important;
+    font-weight: bold;
+  }
+
+  /* 4. 移动端主题球靠最右侧 */
   .mobile-theme-switcher {
     display: block !important;
     position: relative !important;
     top: auto !important;
     right: auto !important;
     z-index: 1000 !important;
+    margin-left: auto; /* 把球推向最右边 */
   }
+  
   .mobile-theme-toggle {
     background: transparent;
     border: none;
