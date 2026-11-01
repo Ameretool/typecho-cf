@@ -1,87 +1,70 @@
 ---
-/**
- * Default theme — Header component
- */
 import type { ThemePageProps } from '@/lib/theme-props';
 
 const { options, urls, pages, currentPath } = Astro.props;
 const isIndex = currentPath === '/';
 ---
 
-<header id="header" class="clearfix" style="position: relative !important; padding-top: 20px !important; border-bottom: 1px solid var(--border-color) !important;">
-  <div class="container" style="max-width: 1280px; width: 80%; margin: 0 auto; position: relative !important;">
-    
-    <!-- 1. 左侧 Logo 和简介 -->
-    <div class="site-name col-mb-12 col-9" style="width: 75% !important; float: left !important; text-align: left !important;">
-      <a id="logo" href={urls.siteUrl + '/'} style="font-size: 2.2em !important; text-decoration: none !important; color: var(--text-color) !important;">{options.title}</a>
-      <p class="description" style="margin: .5em 0 0 !important; color: var(--text-color) !important; opacity: 0.6 !important; font-style: italic !important;">{options.description}</p>
-    </div>
-
-    <!-- 2. 右侧：电脑端 搜索框 + 黑夜模式按钮 -->
-    <div class="desktop-header-right" style="position: absolute !important; right: 0 !important; top: 0 !important; width: 260px !important; display: flex !important; flex-direction: column !important; align-items: flex-end !important; z-index: 9999 !important;">
+<header id="header" class="clearfix">
+  <div class="container">
+    <div class="row">
       
-      <!-- 搜索框 -->
-      <form method="post" action={urls.siteUrl + '/'} style="width: 100% !important; margin: 0 !important; padding: 0 !important;">
-        <input type="text" placeholder="输入关键字搜索" style="width: 100% !important; height: 34px !important; padding: 0 12px !important; border: 1px solid var(--border-color) !important; border-radius: 6px !important; box-sizing: border-box !important; font-size: 14px !important; background: transparent !important; color: var(--text-color) !important;" />
-      </form>
-
-      <!-- 电脑端按钮组 -->
-      <div style="display: flex !important; gap: 8px !important; margin-top: 10px !important;">
-        <button class="theme-opt" data-mode="light" style="background: transparent !important; border: none !important; cursor: pointer !important; font-size: 18px !important; opacity: 0.6 !important; transition: 0.2s;">☀️</button>
-        <button class="theme-opt" data-mode="dark" style="background: transparent !important; border: none !important; cursor: pointer !important; font-size: 18px !important; opacity: 0.6 !important; transition: 0.2s;">🌙</button>
-        <button class="theme-opt" data-mode="system" style="background: transparent !important; border: none !important; cursor: pointer !important; font-size: 18px !important; opacity: 0.6 !important; transition: 0.2s;">💻</button>
+      <!-- 左侧：Logo 图片与描述 -->
+      <div class="site-name col-mb-12 col-9">
+        <h1 id="logo">
+          <a href={urls.siteUrl + '/'}>
+            <img src="/logo.png" alt={options.title} />
+          </a>
+        </h1>
+        <p class="description">{options.description}</p>
       </div>
-    </div>
 
-    <!-- 3. 底部：导航菜单 + 移动端黑夜模式 -->
-    <div style="clear: both !important; width: 100% !important; position: relative !important; margin-top: 40px !important;">
-      <nav class="clearfix" style="display: flex !important; justify-content: flex-start !important; margin: 0 !important; padding: 0 !important;">
-        <a href={urls.siteUrl + '/'} style="display: block !important; padding: 0 20px !important; height: 32px !important; line-height: 32px !important; border: 1px solid var(--border-color) !important; border-bottom: none !important; color: var(--text-color) !important; text-decoration: none !important;">首页</a>
-        {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
-          <a href={page.permalink} style="display: block !important; padding: 0 20px !important; height: 32px !important; line-height: 32px !important; border: 1px solid var(--border-color) !important; border-bottom: none !important; border-left: none !important; color: var(--text-color) !important; text-decoration: none !important;">{page.title}</a>
-        ))}
-      </nav>
-
-      <!-- 移动端黑夜模式按钮 (强制显示) -->
-      <div class="mobile-theme-wrapper" style="position: absolute !important; right: 10px !important; top: 0 !important; height: 32px !important; display: flex !important; align-items: center !important;">
-        <button id="mobile-theme-toggle" style="background: transparent !important; border: none !important; font-size: 20px !important; cursor: pointer !important;">🌓</button>
-        
-        <!-- 下拉菜单 -->
-        <div id="mobile-theme-dropdown" style="display: none !important; position: absolute !important; top: 40px !important; right: 0 !important; background: var(--card-bg) !important; border: 1px solid var(--border-color) !important; border-radius: 8px !important; padding: 5px 0 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; width: 110px !important; z-index: 99999 !important;">
-          <button class="theme-opt-mobile" data-mode="light" style="display: block !important; width: 100% !important; padding: 10px 15px !important; text-align: left !important; background: transparent !important; border: none !important; color: var(--text-color) !important; font-size: 14px !important; cursor: pointer !important;">☀️ 亮色</button>
-          <button class="theme-opt-mobile" data-mode="dark" style="display: block !important; width: 100% !important; padding: 10px 15px !important; text-align: left !important; background: transparent !important; border: none !important; color: var(--text-color) !important; font-size: 14px !important; cursor: pointer !important;">🌙 暗色</button>
-          <button class="theme-opt-mobile" data-mode="system" style="display: block !important; width: 100% !important; padding: 10px 15px !important; text-align: left !important; background: transparent !important; border: none !important; color: var(--text-color) !important; font-size: 14px !important; cursor: pointer !important;">💻 系统</button>
+      <!-- 右侧：电脑端搜索 + 主题按钮 -->
+      <div class="site-search col-3 kit-hidden-tb desktop-search-box">
+        <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+          <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
+        </form>
+        <div class="desktop-theme-switcher">
+          <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
+          <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
+          <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
         </div>
       </div>
-    </div>
 
+      <!-- 底部：导航菜单与移动端按钮 -->
+      <div class="col-mb-12 nav-wrapper">
+        <nav id="nav-menu" class="clearfix" role="navigation">
+          <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+          {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
+            <a href={page.permalink} title={page.title}>{page.title}</a>
+          ))}
+        </nav>
+
+        <!-- 移动端：下拉菜单按钮 -->
+        <div class="mobile-theme-switcher">
+          <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
+          <div id="mobile-theme-menu" class="mobile-theme-menu">
+            <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
+            <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
+            <button class="theme-opt-mobile" data-mode="system">💻 系统</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </header>
 
-<!-- 以下是极简版响应式 CSS，必须保留 -->
-<style>
-  @media (max-width: 768px) {
-    .site-name { width: 100% !important; text-align: center !important; float: none !important; }
-    .description { display: none !important; }
-    .desktop-header-right { display: none !important; }
-    nav { justify-content: center !important; }
-    #header { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; z-index: 9999 !important; background: var(--bg-color) !important; }
-    body { padding-top: 100px !important; }
-    .mobile-theme-wrapper { top: 50% !important; transform: translateY(-50%) !important; }
-  }
-  @media (min-width: 769px) {
-    .mobile-theme-wrapper { display: none !important; }
-  }
-</style>
-
-<!-- 纯内联 JS 控制逻辑 -->
 <script is:inline>
-  // 确保 DOM 加载完成
   document.addEventListener('DOMContentLoaded', () => {
-    // 1. 初始化模式
+    const pcOpts = document.querySelectorAll('.theme-opt');
+    const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
+    const allOpts = [...pcOpts, ...mobileOpts];
+    const mobileBtn = document.getElementById('mobile-theme-btn');
+    const mobileMenu = document.getElementById('mobile-theme-menu');
     const htmlEl = document.documentElement;
     let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
-    
+
     function applyTheme(mode) {
       if (mode === 'system') {
         const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -89,46 +72,39 @@ const isIndex = currentPath === '/';
       } else {
         htmlEl.setAttribute('data-mode', mode);
       }
+      pcOpts.forEach(opt => {
+        if (opt.dataset.mode === mode) opt.classList.add('active');
+        else opt.classList.remove('active');
+      });
+      mobileOpts.forEach(opt => {
+        if (opt.dataset.mode === mode) {
+          opt.style.color = 'var(--accent-color)';
+          opt.style.fontWeight = 'bold';
+        } else {
+          opt.style.color = 'var(--text-color)';
+          opt.style.fontWeight = 'normal';
+        }
+      });
     }
-    applyTheme(currentMode);
 
-    // 2. 绑定电脑端按钮
-    document.querySelectorAll('.theme-opt').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const mode = btn.getAttribute('data-mode');
-        localStorage.setItem('hbw-theme-pref', mode);
-        applyTheme(mode);
+    applyTheme(currentMode);
+    allOpts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        currentMode = opt.dataset.mode;
+        localStorage.setItem('hbw-theme-pref', currentMode);
+        applyTheme(currentMode);
+        if(mobileMenu) mobileMenu.style.display = 'none';
       });
     });
 
-    // 3. 绑定移动端按钮
-    const mobileBtn = document.getElementById('mobile-theme-toggle');
-    const mobileDropdown = document.getElementById('mobile-theme-dropdown');
-    
-    if (mobileBtn && mobileDropdown) {
-      // 展开/收起
+    if (mobileBtn && mobileMenu) {
       mobileBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const isHidden = mobileDropdown.style.display === 'none' || mobileDropdown.style.display === '';
-        mobileDropdown.style.display = isHidden ? 'block' : 'none';
+        mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
       });
-      
-      // 点击选项
-      document.querySelectorAll('.theme-opt-mobile').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          const mode = btn.getAttribute('data-mode');
-          localStorage.setItem('hbw-theme-pref', mode);
-          applyTheme(mode);
-          mobileDropdown.style.display = 'none'; // 选完关闭
-        });
-      });
-      
-      // 点击空白处关闭
       document.addEventListener('click', (e) => {
-        if (!mobileDropdown.contains(e.target) && !mobileBtn.contains(e.target)) {
-          mobileDropdown.style.display = 'none';
+        if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
+          mobileMenu.style.display = 'none';
         }
       });
     }
