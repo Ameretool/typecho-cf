@@ -39,9 +39,9 @@ const isIndex = currentPath === '/';
       </div>
     </div>
 
-    <!-- 🌟 移动端专属区域 (加上了强力内联定位) -->
-    <div class="mobile-theme-switcher" style="position: absolute !important; right: 15px !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 99999 !important; display: block !important; margin-left: 0 !important;">
-      <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题" style="font-size: 20px !important; background: transparent !important; border: none !important; cursor: pointer !important; padding: 0 !important; opacity: 0.8 !important;">🌓</button>
+    <!-- 🌟 移动端专属区域 (电脑端隐藏，手机端显示) -->
+    <div class="mobile-theme-switcher" style="display: none; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); z-index: 99999;">
+      <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题" style="font-size: 20px; background: transparent; border: none; cursor: pointer; padding: 0; opacity: 0.8;">🌓</button>
       
       <div id="mobile-theme-menu" class="mobile-theme-menu">
         <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
