@@ -102,12 +102,12 @@ details[open] > summary::before { transform: rotate(90deg); }
 }
 
 /* ==========================================================================
-   7. Header Layout (BootCSS Style)
+   7. Header Layout (BootCSS Optimized)
    ========================================================================== */
 
-/* --- General Header Styles --- */
+/* --- Desktop General Header Styles --- */
 #header {
-  padding: 20px 0 0 0;
+  padding: 25px 0 0 0; /* 增加顶部间距，不那么挤 */
   border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-color);
 }
@@ -115,7 +115,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .header-container {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end; /* 底部对齐，让右侧按钮和导航在同一线 */
+  align-items: flex-end; 
   position: relative;
 }
 
@@ -128,24 +128,24 @@ details[open] > summary::before { transform: rotate(90deg); }
 .nav-row {
   display: flex;
   align-items: center;
-  gap: 30px; /* Logo 和导航之间的间距 */
+  gap: 35px; /* 拉开 Logo 区和 导航 区的距离 */
 }
 
 .site-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px; /* 拉开图标和文字的间距 */
   text-decoration: none;
   color: var(--text-color);
 }
 
 .site-logo img {
-  max-height: 36px !important; /* 控制 Logo 图标大小 */
+  max-height: 34px !important; /* 稍微缩小一点图标 */
   width: auto !important;
 }
 
 .site-title {
-  font-size: 1.4em;
+  font-size: 1.3em;
   font-weight: 600;
 }
 
@@ -176,8 +176,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 /* --- Second Row: Description --- */
 .description {
-  margin: 10px 0 0 0 !important;
-  font-size: 13px !important; /* 小字体 */
+  margin: 12px 0 15px 0 !important; /* 增加底部间距 */
+  font-size: 13px !important; 
   color: var(--text-color) !important;
   opacity: 0.6 !important;
   line-height: 1.5;
@@ -188,7 +188,7 @@ details[open] > summary::before { transform: rotate(90deg); }
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  margin-bottom: 15px; /* 微调高度，对齐左侧导航 */
+  margin-bottom: 18px; /* 对齐左侧 */
 }
 
 #search {
@@ -226,58 +226,87 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 
 /* ================================
- * Mobile Layout (<=768px)
+ * Mobile Layout (<=768px) - BootCSS Style
  * ================================ */
 @media (max-width: 768px) {
-  /* 隐藏电脑端元素 */
+  /* 隐藏电脑端多余元素 */
   .desktop-search-box, .description { 
     display: none !important; 
   }
 
-  /* 手机端头部吸顶 */
+  /* 移动端头部吸顶，去边框 */
   #header {
     position: fixed !important;
     top: 0 !important; left: 0 !important; width: 100% !important;
     z-index: 99999 !important;
-    padding: 10px 0 !important;
+    padding: 12px 0 0 0 !important; /* 稍微增加顶部空隙 */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border-bottom: none !important; /* 去掉底边线 */
   }
-  body { padding-top: 60px !important; }
+  body { padding-top: 85px !important; } /* 增加页面下推高度 */
 
   .header-container {
+    display: flex;
     flex-direction: column;
     align-items: center;
   }
 
+  /* 第一行：左侧 Logo，右侧球 */
+  .header-left {
+    width: 100%;
+    flex-direction: row; /* 改为横向排列 */
+    justify-content: center; /* 居中 */
+    align-items: center;
+    position: relative; /* 为右侧球做定位 */
+  }
+
   .nav-row {
-    flex-direction: column;
-    gap: 15px;
+    flex-direction: column; /* 内部变成上下结构（Logo行、导航行） */
+    gap: 10px;
     width: 100%;
   }
 
-  /* 手机端导航居中 */
-  #nav-menu {
+  .site-logo {
     justify-content: center;
     width: 100%;
-    gap: 10px;
+  }
+
+  /* 缩小移动端 Logo 和 文字 */
+  .site-logo img { max-height: 26px !important; }
+  .site-title { font-size: 1.1em; }
+
+  /* 导航菜单放在第二行居中 */
+  #nav-menu {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    gap: 15px;
+    border-bottom: 1px solid var(--border-color); /* 给导航行加底边线 */
+    padding-bottom: 8px;
   }
   #nav-menu a {
     font-size: 14px;
+    padding: 4px 0 !important;
+  }
+  #nav-menu a:hover, #nav-menu a.current {
+    border-bottom: none !important; /* 移动端不需要下划线 */
+    color: var(--accent-color) !important;
   }
 
   /* 移动端主题按钮绝对定位在右上角 */
   .mobile-theme-switcher {
     display: block !important;
     position: absolute !important;
-    right: 10px !important;
-    top: 20px !important;
+    right: 15px !important;
+    top: 0 !important; /* 与 Logo 同高 */
     z-index: 1000 !important;
   }
   .mobile-theme-toggle {
     background: transparent;
     border: none;
-    font-size: 20px;
+    font-size: 22px;
     cursor: pointer;
+    opacity: 0.8;
   }
 
   /* 移动端下拉菜单 */
@@ -310,4 +339,5 @@ details[open] > summary::before { transform: rotate(90deg); }
     display: none !important; 
   }
 }
+
 
