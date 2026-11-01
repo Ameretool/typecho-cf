@@ -46,10 +46,14 @@ const totalComments = commentPagination.totalComments;
           </form>
         </div>
         <div class="col-mb-12">
+          <!-- 👇 与首页保持一致的导航菜单 -->
           <nav id="nav-menu" class="clearfix" role="navigation" style="position: relative; min-height: 32px;">
+            <!-- 首页链接 -->
             <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-            {pages.map((p) => (
-              <a href={p.permalink} title={p.title}>{p.title}</a>
+
+            <!-- 动态渲染后台创建的独立页面，并在前端过滤掉"归档"和"标签" -->
+            {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
             ))}
 
             <!-- 👇 电脑端：平铺三个按钮 -->
@@ -293,19 +297,6 @@ const totalComments = commentPagination.totalComments;
                 </ul>
               </section>
             )}
-            {/* 归档 隐藏 */}
-          {/*
-            {sidebarData.archives && sidebarData.archives.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">归档</h3>
-                <ul class="widget-list">
-                  {sidebarData.archives.map((archive) => (
-                    <li><a href={archive.permalink}>{archive.date}</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          */}
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
@@ -334,13 +325,13 @@ const totalComments = commentPagination.totalComments;
     由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
 
-  <!-- 👇 暗黑模式控制脚本 -->
+  <!-- 👇 暗黑模式控制脚本（与首页一致，完整版） -->
   <script is:inline>
     document.addEventListener('DOMContentLoaded', () => {
       const pcOpts = document.querySelectorAll('.theme-opt');
       const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
       const allOpts = [...pcOpts, ...mobileOpts];
-      
+
       const mobileBtn = document.getElementById('mobile-theme-btn');
       const mobileMenu = document.getElementById('mobile-theme-menu');
 
@@ -354,15 +345,102 @@ const totalComments = commentPagination.totalComments;
         } else {
           htmlEl.setAttribute('data-mode', mode);
         }
-        
+
+        // 电脑端按钮高亮
         pcOpts.forEach(opt => {
-          if(opt.dataset.mode === mode) {
-            opt.style.background = 'transparent'; 
-            opt.style.borderColor = 'var(--accent-color)'; 
-            opt.style.color = 'var(--accent-color)'; 
+          if (opt.dataset.mode === mode) {
+            opt.style.background = 'transparent';
+            opt.style.borderColor = 'var(--accent-color)';
+            opt.style.color = 'var(--accent-color)';
             opt.style.boxShadow = 'inset 0 0 0 1px var(--accent-color)';
             opt.style.opacity = '1';
           } else {
             opt.style.background = 'transparent';
             opt.style.borderColor = 'var(--border-color)';
-            opt.style.color = 'var(--
+            opt.style.color = 'var(--text-color)';
+            opt.style.boxShadow = 'none';
+            opt.style.opacity = '0.6';
+          }
+        });
+
+        // 手机端菜单高亮
+        mobileOpts.forEach(opt => {
+          if (opt.dataset.mode === mode) {
+            opt.style.color = 'var(--accent-color)';
+            opt.style.fontWeight = 'bold';
+            opt.style.background = 'var(--bg-color)';
+          } else {
+            opt.style.color = 'var(--text-color)';
+            opt.style.fontWeight = 'normal';
+            opt.style.background = 'transparent';
+          }
+        });
+      }
+
+      applyTheme(currentMode);
+
+      // 所有按钮绑定点击事件
+      allOpts.forEach(opt => {
+        opt.addEventListener('click', () => {
+          currentMode = opt.dataset.mode;
+          localStorage.setItem('hbw-theme-pref', currentMode);
+          applyTheme(currentMode);
+          if (mobileMenu) mobileMenu.style.display = 'none';
+        });
+      });
+
+      // 手机端下拉菜单显示/隐藏
+      if (mobileBtn && mobileMenu) {
+        mobileBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
+        });
+        document.addEventListener('click', (e) => {
+          if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
+            mobileMenu.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
+
+  <style>
+    /* 🌟 电脑端平铺按钮容器：靠右绝对定位 */
+    .desktop-theme-switcher {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      position: absolute;
+      right: 0;
+      top: 0;
+    }
+    /* 🌟 手机端下拉容器：默认隐藏 */
+    .mobile-theme-switcher { display: none; }
+
+    /* 🌟 电脑端按钮基础样式 */
+    .theme-opt {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      line-height: 1.2;
+      opacity: 0.6;
+    }
+
+    /* 🌟 移动端响应式调整 */
+    @media (max-width: 767px) {
+      .desktop-theme-switcher { display: none; }
+      .mobile-theme-switcher {
+        display: block;
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+      /* 给悬浮按钮留出空间，防止遮挡手机导航 */
+      #nav-menu { padding-bottom: 40px; }
+    }
+  </style>
+</Base>
