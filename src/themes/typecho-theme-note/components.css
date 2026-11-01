@@ -135,3 +135,100 @@ a:hover, a:active { color: var(--text-color); }
     margin: 0 !important;
   }
 }
+
+/* ============================================================
+ * 5. 文章配图与 LivePhoto 网格布局 (从 Index.astro 抽离)
+ * ============================================================ */
+.card-overlay {
+  z-index: 1;
+}
+
+.post-author a,
+.post-meta-details a,
+.post-meta-details span a {
+  position: relative;
+  z-index: 3;
+}
+
+/* 单图：普通图片自适应 */
+.post-images[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+.post-images[data-count="1"] img {
+  max-height: 300px;
+  width: auto;
+  margin: 0 auto;
+}
+
+/* 单图 LivePhoto：容器自适应 */
+.post-images[data-count="1"] .live-photo {
+  width: 100%;
+  height: auto;
+}
+
+/* 多图正方形网格 */
+.post-images[data-count="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+.post-images[data-count="2"] img,
+.post-images[data-count="2"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-images[data-count="3"],
+.post-images[data-count="4"],
+.post-images[data-count="5"],
+.post-images[data-count="6"],
+.post-images[data-count="7"],
+.post-images[data-count="8"],
+.post-images[data-count="9"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+.post-images[data-count="3"] img,
+.post-images[data-count="3"] .live-photo,
+.post-images[data-count="4"] img,
+.post-images[data-count="4"] .live-photo,
+.post-images[data-count="5"] img,
+.post-images[data-count="5"] .live-photo,
+.post-images[data-count="6"] img,
+.post-images[data-count="6"] .live-photo,
+.post-images[data-count="7"] img,
+.post-images[data-count="7"] .live-photo,
+.post-images[data-count="8"] img,
+.post-images[data-count="8"] .live-photo,
+.post-images[data-count="9"] img,
+.post-images[data-count="9"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 针对 4 图单独修复 */
+.post-images[data-count="4"] {
+  grid-template-columns: 1fr 1fr;
+}
+.post-images[data-count="4"] img,
+.post-images[data-count="4"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .post-images {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+  .post-excerpt {
+    padding: 0 16px 0 16px !important;
+  }
+  .post-header {
+    flex-wrap: wrap;
+  }
+}
