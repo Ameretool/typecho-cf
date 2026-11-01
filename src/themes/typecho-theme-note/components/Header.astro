@@ -1,119 +1,45 @@
----
-/**
- * 独立导航组件 Header.astro
- */
-import type { ThemeIndexProps } from '@/lib/theme-props';
+<header id="header" class="clearfix">
+    <div class="container">
+        <!-- Logo 和 简介 -->
+        <div class="site-header">
+            <h1 id="logo">
+                <a href="/"><img src="/logo.png" alt="HB" /></a> 
+                <!-- 如果你没有图片Logo，用下面这行代替上面那行 -->
+                <!-- <a href="/">HB</a> -->
+            </h1>
+            <p class="description">一个基于 Typecho CF 构建、运行在 Cloudflare 上的微型博客，记录技术踩坑、图床搭建与日常随笔，追求极简、高速。</p>
+        </div>
 
-interface Props {
-  options: ThemeIndexProps['options'];
-  urls: ThemeIndexProps['urls'];
-  pages: ThemeIndexProps['pages'];
-  currentPath: string;
-}
+        <!-- 电脑端主题切换按钮（按原代码靠右对齐） -->
+        <div class="desktop-theme-switcher">
+            <button class="theme-opt active" data-mode="light">☀️</button>
+            <button class="theme-opt" data-mode="dark">🌙</button>
+            <button class="theme-opt" data-mode="system">💻</button>
+        </div>
 
-const { options, urls, pages, currentPath } = Astro.props;
-const isIndex = currentPath === '/';
----
+        <!-- 搜索框 -->
+        <div id="search" class="site-search">
+            <form method="post" action="/search">
+                <input type="text" name="keywords" class="text" placeholder="输入关键字搜索" />
+                <button type="submit">搜索</button>
+            </form>
+        </div>
 
-<header id="header" class="site-header clearfix">
-  <div class="container">
-    <div class="row">
-      <div class="site-name col-mb-12 col-9">
-        <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-        <p class="description">{options.description}</p>
-      </div>
-      
-      <div class="site-search col-3 kit-hidden-tb">
-        <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-          <label for="s" class="sr-only">搜索关键字</label>
-          <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-          <button type="submit" class="submit">搜索</button>
-        </form>
-      </div>
-      
-      <div class="col-mb-12" style="position: relative;">
-        <nav id="nav-menu" class="clearfix" role="navigation">
-          <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-          
-          {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
-            <a href={page.permalink} title={page.title}>{page.title}</a>
-          ))}
-
-          <!-- 👇 电脑端：三个按钮靠右平铺 👇 -->
-          <div class="desktop-theme-switcher" style="position: absolute; right: 0; top: 0; display: flex; gap: 6px;">
-            <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-            <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-            <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
-          </div>
-
-          <!-- 👇 移动端：一个下拉按钮 👇 -->
-          <div class="mobile-theme-switcher" style="position: absolute; right: 0; top: 0;">
-            <button id="mobile-theme-btn" class="mobile-theme-toggle">🌓</button>
-            <div id="mobile-theme-menu" class="mobile-theme-menu" style="display: none;">
-              <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
-              <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
-              <button class="theme-opt-mobile" data-mode="system">💻 系统</button>
-            </div>
-          </div>
+        <!-- 导航菜单 -->
+        <nav id="nav-menu" class="clearfix">
+            <a href="/" class="current">首页</a>
+            <a href="/bookmarks">书签</a>
+            <a href="/about">关于</a>
         </nav>
-      </div>
+
+        <!-- 移动端主题切换按钮 -->
+        <div class="mobile-theme-switcher">
+            <button class="mobile-theme-toggle">◐</button>
+            <div class="mobile-theme-menu">
+                <button class="theme-opt-mobile" data-mode="light">浅色模式</button>
+                <button class="theme-opt-mobile" data-mode="dark">深色模式</button>
+                <button class="theme-opt-mobile" data-mode="system">跟随系统</button>
+            </div>
+        </div>
     </div>
-  </div>
 </header>
-
-<!-- 切换逻辑 JS -->
-<script is:inline>
-  document.addEventListener('DOMContentLoaded', () => {
-    const pcOpts = document.querySelectorAll('.theme-opt');
-    const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
-    const allOpts = [...pcOpts, ...mobileOpts];
-    
-    const mobileBtn = document.getElementById('mobile-theme-btn');
-    const mobileMenu = document.getElementById('mobile-theme-menu');
-    const htmlEl = document.documentElement;
-    
-    let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
-
-    function applyTheme(mode) {
-      if (mode === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
-      } else {
-        htmlEl.setAttribute('data-mode', mode);
-      }
-      
-      pcOpts.forEach(opt => {
-        if(opt.dataset.mode === mode) opt.classList.add('active');
-        else opt.classList.remove('active');
-      });
-
-      mobileOpts.forEach(opt => {
-        if(opt.dataset.mode === mode) opt.classList.add('active');
-        else opt.classList.remove('active');
-      });
-    }
-
-    applyTheme(currentMode);
-
-    allOpts.forEach(opt => {
-      opt.addEventListener('click', () => {
-        currentMode = opt.dataset.mode;
-        localStorage.setItem('hbw-theme-pref', currentMode);
-        applyTheme(currentMode);
-        if(mobileMenu) mobileMenu.style.display = 'none';
-      });
-    });
-
-    if (mobileBtn && mobileMenu) {
-      mobileBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
-      });
-      document.addEventListener('click', (e) => {
-        if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
-          mobileMenu.style.display = 'none';
-        }
-      });
-    }
-  });
-</script>
