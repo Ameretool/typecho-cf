@@ -1,5 +1,5 @@
 /* ============================================================
- * 1. 切换按钮的基础外观（极简风格）
+ * 1. 切换按钮的基础外观（去边框，极简背景）
  * ============================================================ */
 .theme-opt,
 .mobile-theme-toggle,
@@ -22,7 +22,7 @@
   opacity: 1;
 }
 
-/* 选中状态：去掉边框和灰色大方块，只留文字变色和一点点极淡的背景 */
+/* 选中状态：极淡的背景色+文字变色 */
 .theme-opt.active {
   color: var(--accent-color) !important;
   background: rgba(128, 128, 128, 0.08) !important; 
@@ -30,79 +30,43 @@
 }
 
 /* ============================================================
- * 2. 电脑端（> 768px）
+ * 2. 电脑端（> 768px）：彻底隐藏搜索框，按钮与导航对齐
  * ============================================================ */
 @media (min-width: 769px) {
-  /* 隐藏移动端专属元素 */
   .mobile-theme-switcher,
   .mobile-theme-menu {
     display: none !important;
   }
 
-  /* 让头部定位作为参考 */
+  /* 让头部成为定位参考系 */
   #header {
     position: relative !important;
   }
 
-  /* 隐藏电脑端乱七八糟的“所有书签”等多余描述 */
-  #header .description { display: none !important; }
-
-  /* 👇 核心1：搜索框与主题按钮同行 👇 */
+  /* 👇 彻底隐藏电脑端的搜索框及多余元素 👇 */
   #header .site-search,
   #header .search-form,
-  #header form {
-    position: absolute !important;
-    right: 0 !important;
-    /* 👇 调整这里：让右侧整体与左侧导航栏(首页等)完美齐平 👇 */
-    top: 18px !important; 
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: 16px !important; /* 搜索框和主题按钮的间距 */
-    z-index: 1000 !important;
+  #header form,
+  #header .description { 
+    display: none !important; 
   }
 
-  /* 👇 核心2：搜索框变成纯放大镜小图标 👇 */
-  #header .site-search input,
-  #header .search-form input,
-  #header form input[type="text"] {
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 50% !important; /* 变成圆形 */
-    background-color: transparent !important;
-    color: transparent !important; 
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-  }
-
-  /* 点击时搜索框横向展开 */
-  #header .site-search input:focus,
-  #header .search-form input:focus,
-  #header form input[type="text"]:focus {
-    width: 180px !important;
-    border-radius: 20px !important;
-    color: var(--text-color) !important;
-    padding: 0 12px !important;
-    cursor: text !important;
-    background-position: calc(100% - 10px) center !important;
-  }
-
-  /* 电脑端三个按钮平铺 */
+  /* 👇 核心：右侧主题按钮绝对靠右对齐 👇 */
   .desktop-theme-switcher {
     display: flex !important;
     align-items: center !important;
-    gap: 4px !important;
-    position: static !important; 
+    gap: 8px !important;
+    position: absolute !important;
+    right: 0 !important;
+    /* 👇 调整这里：让按钮和左侧“首页”导航栏在同一水平线 👇 */
+    /* 如果偏高，改大这个数值；如果偏低，改小这个数值 */
+    top: 70px !important; 
+    z-index: 1000 !important;
   }
 }
 
 /* ============================================================
- * 3. 移动端（<= 768px）
+ * 3. 移动端（<= 768px）：隐藏大字，按钮与导航同排靠右
  * ============================================================ */
 @media (max-width: 768px) {
   .desktop-theme-switcher { display: none !important; }
@@ -121,26 +85,22 @@
     border-bottom: 1px solid var(--border-color) !important;
   }
 
-  /* 重新调整页面顶部的留白 */
-  body { padding-top: 65px !important; }
+  body { padding-top: 60px !important; }
 
-  /* 👇 核心3：隐藏移动端搜索框和中间巨大的"HB"大字 👇 */
-  #header .description,
+  /* 👇 隐藏移动端的大字“HB”和搜索框、简介 👇 */
+  #header .site-name,
   #header .site-search,
   #header .search-form,
   #header form,
-  #header .site-name { 
+  #header .description { 
     display: none !important;
   }
 
-  /* 重新梳理顶部容器：让元素可以在同一行 */
   #header .container {
     position: relative !important;
-    display: flex !important;
-    align-items: center !important;
   }
 
-  /* 导航菜单居中平铺 */
+  /* 导航菜单居中 */
   #nav-menu {
     display: flex !important;
     justify-content: center !important;
@@ -158,17 +118,17 @@
     padding: 0 12px !important;
   }
 
-  /* 👇 核心4：把暗黑模式球球放在导航栏同一行的最右侧 👇 */
+  /* 移动端下拉按钮定位到右侧，与导航栏平行 */
   .mobile-theme-switcher {
     display: block !important;
     position: absolute !important;
     right: 10px !important;
     top: 50% !important;
-    transform: translateY(-50%) !important; /* 垂直居中于导航栏 */
+    transform: translateY(-50%) !important;
     z-index: 1000 !important;
   }
 
-  /* 移动端下拉菜单 */
+  /* 下拉菜单 */
   .mobile-theme-menu {
     position: absolute !important;
     top: 100% !important;
@@ -186,7 +146,7 @@
     display: block !important;
   }
 
-  /* 移动端下拉菜单变图标 */
+  /* 下拉图标化 */
   .theme-opt-mobile {
     font-size: 0 !important; 
     padding: 10px 15px !important;
