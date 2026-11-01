@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件二：components.css - 文章内容、表格、代码块、折叠面板
+   文件二：components.css - 文章内容、表格、代码块、折叠面板、导航栏
    ========================================================================== */
 
 /* ============================================================
@@ -23,32 +23,78 @@
 .page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
 
 /* ============================================================
- * 2. 表格样式（修复撑破页面 + 斑马线）
+ * 2. 表格样式（电脑端完美修复版：圆角、边界清晰、自动换行）
  * ============================================================ */
 table {
-  border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important;
-  /* 👇 核心修复：增加宽度限制，防止撑破整个网页 */
-  max-width: 100% !important; 
-  box-sizing: border-box !important;
-  margin-bottom: 16px !important; border: none !important;
-  box-shadow: 0 0 0 2px var(--table-border) !important; border-radius: 6px !important;
-  font-size: 15px !important; 
-  /* 让表格内部可以横向滑动 */
-  display: block !important; 
-  overflow-x: auto !important; 
-  -webkit-overflow-scrolling: touch;
+  width: 100% !important;
+  max-width: 100% !important;
+  border-collapse: separate !important; /* 使用 separate 才能实现圆角 */
+  border-spacing: 0 !important;
+  margin-bottom: 24px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--table-border) !important; /* 外边框 */
+  overflow: hidden !important; /* 配合圆角裁剪内部 */
+  font-size: 15px !important;
+  display: table !important; /* 恢复默认表格属性，防止撑破 */
+  word-break: break-word !important; /* 允许长内容换行 */
 }
-table th, table td {
-  padding: 12px 16px !important; border: none !important; vertical-align: middle !important;
-  box-shadow: 1px 0 0 0 var(--table-border), 0 1px 0 0 var(--table-border) !important;
-  white-space: nowrap !important; word-break: keep-all !important;
+
+/* 表头 */
+table th {
+  background-color: var(--table-header-bg) !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  color: var(--text-color) !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--table-border) !important;
 }
-table tr > *:last-child { box-shadow: 0 1px 0 0 var(--table-border) !important; }
-table th { background-color: var(--table-header-bg) !important; font-weight: 600 !important; text-align: center !important; color: var(--code-text) !important; }
-table tbody tr:hover { background-color: var(--table-hover-bg) !important; }
-table td code { background-color: var(--table-hover-bg) !important; color: var(--code-text) !important; padding: 3px 6px !important; border-radius: 6px !important; font-family: monospace !important; font-size: 85% !important; }
-table tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.025) !important; }
-html[data-mode="dark"] table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03) !important; }
+
+/* 单元格 */
+table td {
+  padding: 12px 16px !important;
+  vertical-align: middle !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--table-border) !important;
+  text-align: left !important; /* 内容默认左对齐更好看 */
+}
+
+/* 移除最后一行底边框，避免和外边框重叠 */
+table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* 单元格之间的垂直分隔线 */
+table th:not(:last-child),
+table td:not(:last-child) {
+  border-right: 1px solid var(--table-border) !important;
+}
+
+/* 斑马线：浅色模式 */
+table tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* 斑马线：深色模式 */
+html[data-mode="dark"] table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* 鼠标悬浮高亮 */
+table tbody tr:hover {
+  background-color: var(--table-hover-bg) !important;
+  transition: background-color 0.2s ease;
+}
+
+/* 单元格内的代码块（比如你截图里的 pnpm run...） */
+table td code {
+  background-color: var(--code-bg) !important;
+  color: var(--accent-color) !important; /* 修改为强调色，更显眼 */
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 13px !important;
+  word-break: break-all !important;
+}
 
 /* ============================================================
  * 3. 代码块与格式
@@ -218,4 +264,3 @@ details[open] > summary::before { transform: rotate(90deg); }
   .post-excerpt { padding: 0 16px 0 16px !important; }
   .post-header { flex-wrap: wrap; }
 }
-     
