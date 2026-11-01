@@ -28,50 +28,22 @@
   opacity: 1 !important;
 }
 
-/* 下拉菜单容器：默认隐藏，由 JS 控制显示 */
-.mobile-theme-menu {
-  position: absolute !important;
-  top: 100% !important;
-  right: 0 !important;
-  margin-top: 8px !important;
-  background: var(--card-bg) !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  z-index: 1000 !important;
-  min-width: 60px !important;
-  display: none;
-}
-
-.mobile-theme-menu.open {
-  display: block !important;
-}
-
-.theme-opt-mobile {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
-  text-align: left;
-  background: transparent;
-  border: none;
-  color: var(--text-color);
-  cursor: pointer;
-}
-
 /* ============================================================
- * 3. 电脑端（> 768px）：平铺按钮，隐藏移动端
+ * 3. 电脑端（> 768px）：水平对齐搜索框，隐藏移动端
  * ============================================================ */
 @media (min-width: 769px) {
+  /* 强制与搜索框保持同一水平线 */
   .desktop-theme-switcher {
     display: flex !important;
     position: absolute !important;
     right: 0 !important;
-    top: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important; /* 垂直居中 */
     gap: 8px !important;
     align-items: center !important;
+    z-index: 1000 !important;
   }
 
-  /* 电脑端彻底隐藏移动端按钮和下拉菜单 */
   .mobile-theme-switcher,
   .mobile-theme-menu {
     display: none !important;
@@ -82,7 +54,6 @@
  * 4. 移动端（<= 768px）：固定吸顶 + 下拉图标
  * ============================================================ */
 @media (max-width: 768px) {
-  /* 隐藏电脑端按钮，显示移动端按钮 */
   .desktop-theme-switcher { display: none !important; }
 
   .mobile-theme-switcher {
@@ -90,6 +61,24 @@
     position: absolute !important;
     right: 10px !important;
     top: 20px !important;
+  }
+
+  /* 下拉菜单容器 */
+  .mobile-theme-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    margin-top: 8px !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    z-index: 1000 !important;
+    min-width: 60px !important;
+    display: none;
+  }
+  .mobile-theme-menu.open {
+    display: block !important;
   }
 
   /* 强制头部固定在顶部 */
@@ -140,9 +129,9 @@
     padding: 0 12px !important;
   }
 
-  /* 👇 下拉菜单去文字、只留大图标 👇 */
+  /* 下拉菜单去文字、只留大图标 */
   .theme-opt-mobile {
-    font-size: 0 !important;        /* 隐藏文字 */
+    font-size: 0 !important; 
     padding: 10px 15px !important;
     text-align: center !important;
     display: block !important;
