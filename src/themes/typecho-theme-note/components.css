@@ -28,18 +28,17 @@
 table {
   width: 100% !important;
   max-width: 100% !important;
-  border-collapse: separate !important; /* 使用 separate 才能实现圆角 */
+  border-collapse: separate !important;
   border-spacing: 0 !important;
   margin-bottom: 24px !important;
   border-radius: 8px !important;
-  border: 1px solid var(--table-border) !important; /* 外边框 */
-  overflow: hidden !important; /* 配合圆角裁剪内部 */
+  border: 1px solid var(--table-border) !important;
+  overflow: hidden !important;
   font-size: 15px !important;
-  display: table !important; /* 恢复默认表格属性，防止撑破 */
-  word-break: break-word !important; /* 允许长内容换行 */
+  display: table !important;
+  word-break: break-word !important;
 }
 
-/* 表头 */
 table th {
   background-color: var(--table-header-bg) !important;
   font-weight: 600 !important;
@@ -49,46 +48,39 @@ table th {
   border-bottom: 1px solid var(--table-border) !important;
 }
 
-/* 单元格 */
 table td {
   padding: 12px 16px !important;
   vertical-align: middle !important;
   color: var(--text-color) !important;
   border-bottom: 1px solid var(--table-border) !important;
-  text-align: left !important; /* 内容默认左对齐更好看 */
+  text-align: left !important;
 }
 
-/* 移除最后一行底边框，避免和外边框重叠 */
 table tbody tr:last-child td {
   border-bottom: none !important;
 }
 
-/* 单元格之间的垂直分隔线 */
 table th:not(:last-child),
 table td:not(:last-child) {
   border-right: 1px solid var(--table-border) !important;
 }
 
-/* 斑马线：浅色模式 */
 table tbody tr:nth-child(even) {
   background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
-/* 斑马线：深色模式 */
 html[data-mode="dark"] table tbody tr:nth-child(even) {
   background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
-/* 鼠标悬浮高亮 */
 table tbody tr:hover {
   background-color: var(--table-hover-bg) !important;
   transition: background-color 0.2s ease;
 }
 
-/* 单元格内的代码块（比如你截图里的 pnpm run...） */
 table td code {
   background-color: var(--code-bg) !important;
-  color: var(--accent-color) !important; /* 修改为强调色，更显眼 */
+  color: var(--accent-color) !important;
   padding: 4px 8px !important;
   border-radius: 4px !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
@@ -131,9 +123,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .details-orange::before { background-color: #ea580c !important; } .details-orange > summary::before { color: #ea580c !important; } .details-orange { background-color: rgba(234, 88, 12, 0.05) !important; } html[data-mode="dark"] .details-orange::before { background-color: #fb923c !important; } html[data-mode="dark"] .details-orange > summary::before { color: #fb923c !important; }
 
 /* ============================================================
- * 5. 独立导航栏 (Header) 及 亮暗模式切换 (由原 Index 抽离)
+ * 5. 独立导航栏 (Header) 及 亮暗模式切换
  * ============================================================ */
-
 #header {
   position: relative;
   padding: 20px 0;
@@ -167,7 +158,6 @@ details[open] > summary::before { transform: rotate(90deg); }
   transition: all 0.3s ease;
 }
 
-/* 电脑端选中状态 (配合 Header.astro 中的 JS 脚本) */
 .theme-opt.active {
   background: transparent;
   border-color: var(--accent-color);
@@ -178,7 +168,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 /* --- 移动端主题切换下拉 --- */
 .mobile-theme-switcher {
-  display: none; /* 默认隐藏，在移动端媒体查询中显示 */
+  display: none;
 }
 
 .mobile-theme-toggle {
@@ -219,7 +209,6 @@ details[open] > summary::before { transform: rotate(90deg); }
   transition: all 0.2s ease;
 }
 
-/* 移动端选中状态 */
 .theme-opt-mobile.active {
   color: var(--accent-color);
   font-weight: bold;
@@ -230,7 +219,7 @@ details[open] > summary::before { transform: rotate(90deg); }
  * 6. 导航栏及文章的移动端响应式 (屏幕 < 768px)
  * ============================================================ */
 @media (max-width: 767px) {
-  /* 🌟 1. 移动端固定吸顶 */
+  /* 1. 移动端固定吸顶 */
   .site-header {
     position: sticky !important;
     top: 0 !important;
@@ -242,51 +231,61 @@ details[open] > summary::before { transform: rotate(90deg); }
     width: 100% !important;
   }
 
-  /* 🌟 2. 强制导航栏占满整行并设置为相对定位（作为绝对定位的参考） */
+  /* 调整站点标题在手机端的上下边距 */
+  .site-header .site-name {
+    margin-bottom: 10px;
+  }
+
+  /* 2. 强制导航栏横向滑动 */
   #nav-menu {
     display: flex !important;
-    flex-wrap: nowrap !important; /* 禁止换行，防止拥挤 */
+    flex-wrap: nowrap !important;
     align-items: center !important;
     position: relative !important;
     width: 100% !important;
-    padding-bottom: 0 !important;
-    padding-right: 45px !important; /* 右侧留出空间给主题按钮 */
+    padding: 0 45px 0 0 !important; /* 右侧留出 45px 给按钮 */
     box-sizing: border-box !important;
-    
-    /* 允许链接过多时横向滑动 */
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* 隐藏滚动条 (Firefox) */
+    scrollbar-width: none;
   }
   
-  /* 隐藏横向滑动的滚动条 (Chrome/Safari) */
   #nav-menu::-webkit-scrollbar {
     display: none !important;
   }
 
-  /* 导航链接的间距，防止粘在一起 */
+  /* 导航链接的间距 */
   #nav-menu > a {
-    flex-shrink: 0 !important; /* 防止被挤压 */
-    margin-right: 12px !important;
+    flex-shrink: 0 !important;
+    margin-right: 15px !important;
+    padding: 6px 0 !important;
   }
 
-  /* 🌟 3. 修复移动端主题切换按钮位置 */
+  /* 3. 修复移动端主题切换按钮位置 */
   .desktop-theme-switcher {
     display: none !important;
   }
   
   .mobile-theme-switcher {
-    display: block !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
     position: absolute !important;
-    right: 0 !important; /* 绝对定死在右侧 */
+    right: 0 !important;
     top: 50% !important;
-    transform: translateY(-50%) !important; /* 垂直居中 */
+    transform: translateY(-50%) !important;
     z-index: 10 !important;
-    background: var(--card-bg) !important; /* 防止与滑动的文字重叠 */
-    padding-left: 8px !important;
+    background: var(--card-bg) !important;
+    padding-left: 10px !important;
   }
 
-  /* 顺便把首页的图片网格移动端调整也放这里统一管理 */
+  .mobile-theme-toggle {
+    padding: 6px 10px !important;
+    border-radius: 20px !important;
+    font-size: 16px !important;
+  }
+
+  /* 首页图片网格适配 */
   .post-images { max-width: 100% !important; margin-left: 0 !important; }
   .post-excerpt { padding: 0 16px 0 16px !important; }
   .post-header { flex-wrap: wrap; }
