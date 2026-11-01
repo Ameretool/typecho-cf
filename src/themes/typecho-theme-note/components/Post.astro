@@ -1,11 +1,9 @@
 ---
 /**
  * Default theme — Post detail component
- *
- * Renders a single blog post with comments section.
- * Equivalent to the original archives/[cid].astro template section.
  */
 import Base from '@/layouts/Base.astro';
+import Header from './Header.astro'; // 👈 引入抽离的头部组件
 import CommentList from './CommentList.astro';
 import type { ThemePostProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
@@ -19,7 +17,6 @@ const {
 } = Astro.props;
 
 const isIndex = currentPath === '/';
-
 const totalComments = commentPagination.totalComments;
 ---
 <Base
@@ -31,54 +28,8 @@ const totalComments = commentPagination.totalComments;
   pluginCtx={pluginCtx}
   pageContext={{ hasComments: commentOptions.allowComment, pageType: 'post' }}
 >
-  <header id="header" class="clearfix">
-    <div class="container">
-      <div class="row">
-        <div class="site-name col-mb-12 col-9">
-          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-          <p class="description">{options.description}</p>
-        </div>
-        <div class="site-search col-3 kit-hidden-tb">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
-        </div>
-        <div class="col-mb-12">
-          <!-- 👇 与首页保持一致的导航菜单 -->
-          <nav id="nav-menu" class="clearfix" role="navigation" style="position: relative; min-height: 32px;">
-            <!-- 首页链接 -->
-            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-
-            <!-- 动态渲染后台创建的独立页面，并在前端过滤掉"归档"和"标签" -->
-            {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
-              <a href={page.permalink} title={page.title}>{page.title}</a>
-            ))}
-
-            <!-- 👇 电脑端：平铺三个按钮 -->
-            <div class="desktop-theme-switcher">
-              <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-              <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-              <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
-            </div>
-
-            <!-- 👇 移动端：下拉菜单 -->
-            <div class="mobile-theme-switcher">
-              <!-- 手机端的触发按钮 -->
-              <button id="mobile-theme-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; line-height: 1.2;">🌓</button>
-              <!-- 手机端的下拉面板 -->
-              <div id="mobile-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 110px; overflow: hidden;">
-                <button class="theme-opt-mobile" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">☀️ 亮色</button>
-                <button class="theme-opt-mobile" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">🌙 暗色</button>
-                <button class="theme-opt-mobile" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">💻 系统</button>
-              </div>
-            </div>
-          </nav>
-        </div>
-      </div>
-    </div>
-  </header>
+  <!-- 👇 直接使用抽离的 Header 组件 👇 -->
+  <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
 
   <div id="body">
     <div class="container">
@@ -138,9 +89,7 @@ const totalComments = commentPagination.totalComments;
             <div id="comments">
               {totalComments > 0 && (
                 <>
-                  <h3>
-                    {totalComments === 1 ? '仅有一条评论' : `已有 ${totalComments} 条评论`}
-                  </h3>
+                  <h3>{totalComments === 1 ? '仅有一条评论' : `已有 ${totalComments} 条评论`}</h3>
                   <ol class="comment-list">
                     <CommentList
                       comments={comments}
@@ -171,7 +120,6 @@ const totalComments = commentPagination.totalComments;
                   </div>
                   <h3 id="response">添加新评论</h3>
 
-                  {/* 登录状态与登出按钮 */}
                   {isLoggedIn && (
                     <p>
                       登录身份: <a href={urls.profileUrl}>{user?.screenName || user?.name}</a>.
@@ -212,9 +160,7 @@ const totalComments = commentPagination.totalComments;
                       <label for="textarea" class="required">内容</label>
                       <textarea rows="8" cols="50" name="text" id="textarea" class="textarea" required></textarea>
                     </p>
-                    <p>
-                      <button type="submit" class="submit">提交评论</button>
-                    </p>
+                    <p><button type="submit" class="submit">提交评论</button></p>
                   </form>
                 </div>
                 <script is:inline>
@@ -252,16 +198,8 @@ const totalComments = commentPagination.totalComments;
           )}
 
           <ul class="post-near">
-            <li>
-              上一篇: {prevPost ? (
-                <a href={prevPost.permalink}>{prevPost.title}</a>
-              ) : '没有了'}
-            </li>
-            <li>
-              下一篇: {nextPost ? (
-                <a href={nextPost.permalink}>{nextPost.title}</a>
-              ) : '没有了'}
-            </li>
+            <li>上一篇: {prevPost ? (<a href={prevPost.permalink}>{prevPost.title}</a>) : '没有了'}</li>
+            <li>下一篇: {nextPost ? (<a href={nextPost.permalink}>{nextPost.title}</a>) : '没有了'}</li>
           </ul>
         </div>
 
@@ -302,9 +240,7 @@ const totalComments = commentPagination.totalComments;
               <ul class="widget-list">
                 {isLoggedIn ? (
                   <>
-                    <li class="last">
-                      <a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a>
-                    </li>
+                    <li class="last"><a href={urls.adminUrl}>进入后台 ({user?.screenName || user?.name})</a></li>
                     <li><form method="post" action={urls.logoutUrl} class="logout-form"><button type="submit">退出</button></form></li>
                   </>
                 ) : (
@@ -324,123 +260,4 @@ const totalComments = commentPagination.totalComments;
     &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
     由 <a href="#">Typecho CF</a> 强力驱动.
   </footer>
-
-  <!-- 👇 暗黑模式控制脚本（与首页一致，完整版） -->
-  <script is:inline>
-    document.addEventListener('DOMContentLoaded', () => {
-      const pcOpts = document.querySelectorAll('.theme-opt');
-      const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
-      const allOpts = [...pcOpts, ...mobileOpts];
-
-      const mobileBtn = document.getElementById('mobile-theme-btn');
-      const mobileMenu = document.getElementById('mobile-theme-menu');
-
-      const htmlEl = document.documentElement;
-      let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
-
-      function applyTheme(mode) {
-        if (mode === 'system') {
-          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
-        } else {
-          htmlEl.setAttribute('data-mode', mode);
-        }
-
-        // 电脑端按钮高亮
-        pcOpts.forEach(opt => {
-          if (opt.dataset.mode === mode) {
-            opt.style.background = 'transparent';
-            opt.style.borderColor = 'var(--accent-color)';
-            opt.style.color = 'var(--accent-color)';
-            opt.style.boxShadow = 'inset 0 0 0 1px var(--accent-color)';
-            opt.style.opacity = '1';
-          } else {
-            opt.style.background = 'transparent';
-            opt.style.borderColor = 'var(--border-color)';
-            opt.style.color = 'var(--text-color)';
-            opt.style.boxShadow = 'none';
-            opt.style.opacity = '0.6';
-          }
-        });
-
-        // 手机端菜单高亮
-        mobileOpts.forEach(opt => {
-          if (opt.dataset.mode === mode) {
-            opt.style.color = 'var(--accent-color)';
-            opt.style.fontWeight = 'bold';
-            opt.style.background = 'var(--bg-color)';
-          } else {
-            opt.style.color = 'var(--text-color)';
-            opt.style.fontWeight = 'normal';
-            opt.style.background = 'transparent';
-          }
-        });
-      }
-
-      applyTheme(currentMode);
-
-      // 所有按钮绑定点击事件
-      allOpts.forEach(opt => {
-        opt.addEventListener('click', () => {
-          currentMode = opt.dataset.mode;
-          localStorage.setItem('hbw-theme-pref', currentMode);
-          applyTheme(currentMode);
-          if (mobileMenu) mobileMenu.style.display = 'none';
-        });
-      });
-
-      // 手机端下拉菜单显示/隐藏
-      if (mobileBtn && mobileMenu) {
-        mobileBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
-        });
-        document.addEventListener('click', (e) => {
-          if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
-            mobileMenu.style.display = 'none';
-          }
-        });
-      }
-    });
-  </script>
-
-  <style>
-    /* 🌟 电脑端平铺按钮容器：靠右绝对定位 */
-    .desktop-theme-switcher {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      position: absolute;
-      right: 0;
-      top: 0;
-    }
-    /* 🌟 手机端下拉容器：默认隐藏 */
-    .mobile-theme-switcher { display: none; }
-
-    /* 🌟 电脑端按钮基础样式 */
-    .theme-opt {
-      background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 4px 8px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.3s ease;
-      line-height: 1.2;
-      opacity: 0.6;
-    }
-
-    /* 🌟 移动端响应式调整 */
-    @media (max-width: 767px) {
-      .desktop-theme-switcher { display: none; }
-      .mobile-theme-switcher {
-        display: block;
-        position: absolute;
-        right: 0;
-        top: 0;
-      }
-      /* 给悬浮按钮留出空间，防止遮挡手机导航 */
-      #nav-menu { padding-bottom: 40px; }
-    }
-  </style>
 </Base>
