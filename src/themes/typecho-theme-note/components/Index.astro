@@ -3,9 +3,9 @@
  * Default theme — Index (home page) component
  */
 import Base from '@/layouts/Base.astro';
-import Header from './Header.astro'; // 👈 引入抽离的头部组件
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
+// ⚠️ 新增：导入截取100字的函数
 import { renderContentExcerpt } from '@/lib/markdown';
 
 type Props = ThemeIndexProps;
@@ -18,18 +18,24 @@ const {
 const isIndex = currentPath === '/';
 
 const processPost = (post: any) => {
+  // ⚠️ 唯一修改的地方：强制获取正文，截取100字，并清洗原有链接防止重复
   let excerpt = '';
   const rawContent = post.content || post.excerpt || '';
   
   if (rawContent) {
+    // 先清除掉系统可能自带的“阅读更多”标签，防止重复
     const cleanContent = rawContent
       .replace(/<p class="more">.*?<\/p>/g, '')
       .replace(/- 阅读剩余部分 -/g, '')
       .trim();
+      
+    // 强制截取前100个纯文本字符，并附加阅读更多
     excerpt = renderContentExcerpt(cleanContent, '- 阅读剩余部分 -', post.permalink);
   }
 
   const mediaItems: { type: 'image' | 'livephoto'; html: string; src?: string; videoSrc?: string }[] = [];
+
+  // 1. 提取 LivePhoto 容器（未改动）
   const livePhotoRegex = /<div[^>]*class="[^"]*live-photo[^"]*"[^>]*>[\s\S]*?<\/div>/g;
   let match;
   while ((match = livePhotoRegex.exec(excerpt)) !== null) {
@@ -48,6 +54,7 @@ const processPost = (post: any) => {
   }
   excerpt = excerpt.replace(livePhotoRegex, '');
 
+  // 2. 提取普通图片（未改动）
   const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/g;
   while ((match = imgRegex.exec(excerpt)) !== null) {
     mediaItems.push({
@@ -59,6 +66,7 @@ const processPost = (post: any) => {
   }
   excerpt = excerpt.replace(/<img[^>]+>/g, '').trim();
 
+  // 3. 头像处理（未改动）
   const avatarUrl = post.author?.avatarUrl || '/img/avatar.svg';
 
   return { ...post, excerpt, mediaItems, avatarUrl };
@@ -66,6 +74,7 @@ const processPost = (post: any) => {
 
 const processedPosts = posts.map(processPost);
 
+// 辅助：生成正方形 LivePhoto 容器（多图使用，未改动）
 function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   return `<div style="position:relative; width:100%; padding-top:100%;border-radius: 0px;" class="live-photo">
     <img class="live-photo-img" src="${src}" alt="Live Photo" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;border-radius: 0px;">
@@ -77,9 +86,33 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 ---
 
 <Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
-  
-  <!-- 👇 直接使用 Header 组件，替换了原本一大堆重复代码 👇 -->
-  <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
+  <!-- 👇 加了 site-header-sticky 类名 👇 -->
+  <header id="header" class="clearfix site-header-sticky">
+    <div class="container">
+      <div class="row">
+        <div class="site-name col-mb-12 col-9">
+          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+          <p class="description">{options.description}</p>
+        </div>
+        <div class="site-search col-3 kit-hidden-tb">
+          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+            <label for="s" class="sr-only">搜索关键字</label>
+            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+            <button type="submit" class="submit">搜索</button>
+          </form>
+        </div>
+        <div class="col-mb-12">
+          <nav id="nav-menu" class="clearfix" role="navigation">
+            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+        {/* <a href={urls.siteUrl + '/archive/'}>归档</a> */}  
+            {pages.map((page) => (
+              <a href={page.permalink} title={page.title}>{page.title}</a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
 
   <div id="body">
     <div class="container">
@@ -140,9 +173,9 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                         >
                           {post.commentsNum === 0 ? '评论' : `${post.commentsNum} 条评论`}
                         </a>
-                        {post.status === 'private' && (
-                          <span class="meta-tags">私密</span>
-                        )}
+		{post.status === 'private' && (
+		<span class="meta-tags">私密</span>
+		)}
                       </div>
                     </div>
                   </div>
@@ -162,6 +195,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                     >
                       {post.mediaItems.map((item) => {
                         if (item.type === 'image') {
+                          // 普通图片
                           return (
                             <img
                               src={item.src}
@@ -172,9 +206,12 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                             />
                           );
                         } else {
+                          // LivePhoto
                           if (post.mediaItems.length === 1) {
+                            // 单图：直接使用原始容器（保持原比例）
                             return <div set:html={item.html} style="width: 100%;" />;
                           } else {
+                            // 多图：使用正方形容器（padding-top:100%）
                             const squareHtml = buildSquareLivePhoto(item.src!, item.videoSrc);
                             return <div set:html={squareHtml} style="width: 100%; height: 100%;" />;
                           }
@@ -228,6 +265,19 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
                   </ul>
                 </section>
               )}
+             {/*  隐藏 归档 */}
+              {/*
+             {sidebarData.archives && sidebarData.archives.length > 0 && (
+                <section class="widget">
+                  <h3 class="widget-title">归档</h3>
+                  <ul class="widget-list">
+                    {sidebarData.archives.map((archive) => (
+                      <li><a href={urls.siteUrl + '/archive/'}>{archive.date}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            */}
               <section class="widget">
                 <h3 class="widget-title">其它</h3>
                 <ul class="widget-list">
@@ -258,3 +308,89 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
   </footer>
 </Base>
 
+<style>
+.card-overlay {
+  z-index: 1;
+}
+.post-author a,
+.post-meta-details a,
+.post-meta-details span a {
+  position: relative;
+  z-index: 3;
+}
+
+/* 单图：普通图片自适应 */
+.post-images[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+.post-images[data-count="1"] img {
+  max-height: 300px;
+  width: auto;
+  margin: 0 auto;
+}
+/* 单图 LivePhoto：容器自适应 */
+.post-images[data-count="1"] .live-photo {
+  width: 100%;
+  height: auto;
+}
+
+/* 多图正方形网格 */
+.post-images[data-count="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+.post-images[data-count="2"] img,
+.post-images[data-count="2"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-images[data-count="3"],
+.post-images[data-count="5"],
+.post-images[data-count="6"],
+.post-images[data-count="7"],
+.post-images[data-count="8"],
+.post-images[data-count="9"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+.post-images[data-count="3"] img,
+.post-images[data-count="3"] .live-photo,
+.post-images[data-count="5"] img,
+.post-images[data-count="5"] .live-photo,
+.post-images[data-count="6"] img,
+.post-images[data-count="6"] .live-photo,
+.post-images[data-count="7"] img,
+.post-images[data-count="7"] .live-photo,
+.post-images[data-count="8"] img,
+.post-images[data-count="8"] .live-photo,
+.post-images[data-count="9"] img,
+.post-images[data-count="9"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-images[data-count="4"] {
+  grid-template-columns: 1fr 1fr;
+}
+.post-images[data-count="4"] img,
+.post-images[data-count="4"] .live-photo {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .post-images {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+  .post-excerpt {
+    padding: 0 16px 0 16px !important;
+  }
+  .post-header {
+    flex-wrap: wrap;
+  }
+}
+</style>
