@@ -6,7 +6,13 @@
   "authorUrl": "https://typecho.org/",
   "version": "1.0.0",
   "stylesheet": "style.css",
-  "stylesheets": ["normalize.css", "grid.css"],
+  "stylesheets": [
+    "normalize.css",
+    "grid.css",
+    "variables.css",
+    "components.css",
+    "sidebar.css"
+  ],
   "homepage": "https://github.com/eslizn/typecho-cf",
   "license": "GPL-2.0",
   "tags": ["note", "diary", "typecho"],
