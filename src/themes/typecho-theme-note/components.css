@@ -215,78 +215,96 @@ details[open] > summary::before { transform: rotate(90deg); }
   background: var(--bg-color);
 }
 
-/* ============================================================
- * 6. 导航栏及文章的移动端响应式 (屏幕 < 768px)
- * ============================================================ */
 @media (max-width: 767px) {
-  /* 1. 移动端固定吸顶 */
-  .site-header {
+  /* 1. 让头部整体吸顶并占满全宽 */
+  #header.site-header {
     position: sticky !important;
     top: 0 !important;
-    z-index: 999 !important;
-    background: var(--card-bg) !important;
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    padding: 10px 0 !important;
+    z-index: 99999 !important;
+    background: var(--bg-color) !important; /* 改用全局背景色，防止视差透底 */
     width: 100% !important;
+    margin: 0 !important;
+    padding: 10px 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+    box-sizing: border-box !important;
   }
 
-  /* 调整站点标题在手机端的上下边距 */
-  .site-header .site-name {
-    margin-bottom: 10px;
-  }
-
-  /* 2. 强制导航栏横向滑动 */
+  /* 2. 强制导航容器相对定位，并加大右侧给按钮留出绝对空间 */
   #nav-menu {
     display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
+    justify-content: flex-start !important;
     position: relative !important;
     width: 100% !important;
-    padding: 0 45px 0 0 !important; /* 右侧留出 45px 给按钮 */
-    box-sizing: border-box !important;
+    height: auto !important;
+    min-height: 40px !important;
+    
+    /* 关键：清空所有旧边距，并强行在右侧撑开 60px 的保护区 */
+    margin: 0 !important;
+    padding: 0 60px 0 0 !important; 
+    
     overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    overflow-y: hidden !important;
+    box-sizing: border-box !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
   }
   
+  /* 彻底隐藏滑动条 */
   #nav-menu::-webkit-scrollbar {
     display: none !important;
   }
 
-  /* 导航链接的间距 */
+  /* 3. 强制每个链接都是块级并且横向排列，不允许换行 */
   #nav-menu > a {
+    display: flex !important;
     flex-shrink: 0 !important;
-    margin-right: 15px !important;
-    padding: 6px 0 !important;
+    align-items: center !important;
+    margin: 0 12px 0 0 !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    background: transparent !important;
   }
 
-  /* 3. 修复移动端主题切换按钮位置 */
+  /* 4. 彻底拔掉电脑端按钮 */
   .desktop-theme-switcher {
     display: none !important;
   }
   
+  /* 5. 手机端按钮：绝对定死在右侧，且清空所有框 */
   .mobile-theme-switcher {
     display: flex !important;
-    align-items: center;
-    justify-content: flex-end;
     position: absolute !important;
     right: 0 !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
-    z-index: 10 !important;
+    z-index: 100 !important;
+    background: var(--bg-color) !important; /* 用纯背景色盖住后面的字 */
+    padding: 0 0 0 8px !important;
+    margin: 0 !important;
+  }
+
+  /* 6. 干掉按钮身上自带的难看的边框和背景 */
+  #mobile-theme-btn, .mobile-theme-toggle {
+    background: transparent !important;
+    border: none !important; /* 如果原来的圆角框框是 border，这里直接干掉 */
+    box-shadow: none !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    font-size: 18px !important;
+  }
+
+  /* 下拉菜单保持正常 */
+  .mobile-theme-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    margin-top: 8px !important;
     background: var(--card-bg) !important;
-    padding-left: 10px !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
   }
-
-  .mobile-theme-toggle {
-    padding: 6px 10px !important;
-    border-radius: 20px !important;
-    font-size: 16px !important;
-  }
-
-  /* 首页图片网格适配 */
-  .post-images { max-width: 100% !important; margin-left: 0 !important; }
-  .post-excerpt { padding: 0 16px 0 16px !important; }
-  .post-header { flex-wrap: wrap; }
 }
