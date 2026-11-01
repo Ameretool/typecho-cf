@@ -1,0 +1,53 @@
+/* ==========================================================================
+   文件三：sidebar.css - 评论区、侧边栏、页脚、辅助类
+   ========================================================================== */
+
+/* ============================================================
+ * 1. 评论列表
+ * ============================================================ */
+#comments { padding-top: 15px; }
+.comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
+.comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
+.comment-list li.comment-level-odd { background: var(--card-bg); }
+.comment-list li.comment-level-even { background: var(--bg-color); }
+.comment-list li.comment-by-author { background: var(--card-bg); }
+.comment-list li .comment-reply { text-align: right; font-size: .92857em; }
+.comment-meta a { color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.comment-author { display: block; margin-bottom: 3px; color: var(--text-color); }
+.comment-author .avatar { float: left; margin-right: 10px; }
+.comment-author cite { font-weight: bold; font-style: normal; }
+.comment-children { margin: 0 -14px; padding: 0; }
+#comments > .comment-list > li > .comment-children > .comment-list > li { margin-left: 20px; border: 0px; padding: 14px 14px 0px 14px; }
+#comments .comment-list .comment-list .comment-list .comment-body { margin-left: 0; border: 0px; padding: 14px 14px 0px 14px; }
+
+.comment-list .respond { margin-top: 15px; border-top: 1px solid var(--border-color); }
+.respond .cancel-comment-reply { float: right; margin-top: 15px; font-size: .92857em; }
+#comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
+#comment-form .required:after { content: " *"; color: #C00; }
+
+/* ============================================================
+ * 2. 侧边栏与页脚
+ * ============================================================ */
+#secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
+.widget { margin-bottom: 30px; }
+.widget-list { list-style: none; padding: 0; }
+.widget-list li { margin: 5px 0; line-height: 1.6; }
+.widget-list li ul { margin-left: 15px; }
+#secondary .widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
+#secondary .widget-list li { margin: 6px 0 !important; line-height: 1.8 !important; }
+#secondary .widget-list a { color: var(--accent-color) !important; }
+#secondary .widget-list a:hover { color: var(--text-color) !important; }
+
+@media (min-width: 992px) {
+  #secondary { border-left: 1px solid var(--border-color); padding-left: 24px; }
+}
+
+#footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
+
+/* ============================================================
+ * 3. 辅助类
+ * ============================================================ */
+.hidden { display: none !important; visibility: hidden; }
+.sr-only { border: 0; height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
+.sr-only.focusable:active, .sr-only.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
+.invisible { visibility: hidden; }
