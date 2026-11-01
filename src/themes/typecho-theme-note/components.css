@@ -230,33 +230,60 @@ details[open] > summary::before { transform: rotate(90deg); }
  * 6. 导航栏及文章的移动端响应式 (屏幕 < 768px)
  * ============================================================ */
 @media (max-width: 767px) {
-  /* 隐藏电脑端按钮 */
-  .desktop-theme-switcher {
-    display: none;
-  }
-  
-  /* 显示移动端下拉按钮 */
-  .mobile-theme-switcher {
-    display: block;
-    position: absolute;
-    right: 0;
-    top: 0;
-  }
-
-  /* 给悬浮按钮留出底部空间 */
-  #nav-menu {
-    padding-bottom: 40px;
-  }
-
-  /* 🌟 移动端固定吸顶 (你的核心需求) */
+  /* 🌟 1. 移动端固定吸顶 */
   .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 999;
-    background: var(--card-bg); /* 确保滑动时背景不透明 */
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+    background: var(--card-bg) !important;
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    padding: 10px 0;
+    padding: 10px 0 !important;
+    width: 100% !important;
+  }
+
+  /* 🌟 2. 强制导航栏占满整行并设置为相对定位（作为绝对定位的参考） */
+  #nav-menu {
+    display: flex !important;
+    flex-wrap: nowrap !important; /* 禁止换行，防止拥挤 */
+    align-items: center !important;
+    position: relative !important;
+    width: 100% !important;
+    padding-bottom: 0 !important;
+    padding-right: 45px !important; /* 右侧留出空间给主题按钮 */
+    box-sizing: border-box !important;
+    
+    /* 允许链接过多时横向滑动 */
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* 隐藏滚动条 (Firefox) */
+  }
+  
+  /* 隐藏横向滑动的滚动条 (Chrome/Safari) */
+  #nav-menu::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* 导航链接的间距，防止粘在一起 */
+  #nav-menu > a {
+    flex-shrink: 0 !important; /* 防止被挤压 */
+    margin-right: 12px !important;
+  }
+
+  /* 🌟 3. 修复移动端主题切换按钮位置 */
+  .desktop-theme-switcher {
+    display: none !important;
+  }
+  
+  .mobile-theme-switcher {
+    display: block !important;
+    position: absolute !important;
+    right: 0 !important; /* 绝对定死在右侧 */
+    top: 50% !important;
+    transform: translateY(-50%) !important; /* 垂直居中 */
+    z-index: 10 !important;
+    background: var(--card-bg) !important; /* 防止与滑动的文字重叠 */
+    padding-left: 8px !important;
   }
 
   /* 顺便把首页的图片网格移动端调整也放这里统一管理 */
