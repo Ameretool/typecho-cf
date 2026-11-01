@@ -1,6 +1,8 @@
-/* ============================================================
- * 1. 切换按钮的基础外观（去边框，极简背景）
- * ============================================================ */
+/* ==========================================================================
+   最终重构版：完美对齐、极简去边框
+   ========================================================================== */
+
+/* 1. 基础按钮外观（彻底去边框） */
 .theme-opt,
 .mobile-theme-toggle,
 .theme-opt-mobile {
@@ -16,62 +18,55 @@
   opacity: 0.6;
   transition: all 0.2s;
 }
-
-.theme-opt:hover,
-.mobile-theme-toggle:hover {
-  opacity: 1;
-}
-
-/* 选中状态：极淡的背景色+文字变色 */
+.theme-opt:hover, .mobile-theme-toggle:hover { opacity: 1; }
 .theme-opt.active {
   color: var(--accent-color) !important;
   background: rgba(128, 128, 128, 0.08) !important; 
   opacity: 1 !important;
 }
 
-/* ============================================================
- * 2. 电脑端（> 768px）：彻底隐藏搜索框，按钮与导航对齐
- * ============================================================ */
+/* ==========================================================================
+   2. 电脑端 (> 768px)：隐藏搜索，导航与按钮完美同行
+   ========================================================================== */
 @media (min-width: 769px) {
-  .mobile-theme-switcher,
-  .mobile-theme-menu {
-    display: none !important;
-  }
-
-  /* 让头部成为定位参考系 */
-  #header {
-    position: relative !important;
-  }
-
-  /* 👇 彻底隐藏电脑端的搜索框及多余元素 👇 */
-  #header .site-search,
-  #header .search-form,
-  #header form,
-  #header .description { 
+  .mobile-theme-switcher, .mobile-theme-menu { display: none !important; }
+  
+  /* 隐藏右上角多余的搜索框（连带那个奇怪的半截图标一起消失） */
+  #header .site-search, #header .search-form, #header form { 
     display: none !important; 
   }
 
-  /* 👇 核心：右侧主题按钮绝对靠右对齐 👇 */
+  /* 让头部变成 Flex 容器，左右两端对齐 */
+  #header .container {
+    display: flex !important;
+    align-items: flex-end !important; /* 底部对齐：让按钮和导航栏在同一底线 */
+    justify-content: space-between !important; 
+    position: relative !important;
+  }
+
+  /* 左侧区块（Logo、简介、导航）保持不变，让它自然撑开 */
+  #header .site-info, 
+  #header .site-header {
+    flex: 1 !important;
+  }
+
+  /* 右侧主题按钮：自动靠右，紧贴导航栏底部 */
   .desktop-theme-switcher {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    position: absolute !important;
-    right: 0 !important;
-    /* 👇 调整这里：让按钮和左侧“首页”导航栏在同一水平线 👇 */
-    /* 如果偏高，改大这个数值；如果偏低，改小这个数值 */
-    top: 70px !important; 
-    z-index: 1000 !important;
+    margin-bottom: 8px !important; /* 微调高度，与左侧导航栏完美水平 */
+    position: static !important;
   }
 }
 
-/* ============================================================
- * 3. 移动端（<= 768px）：隐藏大字，按钮与导航同排靠右
- * ============================================================ */
+/* ==========================================================================
+   3. 移动端 (<= 768px)：干掉大字和搜索，按钮与导航同排
+   ========================================================================== */
 @media (max-width: 768px) {
   .desktop-theme-switcher { display: none !important; }
 
-  /* 顶部吸顶 */
+  /* 吸顶头部 */
   #header {
     position: fixed !important;
     top: 0 !important;
@@ -84,10 +79,9 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
     border-bottom: 1px solid var(--border-color) !important;
   }
-
   body { padding-top: 60px !important; }
 
-  /* 👇 隐藏移动端的大字“HB”和搜索框、简介 👇 */
+  /* 👇 彻底隐藏移动端的：大字、搜索、描述 👇 */
   #header .site-name,
   #header .site-search,
   #header .search-form,
@@ -96,16 +90,18 @@
     display: none !important;
   }
 
+  /* 导航 + 主题按钮的 Flex 同排布局 */
   #header .container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important; /* 导航居中 */
     position: relative !important;
   }
 
-  /* 导航菜单居中 */
   #nav-menu {
     display: flex !important;
     justify-content: center !important;
     flex-wrap: wrap !important;
-    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
   }
@@ -118,17 +114,17 @@
     padding: 0 12px !important;
   }
 
-  /* 移动端下拉按钮定位到右侧，与导航栏平行 */
+  /* 👇 核心：把主题按钮死死固定在导航栏那一行的最右侧 👇 */
   .mobile-theme-switcher {
     display: block !important;
     position: absolute !important;
     right: 10px !important;
     top: 50% !important;
-    transform: translateY(-50%) !important;
+    transform: translateY(-50%) !important; 
     z-index: 1000 !important;
   }
 
-  /* 下拉菜单 */
+  /* 移动端下拉菜单 */
   .mobile-theme-menu {
     position: absolute !important;
     top: 100% !important;
@@ -142,9 +138,7 @@
     min-width: 60px !important;
     display: none;
   }
-  .mobile-theme-menu.open {
-    display: block !important;
-  }
+  .mobile-theme-menu.open { display: block !important; }
 
   /* 下拉图标化 */
   .theme-opt-mobile {
@@ -156,7 +150,6 @@
     background: transparent !important;
     border: none !important;
   }
-
   .theme-opt-mobile::before {
     display: inline-block;
     font-size: 20px !important;
