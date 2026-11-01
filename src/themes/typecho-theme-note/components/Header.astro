@@ -5,55 +5,68 @@ const { options, urls, pages, currentPath } = Astro.props;
 const isIndex = currentPath === '/';
 ---
 
-<header id="header" class="clearfix">
-  <div class="container header-container">
+<!-- 整个头部容器：强制电脑端左右分布，移动端居中 -->
+<header id="header" class="clearfix" style="padding-top: 20px; border-bottom: 1px solid var(--border-color); background-color: var(--bg-color);">
+  
+  <!-- 用 Flex 强制让左右两端拉开 -->
+  <div class="container" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; position: relative;">
     
-    <!-- 左侧大盒子：包含图标、文字和导航 -->
-    <div class="header-left">
-      <!-- 第一行：图标 + 标题 + 导航 -->
-      <div class="nav-row">
-        <a href={urls.siteUrl + '/'} class="site-logo">
-          <img src="/logo.png" alt={options.title} />
-          <span class="site-title">{options.title}</span>
-        </a>
-        
-        <nav id="nav-menu" class="clearfix" role="navigation">
-          <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-          {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
-            <a href={page.permalink} title={page.title}>{page.title}</a>
-          ))}
-        </nav>
-      </div>
+    <!-- ================= 左侧区域 ================= -->
+    <!-- 强制宽度自适应，绝对不撑满 -->
+    <div class="header-left" style="display: flex; flex-direction: row; align-items: center; gap: 20px; flex-wrap: wrap; width: auto !important; max-width: 80%;">
       
-      <!-- 第二行：描述 (仅电脑端显示) -->
-      <p class="description">{options.description}</p>
+      <!-- 1. Logo 部分 -->
+      <a href={urls.siteUrl + '/'} style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-color);">
+        <!-- 强制限制图标大小 -->
+        <img src="/logo.png" alt={options.title} style="max-height: 32px !important; width: auto !important; display: block;" />
+        <!-- 文字部分，在手机上会被隐藏 -->
+        <span class="site-title" style="font-size: 1.3em; font-weight: 600;">{options.title}</span>
+      </a>
+
+      <!-- 2. 导航菜单 -->
+      <!-- 强制取消浮动、去除边框、横向排列 -->
+      <nav id="nav-menu" class="clearfix" role="navigation" style="display: flex !important; flex-direction: row !important; gap: 20px !important; margin: 0 !important; padding: 0 !important; float: none !important; border: none !important; align-items: center;">
+        <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'} style="float: none !important; margin: 0 !important; padding: 0 !important; border: none !important; height: auto !important; line-height: 1.5 !important; font-size: 15px; color: var(--text-color) !important; opacity: 0.7;">首页</a>
+        {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
+          <a href={page.permalink} title={page.title} style="float: none !important; margin: 0 !important; padding: 0 !important; border: none !important; height: auto !important; line-height: 1.5 !important; font-size: 15px; color: var(--text-color) !important; opacity: 0.7;">{page.title}</a>
+        ))}
+      </nav>
     </div>
 
-    <!-- 右侧电脑端区域：搜索 + 主题按钮 -->
-    <div class="header-right desktop-search-box">
-      <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-        <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
+    <!-- ================= 右侧区域 ================= -->
+    
+    <!-- 电脑端：搜索 + 按钮 -->
+    <div class="desktop-search-box" style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+      <form method="post" action={urls.siteUrl + '/'} role="search" style="margin: 0; padding: 0;">
+        <input type="text" name="s" placeholder="输入关键字搜索" style="width: 240px; height: 32px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); font-size: 13px; box-sizing: border-box;" />
       </form>
-      <div class="desktop-theme-switcher">
-        <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
-        <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
-        <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="theme-opt" data-mode="light" title="亮色模式" style="background: transparent; border: none; cursor: pointer; font-size: 18px; opacity: 0.6;">☀️</button>
+        <button class="theme-opt" data-mode="dark" title="暗色模式" style="background: transparent; border: none; cursor: pointer; font-size: 18px; opacity: 0.6;">🌙</button>
+        <button class="theme-opt" data-mode="system" title="跟随系统" style="background: transparent; border: none; cursor: pointer; font-size: 18px; opacity: 0.6;">💻</button>
       </div>
     </div>
 
-    <!-- 移动端专属主题按钮：绝对定位在最右边 -->
-    <div class="mobile-theme-switcher">
-      <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题">🌓</button>
-      <div id="mobile-theme-menu" class="mobile-theme-menu">
-        <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
-        <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
-        <button class="theme-opt-mobile" data-mode="system">💻 系统</button>
+    <!-- 移动端：仅保留切换球，强制绝对定位在右侧 -->
+    <div class="mobile-theme-switcher" style="display: none; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); z-index: 1000;">
+      <button id="mobile-theme-btn" class="mobile-theme-toggle" title="切换主题" style="background: transparent; border: none; cursor: pointer; font-size: 22px; opacity: 0.8;">🌓</button>
+      <div id="mobile-theme-menu" class="mobile-theme-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 10px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 110px; padding: 4px 0;">
+        <button class="theme-opt-mobile" data-mode="light" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">☀️ 亮色</button>
+        <button class="theme-opt-mobile" data-mode="dark" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">🌙 暗色</button>
+        <button class="theme-opt-mobile" data-mode="system" style="display: block; width: 100%; padding: 10px 16px; text-align: left; background: transparent; border: none; color: var(--text-color); cursor: pointer; font-size: 14px;">💻 系统</button>
       </div>
     </div>
 
   </div>
+  
+  <!-- 电脑端显示描述，移动端隐藏 -->
+  <div class="container" style="margin-top: 10px;">
+    <p class="description" style="font-size: 13px; color: var(--text-color); opacity: 0.6; margin: 0; padding-bottom: 10px;">{options.description}</p>
+  </div>
+
 </header>
 
+<!-- 下面是 JS 脚本，保持原样不动 -->
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
     const pcOpts = document.querySelectorAll('.theme-opt');
@@ -72,8 +85,8 @@ const isIndex = currentPath === '/';
         htmlEl.setAttribute('data-mode', mode);
       }
       pcOpts.forEach(opt => {
-        if (opt.dataset.mode === mode) opt.classList.add('active');
-        else opt.classList.remove('active');
+        if (opt.dataset.mode === mode) opt.style.opacity = '1';
+        else opt.style.opacity = '0.4';
       });
       mobileOpts.forEach(opt => {
         if (opt.dataset.mode === mode) {
@@ -109,3 +122,37 @@ const isIndex = currentPath === '/';
     }
   });
 </script>
+
+<style>
+/* 纯控制响应式的隐藏与显示 */
+@media (max-width: 768px) {
+  /* 手机端隐藏文字和搜索框 */
+  .site-title { display: none !important; }
+  .desktop-search-box { display: none !important; }
+  .description { display: none !important; }
+  
+  /* 手机端让头部固定 */
+  #header {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; width: 100% !important;
+    z-index: 99999 !important;
+    padding: 12px 0 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+  body { padding-top: 60px !important; }
+  
+  /* 手机端：容器靠左 */
+  .container { justify-content: flex-start !important; padding: 0 15px !important; }
+  
+  /* 显示手机端按钮 */
+  .mobile-theme-switcher { display: block !important; }
+  
+  /* 手机端导航字小一点 */
+  #nav-menu a { font-size: 14px !important; }
+}
+
+@media (min-width: 769px) {
+  /* 电脑端隐藏手机端按钮 */
+  .mobile-theme-switcher { display: none !important; }
+}
+</style>
