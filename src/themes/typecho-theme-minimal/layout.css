@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件二：layout.css - 完整最终版 (PC搜索修复 + 移动吸顶隐藏)
+   文件二：layout.css - 完整最终版 (PC搜索修复 + 移动吸顶 + 同行对齐)
    ========================================================================== */
 
 /* ============================================================
@@ -38,7 +38,7 @@
 
 
 /* ============================================================
- * 2. 移动端专属布局 (强制固定吸顶 + 隐藏搜索和描述)
+ * 2. 移动端专属布局 (强制固定吸顶 + 隐藏搜索 + 同行对齐)
  * ============================================================ */
 @media (max-width: 768px) {
   /* 头部固定吸顶 */
@@ -76,14 +76,23 @@
     padding: 0 !important;
   }
 
-  /* 导航菜单居中、平铺换行 */
+  /* 👇 核心修复：把导航和按钮包裹容器变成 Flex 布局 👇 */
+  #header .col-mb-12 > div {
+    position: relative !important;
+    display: flex !important;
+    justify-content: center !important; /* 导航整体居中 */
+    align-items: center !important;     /* 垂直居中 */
+    margin-top: 15px !important;
+  }
+
+  /* 导航菜单 */
   #nav-menu {
-    margin: 15px 0 0 0 !important;
+    margin: 0 !important;
     display: flex !important;
     justify-content: center !important;
     flex-wrap: wrap !important;
     width: 100% !important;
-    padding: 0 10px !important;
+    padding: 0 40px !important; /* 右侧留出 40px 空间，防止被按钮遮挡 */
   }
   #nav-menu a {
     float: none !important;
@@ -95,12 +104,15 @@
     padding: 0 15px !important;
   }
 
-  /* 夜间模式按钮定位到右上角 */
+  /* 👇 夜间模式按钮：绝对定位在这一行的最右侧并居中 👇 */
   #header .theme-settings-wrapper {
     position: absolute !important;
     right: 15px !important;
-    top: 22px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important; /* 向上偏移自身一半高度，实现完美居中 */
     margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
   }
 }
 
