@@ -1,0 +1,122 @@
+/* ==========================================================================
+   文件一：variables.css - 颜色变量、全局基础、头部导航、移动端固定吸顶
+   ========================================================================== */
+
+/* ============================================================
+ * 1. 颜色变量配置中心
+ * ============================================================ */
+:root {
+  --bg-color:     #f6f8fa;   
+  --text-color:   #24292f;   
+  --card-bg:      #eaeef2;   
+  --border-color: #d0d7de;   
+  --accent-color: #0969da;   
+
+  --table-border:    #d0d7de; 
+  --table-header-bg: #f6f8fa; 
+  --table-hover-bg:  #eaeef2; 
+  --code-bg:         #f6f8fa; 
+  --code-text:       #24292f; 
+}
+
+html[data-mode="dark"] {
+  --bg-color:     #22272e;   
+  --text-color:   #adbac7;   
+  --card-bg:      #2d333b;   
+  --border-color: #444c56;   
+  --accent-color: #539bf5;   
+
+  --table-border:    #444c56; 
+  --table-header-bg: #2d333b; 
+  --table-hover-bg:  #373e47; 
+  --code-bg:         #2d333b; 
+  --code-text:       #adbac7; 
+}
+
+/* ============================================================
+ * 2. 全局基础样式
+ * ============================================================ */
+html { -webkit-tap-highlight-color: transparent; }
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: "Droid Serif", Georgia, "Times New Roman", "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", "WenQuanYi Micro Hei","Microsoft Yahei", serif;
+  font-size: 100%;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+a { color: var(--accent-color); text-decoration: none; }
+a:hover, a:active { color: var(--text-color); }
+
+/* ============================================================
+ * 3. 头部导航与搜索
+ * ============================================================ */
+#header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
+#logo { color: var(--text-color); font-size: 2.5em; }
+#logo img { max-height: 64px; }
+.description { margin: .5em 0 0; color: var(--text-color); opacity: 0.6; font-style: italic; }
+
+#nav-menu { margin: 25px 0 0; padding: 0; }
+#nav-menu a {
+  display: block; margin-right: -1px; padding: 0 20px;
+  border: 1px solid var(--border-color); border-bottom: none;
+  height: 32px; line-height: 32px; color: var(--text-color);
+  background: var(--bg-color); float: left;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+#nav-menu a:hover { background: var(--card-bg); color: var(--accent-color); }
+#nav-menu a.current { background: var(--card-bg); color: var(--accent-color); font-weight: 700; border-color: var(--accent-color); }
+
+#search { position: relative; margin-top: 15px; }
+#search input { padding-right: 30px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
+#search button { position: absolute; right: 4px; top: 2px; border: none; padding: 0; width: 24px; height: 24px; background: transparent; cursor: pointer; font-size: 0; color: transparent; }
+#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.6; }
+
+/* ============================================================
+ * 4. 移动端响应式 (固定吸顶 + 隐藏搜索)
+ * ============================================================ */
+@media (max-width: 768px) {
+  /* 头部固定吸顶 */
+  #header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    background: var(--bg-color) !important;
+    padding: 10px 0 !important;
+    margin-bottom: 0 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+
+  /* 留出头部高度，防止遮挡内容 */
+  body { padding-top: 120px !important; }
+
+  /* Logo 居中，隐藏描述 */
+  #header .site-name { text-align: center !important; width: 100% !important; padding-left: 0 !important; }
+  #logo { font-size: 2em !important; }
+  .description { display: none !important; }
+  
+  /* 隐藏搜索框 */
+  #search, .site-search { display: none !important; }
+
+  /* 导航菜单居中平铺 */
+  #nav-menu {
+    margin: 15px 0 0 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    padding: 0 10px !important;
+  }
+  #nav-menu a {
+    float: none !important;
+    margin: 0 4px 5px 4px !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    height: 30px !important;
+    line-height: 28px !important;
+    padding: 0 15px !important;
+  }
+  }
