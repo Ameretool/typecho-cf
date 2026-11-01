@@ -12,10 +12,23 @@ const isIndex = currentPath === '/';
 <header id="header" class="clearfix">
   <div class="container">
     <div class="row">
-      <!-- 左侧：Logo 与 简介 -->
-      <div class="site-name col-mb-12 col-9">
-        <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-        <p class="description">{options.description}</p>
+      <!-- 右侧：搜索框 + 主题按钮 同行 -->
+      <div class="col-3 kit-hidden-tb" style="display: flex; justify-content: space-between; align-items: center;">
+        <!-- 搜索框 -->
+        <div class="site-search" style="flex: 1;">
+          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+            <label for="s" class="sr-only">搜索关键字</label>
+            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+            <button type="submit" class="submit">搜索</button>
+          </form>
+        </div>
+
+        <!-- 电脑端：平铺三个按钮 -->
+        <div class="desktop-theme-switcher">
+          <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
+          <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
+          <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+        </div>
       </div>
 
       <!-- 右侧：搜索框 + 主题按钮 -->
