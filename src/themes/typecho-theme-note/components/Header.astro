@@ -10,7 +10,7 @@ const isIndex = currentPath === '/';
     
     <!-- 左侧：Logo + 标题 + 导航 + 描述 -->
     <div class="header-left">
-      <!-- 第一行：图标 + 标题 + 导航 -->
+      <!-- 导航行：图标 + 标题 + 导航菜单 -->
       <div class="nav-row">
         <a href={urls.siteUrl + '/'} class="site-logo">
           <img src="/logo.png" alt={options.title} />
@@ -25,11 +25,11 @@ const isIndex = currentPath === '/';
         </nav>
       </div>
       
-      <!-- 第二行：小字体描述（只在电脑端显示） -->
+      <!-- 电脑端专属：小字体描述 -->
       <p class="description">{options.description}</p>
     </div>
 
-    <!-- 右侧：搜索 + 主题按钮 -->
+    <!-- 右侧：电脑端搜索 + 主题按钮 -->
     <div class="header-right desktop-search-box">
       <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
         <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
