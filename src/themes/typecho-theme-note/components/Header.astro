@@ -1,0 +1,127 @@
+---
+/**
+ * 独立导航组件 Header.astro（无内联 CSS）
+ */
+import type { ThemeIndexProps } from '@/lib/theme-props';
+
+interface Props {
+  options: ThemeIndexProps['options'];
+  urls: ThemeIndexProps['urls'];
+  pages: ThemeIndexProps['pages'];
+  currentPath: string;
+}
+
+const { options, urls, pages, currentPath } = Astro.props;
+const isIndex = currentPath === '/';
+---
+
+<!-- 加入 class 方便外部 CSS 控制 -->
+<header id="header" class="site-header clearfix">
+  <div class="container">
+    <div class="row">
+      <div class="site-name col-mb-12 col-9">
+        <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
+        <p class="description">{options.description}</p>
+      </div>
+      
+      <div class="site-search col-3 kit-hidden-tb">
+        <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
+          <label for="s" class="sr-only">搜索关键字</label>
+          <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+          <button type="submit" class="submit">搜索</button>
+        </form>
+      </div>
+      
+      <div class="col-mb-12">
+        <nav id="nav-menu" class="clearfix" role="navigation">
+          <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+          
+          {pages.filter(page => page.title !== '归档' && page.title !== '标签').map((page) => (
+            <a href={page.permalink} title={page.title}>{page.title}</a>
+          ))}
+
+          <!-- 电脑端 -->
+          <div class="desktop-theme-switcher">
+            <button class="theme-opt" data-mode="light" title="亮色模式">☀️</button>
+            <button class="theme-opt" data-mode="dark" title="暗色模式">🌙</button>
+            <button class="theme-opt" data-mode="system" title="跟随系统">💻</button>
+          </div>
+
+          <!-- 移动端 -->
+          <div class="mobile-theme-switcher">
+            <button id="mobile-theme-btn" class="mobile-theme-toggle">🌓</button>
+            <div id="mobile-theme-menu" class="mobile-theme-menu" style="display: none;">
+              <button class="theme-opt-mobile" data-mode="light">☀️ 亮色</button>
+              <button class="theme-opt-mobile" data-mode="dark">🌙 暗色</button>
+              <button class="theme-opt-mobile" data-mode="system">💻 系统</button>
+            </div>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- 脚本保留，因为这是组件行为 -->
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const pcOpts = document.querySelectorAll('.theme-opt');
+    const mobileOpts = document.querySelectorAll('.theme-opt-mobile');
+    const allOpts = [...pcOpts, ...mobileOpts];
+    
+    const mobileBtn = document.getElementById('mobile-theme-btn');
+    const mobileMenu = document.getElementById('mobile-theme-menu');
+    const htmlEl = document.documentElement;
+    
+    let currentMode = localStorage.getItem('hbw-theme-pref') || 'system';
+
+    function applyTheme(mode) {
+      if (mode === 'system') {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        htmlEl.setAttribute('data-mode', isDark ? 'dark' : 'light');
+      } else {
+        htmlEl.setAttribute('data-mode', mode);
+      }
+      
+      // 注意：因为移除了内联样式，这里的逻辑依然可以直接操作 style，或者你可以在 CSS 里用 `.active` 类去控制
+      pcOpts.forEach(opt => {
+        if(opt.dataset.mode === mode) {
+          opt.classList.add('active'); // 建议改为用 class 控制样式
+        } else {
+          opt.classList.remove('active');
+        }
+      });
+
+      mobileOpts.forEach(opt => {
+        if(opt.dataset.mode === mode) {
+          opt.classList.add('active');
+        } else {
+          opt.classList.remove('active');
+        }
+      });
+    }
+
+    applyTheme(currentMode);
+
+    allOpts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        currentMode = opt.dataset.mode;
+        localStorage.setItem('hbw-theme-pref', currentMode);
+        applyTheme(currentMode);
+        if(mobileMenu) mobileMenu.style.display = 'none';
+      });
+    });
+
+    if (mobileBtn && mobileMenu) {
+      mobileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mobileMenu.style.display = mobileMenu.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', (e) => {
+        if (!mobileMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
+          mobileMenu.style.display = 'none';
+        }
+      });
+    }
+  });
+</script>
