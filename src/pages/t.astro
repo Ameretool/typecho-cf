@@ -1,0 +1,78 @@
+---
+/**
+ * 独立的微型博客页面 /m (直接引入 Header 版)
+ */
+import { createContext } from '@/lib/context';
+import { prepareIndexData } from '@/lib/page-data';
+import Base from '@/layouts/Base.astro';
+import { formatDate } from '@/lib/content';
+
+// 👇 核心：使用相对路径引入 Header 组件 👇
+import Header from '../themes/typecho-theme-note/components/Header.astro';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const { options, urls } = ctx;
+
+// 获取全站数据
+const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
+const { posts, pages, user, isLoggedIn, pluginCtx } = data;
+
+// 过滤碎碎念
+const microPosts = (posts || []).filter((post: any) => {
+  const hasCategory = post.categories?.some((c: any) => c.name === '碎碎念');
+  const hasTag = post.tags?.some((t: any) => t.name === '碎碎念' || t.name === '微博');
+  return hasCategory || hasTag;
+});
+
+const currentPath = '/m';
+---
+<Base 
+  title={`动态 - ${options.title}`} 
+  options={options} 
+  urls={urls} 
+  user={user} 
+  isLoggedIn={isLoggedIn} 
+  pluginCtx={pluginCtx}
+>
+  <!-- 👇 这里直接像首页一样使用 Header，并把 currentPath 传进去 👇 -->
+  <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
+
+  <!-- 下面是你原来的时间轴代码，保持不变 -->
+  <div id="body">
+    <div class="container" style="max-width: 640px; margin: 40px auto; padding: 0 20px;">
+      
+      <div style="text-align: center; margin-bottom: 40px; opacity: 0.6; font-size: 14px; letter-spacing: 1px;">
+        · 记录瞬间的碎碎念 ·
+      </div>
+
+      {microPosts.length === 0 ? (
+        <p style="text-align: center; opacity: 0.5; margin-top: 50px;">当前页没有动态哦~</p>
+      ) : (
+        <div class="micro-timeline">
+          {microPosts.map((post: any) => (
+            <div style="margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px dashed var(--border-color);">
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 13px; color: #8a8f9a; display: flex; align-items: center; gap: 8px;">
+                  <img src={post.author?.avatarUrl || '/img/avatar.svg'} alt="avatar" style="width: 20px; height: 20px; border-radius: 50%; opacity: 0.8;" />
+                  <span>{post.author?.screenName || post.author?.name || 'HB'}</span>
+                </div>
+                <time datetime={new Date((post.created) * 1000).toISOString()} style="font-size: 12px; color: #8a8f9a;">
+                  {formatDate(post.created, 'Y.m.d H:i', options.timezone)}
+                </time>
+              </div>
+
+              <div class="post-content" set:html={post.content || post.excerpt} style="font-size: 15px; line-height: 1.8; color: var(--text-color); word-break: break-word;"></div>
+
+              <div style="margin-top: 16px; font-size: 13px; text-align: right;">
+                <a href={`${post.permalink}#comments`} style="color: var(--accent-color); text-decoration: none; border: none;">
+                  💬 {post.commentsNum === 0 ? '去评论' : `${post.commentsNum} 条评论`}
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</Base>
