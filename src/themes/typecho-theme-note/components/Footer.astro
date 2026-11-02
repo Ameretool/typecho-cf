@@ -1,0 +1,13 @@
+---
+/**
+ * 全局页脚组件
+ */
+const { options, urls } = Astro.props;
+---
+
+<footer id="footer" role="contentinfo">
+  <div class="container">
+    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
+    由 <a href="#">Typecho CF</a> 强力驱动.
+  </div>
+</footer>
