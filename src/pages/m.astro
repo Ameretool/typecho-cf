@@ -1,0 +1,97 @@
+---
+/**
+ * 万能微型博客页面 /m (全主题自适应版)
+ */
+import { createContext } from '@/lib/context';
+import { prepareIndexData } from '@/lib/page-data';
+import Base from '@/layouts/Base.astro';
+import { formatDate } from '@/lib/content';
+// 👇 引入系统提供的主题模板虚拟模块
+import { themeTemplates } from 'virtual:theme-templates';
+
+const ctx = await createContext(Astro.locals, Astro.request);
+const { options, urls } = ctx;
+
+// 1. 获取全站数据
+const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
+const { posts, pages, user, isLoggedIn, pluginCtx } = data;
+
+// 2. 动态获取当前主题的 Header 组件（如果当前主题没导出 Header，就用默认主题的）
+const activeTheme = options.theme || 'typecho-theme-minimal';
+const templates = themeTemplates[activeTheme] ?? {};
+const defaultTemplates = themeTemplates['typecho-theme-minimal']!;
+
+// 动态捕获 Header 组件
+const HeaderComponent = templates.Header ?? defaultTemplates.Header;
+
+// 3. 过滤碎碎念
+const microPosts = (posts || []).filter((post: any) => {
+  const hasCategory = post.categories?.some((c: any) => c.name === '碎碎念');
+  const hasTag = post.tags?.some((t: any) => t.name === '碎碎念' || t.name === '微博');
+  return hasCategory || hasTag;
+});
+
+const currentPath = '/m';
+---
+<Base 
+  title={`动态 - ${options.title}`} 
+  options={options} 
+  urls={urls} 
+  user={user} 
+  isLoggedIn={isLoggedIn} 
+  pluginCtx={pluginCtx}
+>
+  <!-- 👇 核心魔法：如果有 HeaderComponent 就渲染它，如果没有就渲染一个极简兜底头部 👇 -->
+  {HeaderComponent ? (
+    <HeaderComponent options={options} urls={urls} pages={pages} currentPath={currentPath} />
+  ) : (
+    <header style="padding: 20px 0; border-bottom: 1px solid var(--border-color);">
+      <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+        <a href={urls.siteUrl} style="font-weight: bold; font-size: 1.2rem; color: var(--text-color); text-decoration: none;">
+          {options.title}
+        </a>
+        <a href={urls.siteUrl} style="color: var(--accent-color); text-decoration: none; font-size: 14px;">
+          返回首页
+        </a>
+      </div>
+    </header>
+  )}
+
+  <div id="body">
+    <div class="container" style="max-width: 640px; margin: 40px auto; padding: 0 20px;">
+      
+      <div style="text-align: center; margin-bottom: 40px; opacity: 0.6; font-size: 14px; letter-spacing: 1px;">
+        · 记录瞬间的碎碎念 ·
+      </div>
+
+      {microPosts.length === 0 ? (
+        <p style="text-align: center; opacity: 0.5; margin-top: 50px;">当前页没有动态哦~</p>
+      ) : (
+        <div class="micro-timeline">
+          {microPosts.map((post: any) => (
+            <div style="margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px dashed var(--border-color);">
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 13px; color: #8a8f9a; display: flex; align-items: center; gap: 8px;">
+                  <img src={post.author?.avatarUrl || '/img/avatar.svg'} alt="avatar" style="width: 20px; height: 20px; border-radius: 50%; opacity: 0.8;" />
+                  <span>{post.author?.screenName || post.author?.name || 'HB'}</span>
+                </div>
+                <time datetime={new Date((post.created) * 1000).toISOString()} style="font-size: 12px; color: #8a8f9a;">
+                  {formatDate(post.created, 'Y.m.d H:i', options.timezone)}
+                </time>
+              </div>
+
+              <div class="post-content" set:html={post.content} style="font-size: 15px; line-height: 1.8; color: var(--text-color); word-break: break-word;"></div>
+
+              <div style="margin-top: 16px; font-size: 13px; text-align: right;">
+                <a href={`${post.permalink}#comments`} style="color: var(--accent-color); text-decoration: none; border: none;">
+                  💬 {post.commentsNum === 0 ? '去评论' : `${post.commentsNum} 条评论`}
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</Base>
