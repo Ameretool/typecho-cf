@@ -5,6 +5,7 @@
  */
 import Base from '@/layouts/Base.astro';
 import Header from './Header.astro'; // 👈 引入抽离的头部组件
+import Footer from '../themes/typecho-theme-note/components/Footer.astro';
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
 import { renderContentExcerpt } from '@/lib/markdown';
@@ -207,7 +208,5 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
     </div>
   </div>
 
-  <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CF</a> 强力驱动.
-  </footer>
+    <Footer options={options} urls={urls} />
 </Base>
