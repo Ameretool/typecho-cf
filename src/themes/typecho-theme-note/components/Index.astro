@@ -5,7 +5,7 @@
  */
 import Base from '@/layouts/Base.astro';
 import Header from './Header.astro'; // 👈 引入抽离的头部组件
-import Footer from '../themes/typecho-theme-note/components/Footer.astro';
+import Footer from './Footer.astro'; // 👈 修改了这里，同目录下直接引入
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
 import { renderContentExcerpt } from '@/lib/markdown';
@@ -208,5 +208,5 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
     </div>
   </div>
 
-    <Footer options={options} urls={urls} />
+  <Footer options={options} urls={urls} />
 </Base>
