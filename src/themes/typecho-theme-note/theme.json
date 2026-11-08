@@ -1,0 +1,20 @@
+{
+  "id": "typecho-theme-note",
+  "name": "Typecho note",
+  "description": "经典的 Typecho 默认主题修改而来的日记向主题",
+  "author": "Link",
+  "authorUrl": "https://typecho.org/",
+  "version": "1.0.0",
+  "stylesheet": "style.css",
+  "stylesheets": [
+    "normalize.css",
+    "grid.css",
+    "variables.css",
+    "components.css",
+    "sidebar.css"
+  ],
+  "homepage": "https://github.com/eslizn/typecho-cf",
+  "license": "GPL-2.0",
+  "tags": ["note", "diary", "typecho"],
+  "screenshot": "screenshot.png"
+}
