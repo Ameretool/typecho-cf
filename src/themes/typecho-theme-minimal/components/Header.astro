@@ -9,15 +9,32 @@ type Props = {
 const { options, urls, pages, currentPath } = Astro.props;
 const isIndex = currentPath === '/';
 ---
-<header id="header" class="clearfix site-header-sticky">
-  <div class="container">
-    <div class="row">
-      <div class="site-name col-mb-12 col-9">
-        <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-        <p class="description">{options.description}</p>
-      </div>
 
-      <div class="site-search col-3 kit-hidden-tb">
+<header id="header" class="clearfix site-header-sticky">
+  <div class="container header-container">
+    
+    <!-- 左侧：Logo + 导航 -->
+    <div class="header-left">
+      <div class="nav-row">
+        <a href={urls.siteUrl + '/'} class="site-logo">
+          <img src="/logo.png" alt={options.title} onerror="this.style.display='none'" />
+          <span class="site-title">{options.title}</span>
+        </a>
+        
+        <nav id="nav-menu" class="clearfix" role="navigation">
+          <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
+          {pages.map((page) => (
+            <a class:list={[{ current: currentPath === page.permalink }]} href={page.permalink} title={page.title}>{page.title}</a>
+          ))}
+        </nav>
+      </div>
+      
+      <p class="description">{options.description}</p>
+    </div>
+
+    <!-- 右侧：搜索框 + 齿轮面板 -->
+    <div class="header-right">
+      <div class="site-search">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
           <label for="s" class="sr-only">搜索关键字</label>
           <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
@@ -25,53 +42,275 @@ const isIndex = currentPath === '/';
         </form>
       </div>
 
-      <div class="col-mb-12">
-        <!-- 这里去掉了内联 style，换上了 header-actions 类 -->
-        <div class="header-actions">
-          
-          <nav id="nav-menu" class="clearfix" role="navigation">
-            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-            {pages.map((page) => (
-              <a class:list={[{ current: currentPath === page.permalink }]} href={page.permalink} title={page.title}>{page.title}</a>
-            ))}
-          </nav>
+      <!-- 设置面板包裹层 -->
+      <div class="theme-settings-wrapper">
+        <button class="theme-settings-toggle" aria-label="主题设置">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
 
-          <!-- 这里也去掉了内联 style -->
-          <div class="theme-settings-wrapper">
-            <button class="theme-settings-toggle" aria-label="主题设置">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-            </button>
-            <div class="theme-settings-panel">
-              <div class="setting-group">
-                <div class="setting-title">界面模式</div>
-                <div class="setting-options">
-                  <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
-                  <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
-                  <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
-                </div>
-              </div>
-              <div class="setting-group">
-                <div class="setting-title">主题预设</div>
-                <div class="setting-options color-options">
-                  <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
-                  <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
-                  <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
-                  <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
-                </div>
-              </div>
-              <div class="setting-group">
-                <div class="setting-title">字号预设</div>
-                <div class="setting-options">
-                  <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
-                  <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
-                  <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
-                </div>
-              </div>
+        <!-- 弹出的设置面板 -->
+        <div class="theme-settings-panel">
+          <div class="setting-group">
+            <div class="setting-title">界面模式</div>
+            <div class="setting-options">
+              <button data-theme-action="mode" data-theme-value="light" class="opt-btn">☀️</button>
+              <button data-theme-action="mode" data-theme-value="dark" class="opt-btn">🌙</button>
+              <button data-theme-action="mode" data-theme-value="system" class="opt-btn">💻</button>
             </div>
           </div>
-          
+          <div class="setting-group">
+            <div class="setting-title">主题预设</div>
+            <div class="setting-options color-options">
+              <button data-theme-action="color" data-theme-value="blue" class="color-btn blue"></button>
+              <button data-theme-action="color" data-theme-value="green" class="color-btn green"></button>
+              <button data-theme-action="color" data-theme-value="orange" class="color-btn orange"></button>
+              <button data-theme-action="color" data-theme-value="purple" class="color-btn purple"></button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-title">字号预设</div>
+            <div class="setting-options">
+              <button data-theme-action="font" data-theme-value="small" class="opt-btn font-btn">A</button>
+              <button data-theme-action="font" data-theme-value="medium" class="opt-btn font-btn">A</button>
+              <button data-theme-action="font" data-theme-value="large" class="opt-btn font-btn">A</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+
   </div>
 </header>
+
+<style>
+  /* ==============================
+     抽离后的独立头部样式 (防冲突)
+     ============================== */
+  .site-header-sticky {
+    background-color: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    padding: 15px 0;
+  }
+
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .nav-row {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .site-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-color);
+  }
+
+  .site-logo img {
+    height: 36px;
+    width: auto;
+    border-radius: 4px;
+  }
+
+  .site-title {
+    font-size: 1.6em;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  #nav-menu {
+    display: flex;
+    gap: 20px;
+  }
+
+  #nav-menu a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 15px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  #nav-menu a:hover, 
+  #nav-menu a.current {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+  }
+
+  .description {
+    margin: 8px 0 0 0;
+    font-size: 13px;
+    color: var(--text-color);
+    opacity: 0.6;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  /* 搜索框样式 */
+  .site-search form {
+    display: flex;
+    align-items: center;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: hidden;
+    height: 36px;
+    margin: 0;
+  }
+
+  .site-search input {
+    border: none;
+    background: transparent;
+    padding: 0 15px;
+    outline: none;
+    color: var(--text-color);
+    width: 180px;
+    font-size: 14px;
+  }
+
+  .site-search .submit {
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    padding: 0 16px;
+    height: 100%;
+    cursor: pointer;
+    font-size: 14px;
+    transition: opacity 0.2s;
+  }
+  
+  .site-search .submit:hover {
+    opacity: 0.8;
+  }
+
+  /* 设置面板定位 */
+  .theme-settings-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .theme-settings-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.3s;
+    display: flex;
+    align-items: center;
+  }
+
+  .theme-settings-toggle:hover {
+    transform: rotate(30deg);
+    color: var(--accent-color);
+  }
+
+  .theme-settings-panel {
+    position: absolute;
+    right: 0;
+    top: 45px;
+    width: 260px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: none;
+    text-align: left;
+    z-index: 10000;
+  }
+
+  .theme-settings-wrapper.active .theme-settings-panel {
+    display: block;
+  }
+
+  /* 针对你截图里的手机端适配 */
+  @media (max-width: 768px) {
+    .header-container {
+      padding: 10px 15px;
+      align-items: center;
+    }
+    
+    .nav-row {
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .site-title {
+      font-size: 1.3em;
+    }
+
+    .description,
+    .site-search {
+      display: none !important; /* 手机端隐藏搜索框和描述 */
+    }
+
+    /* 手机端导航滑动，防止溢出 */
+    #nav-menu {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
+    #nav-menu::-webkit-scrollbar {
+      display: none;
+    }
+    #nav-menu a {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* 移动端设置面板的定位 */
+    .theme-settings-panel {
+      position: fixed;
+      top: 60px;
+      right: 15px;
+      left: 15px;
+      width: auto;
+    }
+  }
+</style>
+
+<script is:inline>
+  // 齿轮面板的点击开关逻辑
+  document.addEventListener('DOMContentLoaded', () => {
+    const wrapper = document.querySelector('.theme-settings-wrapper');
+    const toggle = document.querySelector('.theme-settings-toggle');
+    
+    if (toggle && wrapper) {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrapper.classList.toggle('active');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) {
+          wrapper.classList.remove('active');
+        }
+      });
+    }
+  });
+</script>
