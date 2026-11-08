@@ -1,3 +1,1 @@
 /* style.css — 主题入口，仅负责按顺序引入基础层与页面层 */
-@import url("base.css");
-@import url("main.css");
