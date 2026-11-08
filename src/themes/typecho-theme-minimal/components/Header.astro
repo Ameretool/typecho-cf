@@ -11,9 +11,9 @@ const isIndex = currentPath === '/';
 ---
 
 <header id="header" class="site-header-sticky">
-  <!-- 去掉了外层的 container，交由父级控制宽度 -->
-  <div class="header-container">
+  <div class="container header-container">
     
+    <!-- 左侧：Logo + 导航 -->
     <div class="header-left">
       <div class="nav-row">
         <a href={urls.siteUrl + '/'} class="site-logo">
@@ -32,6 +32,7 @@ const isIndex = currentPath === '/';
       <p class="description">{options.description}</p>
     </div>
 
+    <!-- 右侧：搜索框 + 齿轮面板 -->
     <div class="header-right">
       <div class="site-search">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
@@ -77,6 +78,130 @@ const isIndex = currentPath === '/';
 
   </div>
 </header>
+
+<style>
+  /* ==========================================================================
+     头部专属样式（写死在组件里，优先级最高，绝对生效）
+     ========================================================================== */
+  .site-header-sticky {
+    background-color: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    padding: 15px 0;
+  }
+
+  /* 这里的宽度由外层页面控制 */
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; 
+    position: relative; 
+  }
+
+  .header-left { display: flex; flex-direction: column; justify-content: center; flex: 1; }
+  .nav-row { display: flex; align-items: center; gap: 30px; }
+
+  .site-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-color); }
+  .site-logo img { height: 36px; width: auto; border-radius: 4px; }
+  .site-title { font-size: 1.6em; font-weight: bold; white-space: nowrap; }
+
+  #nav-menu { display: flex; align-items: center; gap: 20px; margin: 0; padding: 0; }
+  #nav-menu a { color: var(--text-color); text-decoration: none; font-size: 15px; padding-bottom: 4px; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  #nav-menu a:hover, #nav-menu a.current { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+
+  .description { margin: 8px 0 0 0; font-size: 13px; color: var(--text-color); opacity: 0.6; }
+  .header-right { display: flex; align-items: center; gap: 15px; }
+
+  /* 搜索框 */
+  .site-search form { display: flex; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; height: 36px; margin: 0; }
+  .site-search input { border: none !important; outline: none !important; box-shadow: none !important; background: transparent !important; padding: 0 15px; color: var(--text-color); width: 160px; font-size: 14px; }
+  .site-search .submit { background: var(--accent-color); color: #fff; border: none !important; padding: 0; width: 60px; height: 100%; cursor: pointer; font-size: 14px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
+
+  /* 设置面板 */
+  .theme-settings-wrapper { position: relative; display: flex; align-items: center; }
+  .theme-settings-toggle { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 5px; display: flex; align-items: center; }
+  .theme-settings-toggle:hover { color: var(--accent-color); }
+  .theme-settings-panel { position: absolute; right: 0; top: 45px; width: 260px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; z-index: 10000; }
+  .theme-settings-wrapper.active .theme-settings-panel { display: block; }
+
+  /* ==========================================================================
+     手机端专属 (暴力杀光边框)
+     ========================================================================== */
+  @media (max-width: 768px) {
+    .site-header-sticky { padding: 10px 0; }
+    
+    .header-container {
+      display: flex !important;
+      flex-direction: row !important; 
+      align-items: center !important;
+      justify-content: space-between !important;
+    }
+    
+    .header-left { 
+      flex-direction: row !important; 
+      align-items: center !important; 
+      flex: 1; 
+      overflow: hidden; 
+    }
+
+    .nav-row { flex-direction: row !important; align-items: center !important; gap: 10px !important; width: 100%; }
+
+    .site-title, .description, .site-search { display: none !important; }
+    .site-logo img { height: 30px !important; }
+
+    /* 🚨 终极杀器：无论如何都不可能有边框！🚨 */
+    #nav-menu { 
+      display: flex !important; 
+      overflow-x: auto !important; 
+      gap: 12px !important; 
+      padding: 0 !important; 
+      border: none !important; 
+      background: transparent !important; 
+    }
+    #nav-menu::-webkit-scrollbar { display: none !important; }
+    
+    #nav-menu a {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      font-size: 16px !important;
+      color: var(--text-color) !important;
+      padding: 0 !important; 
+      margin: 0 !important;
+      border: none !important; 
+      border-bottom: none !important; 
+      border-radius: 0 !important; 
+      background: transparent !important; 
+      background-color: transparent !important;
+      box-shadow: none !important; 
+      outline: none !important;
+      text-decoration: none !important;
+      -webkit-tap-highlight-color: transparent !important; /* 防点击灰块 */
+    }
+    
+    #nav-menu a.current { color: var(--accent-color) !important; font-weight: bold !important; }
+
+    .header-right { margin: 0 !important; padding-right: 0 !important; }
+
+    .theme-settings-panel {
+      position: fixed !important;
+      top: 60px !important;
+      right: 10px !important; 
+      left: auto !important;
+      transform: none !important;
+      width: 280px !important; 
+      max-width: calc(100vw - 20px) !important; 
+      box-sizing: border-box !important; 
+      background: var(--card-bg) !important;
+      border: 1px solid var(--border-color) !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+      border-radius: 12px !important;
+      z-index: 10000 !important;
+      overflow-x: hidden !important; 
+    }
+  }
+</style>
 
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
