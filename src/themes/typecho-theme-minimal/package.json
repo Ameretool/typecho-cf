@@ -11,13 +11,17 @@
   ],
   "files": [
     "theme.json",
-    "normalize.css",
-    "grid.css",
-    "variables.css",
-    "layout.css",
-    "components.css",
     "style.css",
+    "base.css",
+    "main.css",
     "screenshot.png",
-    "components/"
+    "index.php",
+    "header.php",
+    "footer.php",
+    "sidebar.php",
+    "post.php",
+    "page.php",
+    "comments.php",
+    "functions.php"
   ]
 }
