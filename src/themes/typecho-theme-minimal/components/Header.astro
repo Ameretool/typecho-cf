@@ -36,8 +36,7 @@ const isIndex = currentPath === '/';
     <div class="header-right">
       <div class="site-search">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-          <label for="s" class="sr-only">搜索关键字</label>
-          <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
+          <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
           <button type="submit" class="submit">搜索</button>
         </form>
       </div>
@@ -82,7 +81,7 @@ const isIndex = currentPath === '/';
 
 <style>
   /* ==============================
-     终极头部布局：完美适配 PC 与 手机
+     干净的头部样式（无 !important）
      ============================== */
   .site-header-sticky {
     background-color: var(--bg-color);
@@ -96,7 +95,7 @@ const isIndex = currentPath === '/';
   .header-container {
     display: flex;
     justify-content: space-between;
-    align-items: center; /* PC端强制垂直居中 */
+    align-items: center; /* 完美垂直对齐小太阳、搜索框和Logo */
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
@@ -123,17 +122,8 @@ const isIndex = currentPath === '/';
     color: var(--text-color);
   }
 
-  .site-logo img {
-    height: 36px;
-    width: auto;
-    border-radius: 4px;
-  }
-
-  .site-title {
-    font-size: 1.6em;
-    font-weight: bold;
-    white-space: nowrap;
-  }
+  .site-logo img { height: 36px; width: auto; border-radius: 4px; }
+  .site-title { font-size: 1.6em; font-weight: bold; white-space: nowrap; }
 
   #nav-menu {
     display: flex;
@@ -150,7 +140,6 @@ const isIndex = currentPath === '/';
     padding-bottom: 4px;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
-    display: inline-block;
   }
 
   #nav-menu a:hover, 
@@ -166,13 +155,13 @@ const isIndex = currentPath === '/';
     opacity: 0.6;
   }
 
-  /* 右侧区域：强制同一水平线 */
   .header-right {
     display: flex;
-    align-items: center; /* 核心：解决齿轮和搜索框不齐的问题 */
+    align-items: center;
     gap: 15px;
   }
 
+  /* 搜索框 */
   .site-search form {
     display: flex;
     align-items: center;
@@ -204,14 +193,11 @@ const isIndex = currentPath === '/';
     font-size: 14px;
   }
 
+  /* 齿轮 */
   .theme-settings-wrapper {
     position: relative;
     display: flex;
     align-items: center;
-    /* 清理历史遗留的错位 */
-    top: auto !important;
-    transform: none !important;
-    margin: 0 !important;
   }
 
   .theme-settings-toggle {
@@ -222,13 +208,9 @@ const isIndex = currentPath === '/';
     padding: 5px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    height: 36px;
   }
 
-  .theme-settings-toggle:hover {
-    color: var(--accent-color);
-  }
+  .theme-settings-toggle:hover { color: var(--accent-color); }
 
   .theme-settings-panel {
     position: absolute;
@@ -244,59 +226,34 @@ const isIndex = currentPath === '/';
     z-index: 10000;
   }
 
-  .theme-settings-wrapper.active .theme-settings-panel {
-    display: block;
-  }
+  .theme-settings-wrapper.active .theme-settings-panel { display: block; }
 
   /* ==============================
-     移动端完美适配
+     手机端适配 (干死旧 CSS 引起的蓝方块)
      ============================== */
   @media (max-width: 768px) {
-    .site-header-sticky {
-      padding: 10px 0;
-    }
+    .site-header-sticky { padding: 10px 0; }
     
-    /* 使用相对定位，让齿轮定死在右上角 */
     .header-container {
       display: block; 
       padding: 0 15px;
       position: relative;
     }
     
-    .header-left {
-      width: 100%;
-      padding-right: 45px; /* 右侧留白给齿轮，防止 Logo 太长被挡住 */
-    }
+    .header-left { width: 100%; padding-right: 45px; }
+    .nav-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .site-title { font-size: 1.4em; }
+    .site-search, .description { display: none; }
 
-    .nav-row {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .site-title {
-      font-size: 1.4em;
-    }
-
-    .site-search {
-      display: none !important; 
-    }
-
-    .description {
-      display: none !important;
-    }
-
-    /* 移动端导航栏：横向滑动，不挤压 */
     #nav-menu {
       display: flex;
-      width: calc(100vw - 30px); /* 视口宽度减去两边 padding */
+      width: calc(100vw - 30px); 
       overflow-x: auto;
       padding: 10px 0 5px 0;
       gap: 10px;
     }
-    #nav-menu::-webkit-scrollbar {
-      display: none; /* 隐藏滚动条 */
-    }
+    #nav-menu::-webkit-scrollbar { display: none; }
+    
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
@@ -305,22 +262,17 @@ const isIndex = currentPath === '/';
       border-radius: 6px;
       border: 1px solid var(--border-color);
       font-size: 14px;
+      color: var(--text-color); /* 修复文字消失变方块 */
     }
+    
     #nav-menu a.current {
       background: var(--accent-color);
       color: #fff;
       border-color: var(--accent-color);
     }
 
-    /* 齿轮绝对定位到右上角 */
-    .header-right {
-      position: absolute;
-      top: 12px;
-      right: 15px;
-      margin: 0;
-    }
+    .header-right { position: absolute; top: 12px; right: 15px; margin: 0; }
 
-    /* 移动端设置面板：变成居中的浮层弹窗！ */
     .theme-settings-panel {
       position: fixed;
       top: 50%;
@@ -338,17 +290,13 @@ const isIndex = currentPath === '/';
   document.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.querySelector('.theme-settings-wrapper');
     const toggle = document.querySelector('.theme-settings-toggle');
-    
     if (toggle && wrapper) {
       toggle.addEventListener('click', (e) => {
         e.stopPropagation();
         wrapper.classList.toggle('active');
       });
-
       document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) {
-          wrapper.classList.remove('active');
-        }
+        if (!wrapper.contains(e.target)) { wrapper.classList.remove('active'); }
       });
     }
   });
