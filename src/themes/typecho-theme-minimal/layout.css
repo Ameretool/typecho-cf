@@ -200,10 +200,15 @@ img.alignright { margin: 0 0 0 15px; }
   background: var(--accent-color);
   color: #fff;
   border: none;
-  padding: 0 16px;
+  padding: 0;
+  width: 60px; /* 强制给按钮一个固定宽度 */
   height: 100%;
   cursor: pointer;
   font-size: 14px;
+  white-space: nowrap; /* 强制文字不换行 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 设置面板基础 */
