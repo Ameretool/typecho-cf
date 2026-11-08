@@ -208,7 +208,7 @@ const isIndex = currentPath === '/';
 
 
   /* ==============================
-     手机端专属布局 (回到靠右，防溢出)
+     手机端专属布局 (极致收紧)
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky { padding: 10px 0; }
@@ -218,7 +218,7 @@ const isIndex = currentPath === '/';
       flex-direction: row; 
       align-items: center;
       justify-content: space-between;
-      padding: 0 15px;
+      padding: 0 10px; /* 边缘留白从 15 缩到 10 */
     }
     
     .header-left { 
@@ -228,23 +228,23 @@ const isIndex = currentPath === '/';
       overflow: hidden; 
     }
 
-    /* 恢复一点舒服的间距 */
+    /* 👇 1. Logo 和导航的距离极小化 (从 15px 改到 5px) 👇 */
     .nav-row { 
       flex-direction: row; 
       align-items: center; 
-      gap: 15px; 
+      gap: 5px; 
       width: 100%; 
     }
 
     .site-title { display: none; }
-    .site-logo img { height: 32px; }
+    .site-logo img { height: 30px; } /* 稍微缩小 Logo，显得更精致 */
     .description, .site-search { display: none; }
 
-    /* 导航间距适中 */
+    /* 👇 2. 导航文字之间的距离也收缩 (从 15px 改到 10px) 👇 */
     #nav-menu {
       display: flex;
       overflow-x: auto;
-      gap: 15px;
+      gap: 10px; 
       padding: 0;
     }
     #nav-menu::-webkit-scrollbar { display: none; }
@@ -262,24 +262,24 @@ const isIndex = currentPath === '/';
       font-weight: bold;
     }
 
-    .header-right { margin: 0; padding-right: 5px; }
+    .header-right { margin: 0; padding-right: 0; }
 
-    /* 👇 关键修复：搞定弹窗被撑爆和靠右的排版 👇 */
+    /* 弹窗保持稳定靠右 */
     .theme-settings-panel {
       position: fixed !important;
       top: 60px !important;
-      right: 15px !important; /* 紧贴屏幕右侧留 15px 边距 */
+      right: 10px !important; 
       left: auto !important;
       transform: none !important;
-      width: 280px !important; /* 固定宽度 */
-      max-width: calc(100vw - 30px) !important; /* 防止小屏幕撑爆 */
-      box-sizing: border-box !important; /* 确保 padding 不增加宽度 */
+      width: 280px !important; 
+      max-width: calc(100vw - 20px) !important; 
+      box-sizing: border-box !important; 
       background: var(--card-bg) !important;
       border: 1px solid var(--border-color) !important;
       box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
       border-radius: 12px !important;
       z-index: 10000;
-      overflow-x: hidden !important; /* 内部横向内容截断防撑爆 */
+      overflow-x: hidden !important; 
     }
   }
 </style>
