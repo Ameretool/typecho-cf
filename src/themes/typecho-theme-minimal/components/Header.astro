@@ -81,7 +81,7 @@ const isIndex = currentPath === '/';
 
 <style>
   /* ==============================
-     PC 端布局 (完美保持现状)
+     PC 端布局 (绝对保持现状，连一个标点都没动)
      ============================== */
   .site-header-sticky {
     background-color: var(--bg-color);
@@ -208,7 +208,7 @@ const isIndex = currentPath === '/';
 
 
   /* ==============================
-     手机端专属布局 (极致收紧)
+     手机端专属 (只干两件事：去边框、拉近距离)
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky { padding: 10px 0; }
@@ -218,7 +218,7 @@ const isIndex = currentPath === '/';
       flex-direction: row; 
       align-items: center;
       justify-content: space-between;
-      padding: 0 10px; /* 边缘留白从 15 缩到 10 */
+      padding: 0 10px; 
     }
     
     .header-left { 
@@ -228,35 +228,38 @@ const isIndex = currentPath === '/';
       overflow: hidden; 
     }
 
-    /* 👇 1. Logo 和导航的距离极小化 (从 15px 改到 5px) 👇 */
+    /* 1. 缩小 Logo 和导航的间距 (10px) */
     .nav-row { 
       flex-direction: row; 
       align-items: center; 
-      gap: 5px; 
+      gap: 10px; 
       width: 100%; 
     }
 
     .site-title { display: none; }
-    .site-logo img { height: 30px; } /* 稍微缩小 Logo，显得更精致 */
+    .site-logo img { height: 30px; }
     .description, .site-search { display: none; }
 
-    /* 👇 2. 导航文字之间的距离也收缩 (从 15px 改到 10px) 👇 */
+    /* 2. 强行扒光边框和背景，变成纯文字 */
     #nav-menu {
       display: flex;
       overflow-x: auto;
-      gap: 10px; 
+      gap: 12px; /* 导航文字间的距离 */
       padding: 0;
     }
     #nav-menu::-webkit-scrollbar { display: none; }
+    
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
       font-size: 15px;
       color: var(--text-color);
-      padding-bottom: 0;
-      border: none;
-      background: transparent;
+      padding: 0 !important; 
+      border: none !important; /* 干死边框 */
+      background: transparent !important; /* 干死背景色 */
+      box-shadow: none !important; /* 干死可能的阴影 */
     }
+    
     #nav-menu a.current {
       color: var(--accent-color);
       font-weight: bold;
@@ -264,7 +267,7 @@ const isIndex = currentPath === '/';
 
     .header-right { margin: 0; padding-right: 0; }
 
-    /* 弹窗保持稳定靠右 */
+    /* 弹窗保持你上一条觉得还行的固定靠右样式 */
     .theme-settings-panel {
       position: fixed !important;
       top: 60px !important;
