@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件二：layout - 完整最终版 (已剔除重复面板样式，已整合手机端补丁)
+   文件二：layout - 完整最终版 (已整合手机端补丁)
    ========================================================================== */
 
 /* ============================================================
@@ -19,7 +19,7 @@
 }
 #nav-menu a:hover, #nav-menu .current { background: var(--card-bg); color: var(--accent-color) !important; }
 
-/* 👇 核心修复：PC端搜索框完美排版 👇 */
+/* PC端搜索框排版 */
 #search { position: relative; margin-top: 15px; width: 100%; max-width: 260px; margin-left: auto; }
 #search form { display: flex !important; position: relative; margin: 0; }
 #search input { 
@@ -32,99 +32,80 @@
   width: 50px !important; height: 26px; padding: 0 !important; 
   background: var(--accent-color) !important; color: #fff !important; 
   border: none; border-radius: 13px; cursor: pointer; 
-  font-size: 13px !important; white-space: nowrap; /* 防止“搜索”竖排换行 */
+  font-size: 13px !important; white-space: nowrap;
 }
-#search button:before { display: none !important; } /* 删掉旧的放大镜图标 */
+#search button:before { display: none !important; }
 
+/* PC 端头部操作区 (用于抽离的 Header 组件) */
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 25px;
+}
 
 /* ============================================================
- * 2. 移动端专属布局 (强制固定吸顶 + 隐藏搜索 + 同行对齐 + 隐藏HB)
+ * 2. 移动端专属布局 (吸顶 + 隐藏HB + 导航滑动)
  * ============================================================ */
 @media (max-width: 768px) {
   /* 头部固定吸顶 */
   #header {
     position: fixed !important;
-    top: 0 !important;
-    left: 0;
+    top: 0 !important; left: 0;
     width: 100%;
     z-index: 9999;
     background: var(--bg-color) !important;
-    padding: 10px 0 !important; /* 为了去掉HB，压缩了原本的12px */
+    padding: 10px 0 !important;
     margin-bottom: 0 !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   }
 
-  /* 留出头部的高度，防止遮挡文章 */
-  body { padding-top: 100px !important; } /* 配合压缩后的头部 */
+  /* 留出头部的高度 */
+  body { padding-top: 70px !important; }
 
-  /* 👇 彻底消灭那个巨大的“HB”文字 👇 */
-  .site-name, 
-  #logo, 
-  a#logo,
-  #header h1,
-  #header a.logo {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
-    overflow: hidden !important;
-  }
-  
-  /* 隐藏描述文字 */
-  #header .description { display: none !important; }
-  
-  /* 隐藏搜索框 */
-  #header .site-search, 
-  #header #search, 
-  .site-search, 
-  #search { 
+  /* 彻底消灭 HB 文字、描述和搜索框 */
+  .site-name, #logo, a#logo, #header h1, #header a.logo, #header .description,
+  #header .site-search, #header #search, .site-search, #search { 
     display: none !important; 
-    visibility: hidden !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  }
+  
+  /* 导航与齿轮同行居中 */
+  .header-actions {
+    margin-top: 0 !important;
+    align-items: center !important;
   }
 
-  /* 👇 核心修复：把导航和按钮包裹容器变成 Flex 布局 👇 */
-  #header .col-mb-12 > div {
-    position: relative !important;
-    display: flex !important;
-    justify-content: center !important; /* 导航整体居中 */
-    align-items: center !important;     /* 垂直居中 */
-    margin-top: 5px !important; /* 配合消灭HB后的紧凑间距 */
-  }
-
-  /* 导航菜单 */
+  /* 导航菜单 (可横向滑动) */
   #nav-menu {
     margin: 0 !important;
     display: flex !important;
-    justify-content: center !important;
-    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
     width: 100% !important;
-    padding: 0 40px !important; /* 右侧留出 40px 空间，防止被按钮遮挡 */
-    gap: 8px !important; /* 替代原来的 margin，排版更整齐 */
+    padding: 0 40px 0 0 !important;
     float: none !important;
   }
+  #nav-menu::-webkit-scrollbar { display: none; }
+  
   #nav-menu a {
     float: none !important;
-    margin: 0 !important; /* 改用 gap 控制 */
+    margin: 0 5px 0 0 !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 4px !important;
     height: 30px !important;
     line-height: 28px !important;
     padding: 0 15px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
   }
 
-  /* 👇 夜间模式按钮：绝对定位在这一行的最右侧并居中 👇 */
+  /* 夜间模式按钮绝对定位右侧居中 */
   #header .theme-settings-wrapper {
     position: absolute !important;
     right: 15px !important;
     top: 50% !important;
-    transform: translateY(-50%) !important; /* 向上偏移自身一半高度，实现完美居中 */
+    transform: translateY(-50%) !important;
     margin: 0 !important;
     display: flex !important;
     align-items: center !important;
@@ -205,9 +186,3 @@ img.alignright { margin: 0 0 0 15px; }
 
 @media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; } }
 @media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
-
-/* ============================================================
- * 4. 注意：原本的主题设置面板样式已删除！
- * 请确保你的 components.css（或主文件的下半部分）中包含了
- * .theme-settings-wrapper / .theme-settings-panel 等代码！
- * ============================================================ */
