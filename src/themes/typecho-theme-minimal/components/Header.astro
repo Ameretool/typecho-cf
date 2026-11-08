@@ -42,12 +42,10 @@ const isIndex = currentPath === '/';
       </div>
 
       <div class="theme-settings-wrapper">
-        <!-- 把图标换成更像“小太阳/设置”的样式，这样手机端极简又好看 -->
         <button class="theme-settings-toggle" aria-label="主题设置">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         </button>
 
-        <!-- 弹窗面板 -->
         <div class="theme-settings-panel">
           <div class="setting-group">
             <div class="setting-title">界面模式</div>
@@ -83,7 +81,7 @@ const isIndex = currentPath === '/';
 
 <style>
   /* ==============================
-     PC 端布局
+     PC 端布局 (完美保持现状)
      ============================== */
   .site-header-sticky {
     background-color: var(--bg-color);
@@ -101,6 +99,7 @@ const isIndex = currentPath === '/';
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
+    position: relative; /* 非常重要：为手机端的下拉弹窗提供定位基准 */
   }
 
   .header-left {
@@ -197,7 +196,8 @@ const isIndex = currentPath === '/';
   .theme-settings-wrapper { position: relative; display: flex; align-items: center; }
   .theme-settings-toggle { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 5px; display: flex; align-items: center; }
   .theme-settings-toggle:hover { color: var(--accent-color); }
-  
+
+  /* PC 端面板 */
   .theme-settings-panel {
     position: absolute; right: 0; top: 45px; width: 260px;
     background: var(--card-bg); border: 1px solid var(--border-color);
@@ -207,80 +207,81 @@ const isIndex = currentPath === '/';
   }
   .theme-settings-wrapper.active .theme-settings-panel { display: block; }
 
+
   /* ==============================
-     手机端适配 (隐藏文字，留图标，下拉面板)
+     手机端专属布局 (极简横向 + 完美下拉弹窗)
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky { padding: 10px 0; }
     
+    /* 强制变成单行横向排列 */
     .header-container {
       display: flex;
       flex-direction: row; 
       align-items: center;
+      justify-content: space-between;
       padding: 0 15px;
-      position: relative; /* 为弹窗绝对定位做准备 */
     }
     
-    .header-left {
-      width: 100%;
-      padding-right: 40px; /* 右侧给齿轮留空 */
+    .header-left { 
+      flex-direction: row; 
+      align-items: center; 
+      flex: 1;
+      overflow: hidden; 
     }
-    
-    /* 变成横向排列：Logo - 导航 */
+
     .nav-row { 
       flex-direction: row; 
       align-items: center; 
-      gap: 20px; 
+      gap: 15px; 
+      width: 100%; 
     }
 
-    /* 隐藏多余文字，只留 Logo 图片 */
-    .site-title, .description, .site-search { display: none; }
-    .site-logo img { height: 30px; }
+    /* 隐藏文字，只留 Logo 图片 */
+    .site-title { display: none; }
+    .site-logo img { height: 32px; }
+    
+    /* 隐藏副标题和搜索框 */
+    .description, .site-search { display: none; }
 
-    /* 导航栏微调 */
+    /* 导航栏滑动 */
     #nav-menu {
       display: flex;
-      width: calc(100vw - 80px); 
       overflow-x: auto;
-      padding: 0;
       gap: 15px;
+      padding: 0;
     }
     #nav-menu::-webkit-scrollbar { display: none; }
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
-      font-size: 15px;
+      font-size: 16px;
       color: var(--text-color);
       padding-bottom: 0;
       border: none;
+      background: transparent;
     }
     #nav-menu a.current {
       color: var(--accent-color);
       font-weight: bold;
     }
 
-    /* 把齿轮绝对定位在右上角 */
-    .header-right { 
-      position: absolute; 
-      top: 50%; 
-      right: 15px; 
-      transform: translateY(-50%); 
-      margin: 0; 
-    }
+    /* 齿轮位于最右侧 */
+    .header-right { margin: 0; padding-right: 5px; }
 
-    /* 👇 手机端的下拉弹窗设计 👇 */
+    /* 👇 手机端下拉弹窗的完美对齐 👇 */
     .theme-settings-panel {
       position: absolute !important;
-      top: 40px !important;
-      right: 0 !important;
+      top: 45px !important;
+      right: 15px !important; /* 强制靠右对齐 */
       left: auto !important;
-      transform: none !important; /* 取消居中，变成下拉 */
+      transform: none !important;
       width: 280px !important;
-      background: var(--card-bg) !important; 
+      background: var(--card-bg) !important;
+      border: 1px solid var(--border-color) !important;
       box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
       border-radius: 12px !important;
-      border: 1px solid var(--border-color) !important;
-      z-index: 9999;
+      z-index: 10000;
     }
   }
 </style>
@@ -289,13 +290,18 @@ const isIndex = currentPath === '/';
   document.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.querySelector('.theme-settings-wrapper');
     const toggle = document.querySelector('.theme-settings-toggle');
+    
     if (toggle && wrapper) {
       toggle.addEventListener('click', (e) => {
         e.stopPropagation();
         wrapper.classList.toggle('active');
       });
+
+      // 点击空白处关闭弹窗
       document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) { wrapper.classList.remove('active'); }
+        if (!wrapper.contains(e.target)) { 
+          wrapper.classList.remove('active'); 
+        }
       });
     }
   });
