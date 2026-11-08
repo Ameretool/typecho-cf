@@ -14,14 +14,6 @@
     "style.css",
     "base.css",
     "main.css",
-    "screenshot.png",
-    "index.php",
-    "header.php",
-    "footer.php",
-    "sidebar.php",
-    "post.php",
-    "page.php",
-    "comments.php",
-    "functions.php"
+    "screenshot.png"
   ]
 }
