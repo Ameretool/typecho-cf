@@ -78,3 +78,223 @@ img.alignright { margin: 0 0 0 15px; }
 
 @media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; } }
 @media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
+
+/* ==========================================================================
+   头部组件专属样式 (Header.astro)
+   ========================================================================== */
+
+/* ------------------------------
+ * 1. 基础与 PC 端布局
+ * ------------------------------ */
+.site-header-sticky {
+  background-color: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  padding: 15px 0;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; 
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative; /* 为手机端弹窗定位提供基准 */
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.site-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-color);
+}
+
+.site-logo img { 
+  height: 36px; 
+  width: auto; 
+  border-radius: 4px; 
+}
+
+.site-title { 
+  font-size: 1.6em; 
+  font-weight: bold; 
+  white-space: nowrap; 
+}
+
+#nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+}
+
+#nav-menu a {
+  color: var(--text-color);
+  text-decoration: none;
+  font-size: 15px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+#nav-menu a:hover, 
+#nav-menu a.current {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.description {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* PC端搜索框 */
+.site-search form {
+  display: flex;
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  overflow: hidden;
+  height: 36px;
+  margin: 0;
+}
+
+.site-search input {
+  border: none;
+  background: transparent;
+  padding: 0 15px;
+  outline: none;
+  color: var(--text-color);
+  width: 160px;
+  font-size: 14px;
+}
+
+.site-search .submit {
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  padding: 0 16px;
+  height: 100%;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* 设置面板基础 */
+.theme-settings-wrapper { position: relative; display: flex; align-items: center; }
+.theme-settings-toggle { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 5px; display: flex; align-items: center; }
+.theme-settings-toggle:hover { color: var(--accent-color); }
+
+.theme-settings-panel {
+  position: absolute; right: 0; top: 45px; width: 260px;
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 12px; padding: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  display: none; z-index: 10000;
+}
+.theme-settings-wrapper.active .theme-settings-panel { display: block; }
+
+/* ------------------------------
+ * 2. 手机端专属排版 (极简、去边框、弹窗防爆)
+ * ------------------------------ */
+@media (max-width: 768px) {
+  .site-header-sticky { padding: 10px 0; }
+  
+  .header-container {
+    display: flex;
+    flex-direction: row; 
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px; 
+  }
+  
+  .header-left { 
+    flex-direction: row; 
+    align-items: center; 
+    flex: 1;
+    overflow: hidden; 
+  }
+
+  /* Logo 和导航贴紧 */
+  .nav-row { 
+    flex-direction: row; 
+    align-items: center; 
+    gap: 10px; 
+    width: 100%; 
+  }
+
+  /* 隐藏多余文字，缩小 Logo */
+  .site-title, .description, .site-search { display: none; }
+  .site-logo img { height: 30px; }
+
+  /* 纯文字导航，强行扒光背景和边框 */
+  #nav-menu {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px; 
+    padding: 0;
+  }
+  #nav-menu::-webkit-scrollbar { display: none; }
+  
+  #nav-menu a {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 15px;
+    color: var(--text-color);
+    padding: 0 !important; 
+    border: none !important; 
+    background: transparent !important; 
+    box-shadow: none !important; 
+  }
+  
+  #nav-menu a.current {
+    color: var(--accent-color);
+    font-weight: bold;
+  }
+
+  .header-right { margin: 0; padding-right: 0; }
+
+  /* 弹窗靠右固定，防止撑爆屏幕 */
+  .theme-settings-panel {
+    position: fixed !important;
+    top: 60px !important;
+    right: 10px !important; 
+    left: auto !important;
+    transform: none !important;
+    width: 280px !important; 
+    max-width: calc(100vw - 20px) !important; 
+    box-sizing: border-box !important; 
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    border-radius: 12px !important;
+    z-index: 10000;
+    overflow-x: hidden !important; 
+  }
+}
