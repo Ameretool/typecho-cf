@@ -5,13 +5,11 @@
   "author": "Typecho Team",
   "authorUrl": "https://typecho.org/",
   "version": "1.0.0",
-  "stylesheet": "variables.css",
+  "stylesheet": "style.css",
   "stylesheets": [
-    "normalize.css",
-    "grid.css",
-    "variables.css",
-    "layout.css",
-    "components.css"
+    "style.css",
+    "base.css",
+    "main.css"
   ],
   "homepage": "https://github.com/eslizn/typecho-cf",
   "license": "GPL-2.0",
