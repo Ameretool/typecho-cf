@@ -10,10 +10,10 @@ const { options, urls, pages, currentPath } = Astro.props;
 const isIndex = currentPath === '/';
 ---
 
-<header id="header" class="clearfix site-header-sticky">
-  <div class="container header-container">
+<header id="header" class="site-header-sticky">
+  <!-- 去掉了外层的 container，交由父级控制宽度 -->
+  <div class="header-container">
     
-    <!-- 左侧：Logo + 导航 -->
     <div class="header-left">
       <div class="nav-row">
         <a href={urls.siteUrl + '/'} class="site-logo">
@@ -32,7 +32,6 @@ const isIndex = currentPath === '/';
       <p class="description">{options.description}</p>
     </div>
 
-    <!-- 右侧：搜索框 + 齿轮面板 -->
     <div class="header-right">
       <div class="site-search">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
@@ -83,17 +82,13 @@ const isIndex = currentPath === '/';
   document.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.querySelector('.theme-settings-wrapper');
     const toggle = document.querySelector('.theme-settings-toggle');
-    
     if (toggle && wrapper) {
       toggle.addEventListener('click', (e) => {
         e.stopPropagation();
         wrapper.classList.toggle('active');
       });
-
       document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) { 
-          wrapper.classList.remove('active'); 
-        }
+        if (!wrapper.contains(e.target)) { wrapper.classList.remove('active'); }
       });
     }
   });
