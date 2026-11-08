@@ -29,7 +29,6 @@ const isIndex = currentPath === '/';
         </nav>
       </div>
       
-      <!-- 描述文字在 PC 端显示在下一行，手机端隐藏 -->
       <p class="description">{options.description}</p>
     </div>
 
@@ -83,7 +82,7 @@ const isIndex = currentPath === '/';
 
 <style>
   /* ==============================
-     头部终极布局方案
+     终极头部布局：完美适配 PC 与 手机
      ============================== */
   .site-header-sticky {
     background-color: var(--bg-color);
@@ -97,7 +96,7 @@ const isIndex = currentPath === '/';
   .header-container {
     display: flex;
     justify-content: space-between;
-    align-items: center; /* 核心：强制所有元素垂直居中在一根水平线上 */
+    align-items: center; /* PC端强制垂直居中 */
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
@@ -167,13 +166,13 @@ const isIndex = currentPath === '/';
     opacity: 0.6;
   }
 
+  /* 右侧区域：强制同一水平线 */
   .header-right {
     display: flex;
-    align-items: center;
+    align-items: center; /* 核心：解决齿轮和搜索框不齐的问题 */
     gap: 15px;
   }
 
-  /* 搜索框 */
   .site-search form {
     display: flex;
     align-items: center;
@@ -205,11 +204,14 @@ const isIndex = currentPath === '/';
     font-size: 14px;
   }
 
-  /* 齿轮按钮 */
   .theme-settings-wrapper {
     position: relative;
     display: flex;
     align-items: center;
+    /* 清理历史遗留的错位 */
+    top: auto !important;
+    transform: none !important;
+    margin: 0 !important;
   }
 
   .theme-settings-toggle {
@@ -221,11 +223,11 @@ const isIndex = currentPath === '/';
     display: flex;
     align-items: center;
     justify-content: center;
+    height: 36px;
   }
 
   .theme-settings-toggle:hover {
     color: var(--accent-color);
-    transform: rotate(30deg);
   }
 
   .theme-settings-panel {
@@ -247,73 +249,87 @@ const isIndex = currentPath === '/';
   }
 
   /* ==============================
-     手机端优化
+     移动端完美适配
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky {
       padding: 10px 0;
     }
     
+    /* 使用相对定位，让齿轮定死在右上角 */
     .header-container {
-      flex-direction: column; /* 手机端变成上下两行 */
-      align-items: flex-start;
-      gap: 12px;
+      display: block; 
+      padding: 0 15px;
+      position: relative;
     }
     
-    /* 第一行：Logo + 齿轮 */
     .header-left {
       width: 100%;
+      padding-right: 45px; /* 右侧留白给齿轮，防止 Logo 太长被挡住 */
     }
 
     .nav-row {
-      width: 100%;
-      justify-content: space-between; /* Logo 靠左，导航靠右（或另起一行） */
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
     }
 
-    /* 强制搜索框隐藏 */
+    .site-title {
+      font-size: 1.4em;
+    }
+
     .site-search {
       display: none !important; 
     }
 
-    /* 手机端导航另起一行并允许滑动 */
+    .description {
+      display: none !important;
+    }
+
+    /* 移动端导航栏：横向滑动，不挤压 */
     #nav-menu {
-      width: 100%;
+      display: flex;
+      width: calc(100vw - 30px); /* 视口宽度减去两边 padding */
       overflow-x: auto;
-      padding-top: 10px;
-      padding-bottom: 5px;
-      gap: 12px;
+      padding: 10px 0 5px 0;
+      gap: 10px;
     }
     #nav-menu::-webkit-scrollbar {
-      display: none;
+      display: none; /* 隐藏滚动条 */
     }
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
       background: var(--card-bg);
-      padding: 6px 12px;
+      padding: 6px 14px;
       border-radius: 6px;
-      border: none;
+      border: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+    #nav-menu a.current {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
     }
 
-    /* 描述文字隐藏 */
-    .description {
-      display: none !important;
-    }
-
-    /* 设置按钮放到右上角 */
+    /* 齿轮绝对定位到右上角 */
     .header-right {
       position: absolute;
-      top: 10px;
+      top: 12px;
       right: 15px;
+      margin: 0;
     }
 
-    /* 移动端面板定位 */
+    /* 移动端设置面板：变成居中的浮层弹窗！ */
     .theme-settings-panel {
       position: fixed;
-      top: 60px;
-      right: 15px;
-      left: 15px;
-      width: auto;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90vw;
+      max-width: 320px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin: 0;
     }
   }
 </style>
