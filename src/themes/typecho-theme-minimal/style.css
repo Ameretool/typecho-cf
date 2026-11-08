@@ -1,3 +1,13 @@
+/* 顶部必须是引入其他样式 */
+@import url("./normalize.css");
+@import url("./grid.css");
+@import url("./variables.css");
+@import url("./layout.css");
+@import url("./components.css");
+
+/* ... 中间如果有你自己的其他样式 ... */
+
+/* 然后把你这段代码粘贴在最底部 */
 /* 样式已拆分至 variables.css, layout.css, components.css */
 /* ============================================================
  * 手机端专属：彻底消灭那个巨大的“HB”文字
