@@ -1,4 +1,85 @@
 /* ==========================================================================
+   文件二：layout - 纯净版 (已剔除头部旧样式)
+   ========================================================================== */
+
+/* ============================================================
+ * 1. 辅助类控制显示隐藏
+ * ============================================================ */
+@media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
+@media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
+
+/* ============================================================
+ * 2. 主内容区、文章、评论等基础样式
+ * ============================================================ */
+.post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
+.post-title { margin: .83em 0; font-size: 1.4em; }
+.post-title a { color: var(--accent-color) !important; text-decoration: none; }
+.post-meta { margin-top: -0.5em; padding: 0; color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.post-meta li { display: inline-block; margin: 0 8px 0 0; padding-left: 12px; border-left: 1px solid var(--border-color); }
+.post-meta li:first-child { margin-left: 0; padding-left: 0; border: none; }
+.post-content { font-size: var(--font-size-base); line-height: 1.8; color: var(--text-color) !important; }
+.post .tags { clear: both; }
+.post-near { list-style: none; margin: 30px 0; padding: 0; color: var(--text-color); opacity: 0.6; }
+.post-near li { margin: 10px 0; }
+.archive-title { margin: 1em 0 -1em; padding-top: 20px; color: var(--text-color); opacity: 0.6; font-size: 1em; }
+.more { text-align: center; }
+.more a { border: none; }
+
+/* 移动端文章标题、时间居中 */
+@media (max-width: 768px) { .post-title, .post-meta { text-align: center !important; } }
+
+/* 分页 */
+.page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
+.page-navigator li { display: inline-block; margin: 0 4px; }
+.page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
+.page-navigator a:hover { background: var(--card-bg); text-decoration: none; }
+.page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
+
+/* 评论列表 */
+#comments { padding-top: 15px; }
+.comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
+.comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
+.comment-list li.comment-level-odd { background: var(--card-bg); }
+.comment-list li.comment-level-even { background: transparent; } 
+.comment-list li.comment-by-author { background: rgba(255, 235, 59, 0.1); }
+.comment-list li .comment-reply { text-align: right; font-size: .92857em; }
+.comment-meta a { color: var(--text-color); opacity: 0.6; font-size: .92857em; }
+.comment-author { display: block; margin-bottom: 3px; color: var(--text-color); }
+.comment-author .avatar { float: left; margin-right: 10px; }
+.comment-author cite { font-weight: bold; font-style: normal; }
+.comment-list .respond { margin-top: 15px; border-top: 1px solid var(--border-color); }
+.respond .cancel-comment-reply { float: right; margin-top: 15px; font-size: .92857em; }
+#comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
+#comment-form .required:after { content: " *"; color: #C00; }
+
+/* 侧栏与页脚 */
+#secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
+.widget { margin-bottom: 30px; }
+.widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
+.widget-list { list-style: none; padding: 0; }
+.widget-list li { margin: 6px 0 !important; line-height: 1.8 !important; }
+.widget-list a { color: var(--accent-color) !important; }
+.widget-list a:hover { color: var(--text-color) !important; }
+.widget-list li ul { margin-left: 15px; }
+#footer { padding: 3em 0; line-height: 1.5; text-align: center; color: var(--text-color); opacity: 0.6; }
+
+@media (min-width: 992px) { #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; } }
+
+/* 内容格式 */
+.post-content h2, .comment-content h2 { font-size: 1.28571em; }
+.post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
+.post-content a img, .comment-content a img { background: var(--bg-color); position: relative; border-radius: 6px; bottom: -4px; }
+.post-content hr, .comment-content hr { margin: 2em auto; width: 100px; border: 1px solid var(--border-color); border-width: 2px 0 0 0; }
+.aligncenter, div.aligncenter { display: block; margin-left: auto; margin-right: auto; }
+.alignleft { float: left; }
+.alignright { float: right; }
+img.alignleft { margin: 0 15px 0 0; }
+img.alignright { margin: 0 0 0 15px; }
+
+@media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; } }
+@media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
+
+/* ==========================================================================
    头部组件专属样式 (Header.astro)
    ========================================================================== */
 
@@ -84,7 +165,7 @@
   gap: 15px;
 }
 
-/* 👇 彻底解决搜索框的“多重线条” 👇 */
+/* 👇 搜索框的“多重线条”终极去除 👇 */
 .site-search form {
   display: flex;
   align-items: center;
@@ -97,9 +178,9 @@
 }
 
 .site-search input {
-  border: none !important; /* 暴力清除 Input 自带边框 */
-  outline: none !important; /* 清除点击时的聚焦发光 */
-  box-shadow: none !important; /* 清除可能的阴影 */
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   background: transparent !important;
   padding: 0 15px;
   color: var(--text-color);
@@ -138,7 +219,7 @@
 
 
 /* ==========================================================================
-   手机端专属 (彻底干死边框、干掉所有干扰)
+   手机端专属 (彻底干死边框)
    ========================================================================== */
 @media (max-width: 768px) {
   .site-header-sticky { padding: 10px 0; }
@@ -168,7 +249,7 @@
   .site-title, .description, .site-search { display: none; }
   .site-logo img { height: 30px; }
 
-  /* 👇 终极“扒光”导航栏样式，哪怕有旧 CSS 干扰也全部失效 👇 */
+  /* 极简纯文字导航 */
   #nav-menu {
     display: flex !important;
     overflow-x: auto;
