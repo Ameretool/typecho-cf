@@ -1,72 +1,71 @@
 /* ==========================================
-   手机端终极补丁：消灭“HB” + 导航排版
+   手机端终极补丁 V2：精准覆盖内联样式
    ========================================== */
 @media (max-width: 768px) {
-  /* 彻底消灭那个巨大的“HB”文字 */
+  /* 1. 彻底消灭 “HB” 和多余文字 */
   .site-name, 
   #logo, 
-  a#logo,
-  #header h1,
-  #header a.logo {
+  .description {
     display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
-    overflow: hidden !important;
   }
 
-  /* 把顶部多余留白干掉 */
+  /* 2. 压缩头部高度，防止占用太大屏幕 */
   #header {
     padding: 10px 0 !important;
     margin-bottom: 0 !important;
-  }
-  .col-mb-12 > div {
-    margin-top: 0 !important;
-  }
-  
-  /* 导航栏和齿轮按钮同行对齐 */
-  #header .col-mb-12 > div {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    margin-top: 5px !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    background: var(--bg-color) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   }
 
+  /* 主体内容下移，防遮挡 */
+  body {
+    padding-top: 70px !important; 
+  }
+
+  /* 3. 干翻你那行内联的 margin-top: 25px */
+  #header .col-mb-12 > div {
+    margin-top: 0 !important; 
+    align-items: center !important; /* 垂直居中，不要让齿轮掉下去 */
+  }
+
+  /* 4. 导航栏自适应横向排版 */
   #nav-menu {
     display: flex !important;
-    justify-content: center !important;
-    flex-wrap: wrap !important;
+    justify-content: flex-start !important; /* 靠左，允许滑动 */
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important; /* 内容多可以左右滑 */
     width: 100% !important;
-    padding: 0 40px !important;
-    gap: 10px !important;
+    padding: 0 40px 0 10px !important; /* 右侧留空防齿轮遮挡 */
     float: none !important;
+    margin: 0 !important;
   }
+  
+  /* 隐藏滑动条更美观 */
+  #nav-menu::-webkit-scrollbar { display: none; }
 
   #nav-menu a {
     float: none !important;
-    margin: 0 !important;
+    margin: 0 5px 0 0 !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 4px !important;
     height: 30px !important;
     line-height: 28px !important;
     padding: 0 15px !important;
+    white-space: nowrap !important; /* 文字不换行 */
+    flex-shrink: 0 !important;
   }
 
-  /* 齿轮按钮右侧绝对居中 */
+  /* 5. 齿轮按钮绝对定位在右侧居中 */
   #header .theme-settings-wrapper {
     position: absolute !important;
     right: 15px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     margin: 0 !important;
-  }
-  
-  /* 4. 内容区往下挪，防遮挡 */
-  body {
-    padding-top: 100px !important;
   }
 }
