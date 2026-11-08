@@ -165,7 +165,7 @@ img.alignright { margin: 0 0 0 15px; }
   gap: 15px;
 }
 
-/* 👇 搜索框的“多重线条”终极去除 👇 */
+/* 搜索框 */
 .site-search form {
   display: flex;
   align-items: center;
@@ -219,7 +219,7 @@ img.alignright { margin: 0 0 0 15px; }
 
 
 /* ==========================================================================
-   手机端专属 (彻底干死边框)
+   手机端专属 (彻底干死任何可能的触摸高亮和边框)
    ========================================================================== */
 @media (max-width: 768px) {
   .site-header-sticky { padding: 10px 0; }
@@ -237,6 +237,7 @@ img.alignright { margin: 0 0 0 15px; }
     align-items: center; 
     flex: 1;
     overflow: hidden; 
+    -webkit-tap-highlight-color: transparent; /* 👈 干掉手机点击时的默认高亮色 */
   }
 
   .nav-row { 
@@ -249,7 +250,7 @@ img.alignright { margin: 0 0 0 15px; }
   .site-title, .description, .site-search { display: none; }
   .site-logo img { height: 30px; }
 
-  /* 极简纯文字导航 */
+  /* 极简纯文字导航，连手机端的点击高亮也干掉 */
   #nav-menu {
     display: flex !important;
     overflow-x: auto;
@@ -257,6 +258,7 @@ img.alignright { margin: 0 0 0 15px; }
     padding: 0;
     border: none !important;
     background: transparent !important;
+    -webkit-tap-highlight-color: transparent;
   }
   #nav-menu::-webkit-scrollbar { display: none; }
   
@@ -273,6 +275,7 @@ img.alignright { margin: 0 0 0 15px; }
     box-shadow: none !important; 
     outline: none !important;
     text-decoration: none !important;
+    -webkit-tap-highlight-color: transparent !important; /* 👈 核心：干掉点击时一闪而过的灰块 */
   }
   
   #nav-menu a.current {
@@ -282,7 +285,6 @@ img.alignright { margin: 0 0 0 15px; }
 
   .header-right { margin: 0; padding-right: 0; }
 
-  /* 弹窗靠右固定 */
   .theme-settings-panel {
     position: fixed !important;
     top: 60px !important;
