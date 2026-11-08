@@ -16,7 +16,6 @@ const isIndex = currentPath === '/';
     <!-- 左侧：Logo + 导航 -->
     <div class="header-left">
       <div class="nav-row">
-        <!-- 站点标题文字，在手机端通过 CSS 隐藏 -->
         <a href={urls.siteUrl + '/'} class="site-logo">
           <img src="/logo.png" alt={options.title} onerror="this.style.display='none'" />
           <span class="site-title">{options.title}</span>
@@ -33,8 +32,8 @@ const isIndex = currentPath === '/';
       <p class="description">{options.description}</p>
     </div>
 
-    <!-- 右侧：搜索框 + 齿轮面板 (PC端使用) -->
-    <div class="header-right desktop-only">
+    <!-- 右侧：搜索框 + 齿轮面板 -->
+    <div class="header-right">
       <div class="site-search">
         <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
           <input type="text" id="s" name="s" placeholder="输入关键字搜索" />
@@ -43,10 +42,12 @@ const isIndex = currentPath === '/';
       </div>
 
       <div class="theme-settings-wrapper">
+        <!-- 把图标换成更像“小太阳/设置”的样式，这样手机端极简又好看 -->
         <button class="theme-settings-toggle" aria-label="主题设置">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         </button>
 
+        <!-- 弹窗面板 -->
         <div class="theme-settings-panel">
           <div class="setting-group">
             <div class="setting-title">界面模式</div>
@@ -77,17 +78,12 @@ const isIndex = currentPath === '/';
       </div>
     </div>
 
-    <!-- 移动端专属：一键亮暗切换按钮 -->
-    <div class="mobile-only mobile-theme-toggle">
-      <button id="simple-theme-btn" aria-label="切换主题">🌓</button>
-    </div>
-
   </div>
 </header>
 
 <style>
   /* ==============================
-     基础与 PC 端布局
+     PC 端布局
      ============================== */
   .site-header-sticky {
     background-color: var(--bg-color);
@@ -198,10 +194,10 @@ const isIndex = currentPath === '/';
     font-size: 14px;
   }
 
-  /* 齿轮面板 */
   .theme-settings-wrapper { position: relative; display: flex; align-items: center; }
   .theme-settings-toggle { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 5px; display: flex; align-items: center; }
   .theme-settings-toggle:hover { color: var(--accent-color); }
+  
   .theme-settings-panel {
     position: absolute; right: 0; top: 45px; width: 260px;
     background: var(--card-bg); border: 1px solid var(--border-color);
@@ -211,84 +207,86 @@ const isIndex = currentPath === '/';
   }
   .theme-settings-wrapper.active .theme-settings-panel { display: block; }
 
-  /* 默认隐藏移动端专属按钮 */
-  .mobile-only { display: none; }
-
   /* ==============================
-     手机端终极极简适配
+     手机端适配 (隐藏文字，留图标，下拉面板)
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky { padding: 10px 0; }
     
     .header-container {
       display: flex;
-      flex-direction: row; /* 强制横向排列 */
+      flex-direction: row; 
       align-items: center;
-      justify-content: space-between;
       padding: 0 15px;
+      position: relative; /* 为弹窗绝对定位做准备 */
     }
     
-    .header-left { 
-      flex-direction: row; 
-      align-items: center; 
-      flex: 1;
-      overflow: hidden; 
+    .header-left {
+      width: 100%;
+      padding-right: 40px; /* 右侧给齿轮留空 */
     }
-
+    
+    /* 变成横向排列：Logo - 导航 */
     .nav-row { 
       flex-direction: row; 
       align-items: center; 
-      gap: 15px; 
-      width: 100%; 
+      gap: 20px; 
     }
 
-    /* 隐藏 HB 文字，保留 Logo 图片 */
-    .site-title { display: none; }
-    .site-logo img { height: 32px; }
+    /* 隐藏多余文字，只留 Logo 图片 */
+    .site-title, .description, .site-search { display: none; }
+    .site-logo img { height: 30px; }
 
-    /* 隐藏副标题和 PC 端的右侧区域 */
-    .description, .desktop-only { display: none; }
-
-    /* 手机端导航：横向滑动 */
+    /* 导航栏微调 */
     #nav-menu {
       display: flex;
+      width: calc(100vw - 80px); 
       overflow-x: auto;
-      gap: 15px;
       padding: 0;
+      gap: 15px;
     }
     #nav-menu::-webkit-scrollbar { display: none; }
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
-      font-size: 16px; /* 稍微放大一点，因为没了背景色 */
+      font-size: 15px;
+      color: var(--text-color);
       padding-bottom: 0;
       border: none;
-      background: transparent;
-      color: var(--text-color);
     }
     #nav-menu a.current {
       color: var(--accent-color);
       font-weight: bold;
     }
 
-    /* 显示极简的小太阳/月亮切换 */
-    .mobile-only { display: block; margin-left: 10px; }
-    
-    #simple-theme-btn {
-      background: transparent;
-      border: none;
-      font-size: 22px;
-      cursor: pointer;
-      padding: 0;
-      display: flex;
-      align-items: center;
+    /* 把齿轮绝对定位在右上角 */
+    .header-right { 
+      position: absolute; 
+      top: 50%; 
+      right: 15px; 
+      transform: translateY(-50%); 
+      margin: 0; 
+    }
+
+    /* 👇 手机端的下拉弹窗设计 👇 */
+    .theme-settings-panel {
+      position: absolute !important;
+      top: 40px !important;
+      right: 0 !important;
+      left: auto !important;
+      transform: none !important; /* 取消居中，变成下拉 */
+      width: 280px !important;
+      background: var(--card-bg) !important; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+      border-radius: 12px !important;
+      border: 1px solid var(--border-color) !important;
+      z-index: 9999;
     }
   }
 </style>
 
 <script is:inline>
   document.addEventListener('DOMContentLoaded', () => {
-    // === 1. PC 端的齿轮控制逻辑 ===
     const wrapper = document.querySelector('.theme-settings-wrapper');
     const toggle = document.querySelector('.theme-settings-toggle');
     if (toggle && wrapper) {
@@ -298,27 +296,6 @@ const isIndex = currentPath === '/';
       });
       document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) { wrapper.classList.remove('active'); }
-      });
-    }
-
-    // === 2. 手机端极简小太阳的逻辑 (一键亮暗切换) ===
-    const simpleBtn = document.getElementById('simple-theme-btn');
-    if (simpleBtn) {
-      // 初始化按钮图标
-      let currentMode = document.documentElement.getAttribute('data-mode') || 'light';
-      simpleBtn.textContent = currentMode === 'dark' ? '☀️' : '🌙';
-
-      simpleBtn.addEventListener('click', () => {
-        let mode = document.documentElement.getAttribute('data-mode');
-        let newMode = mode === 'dark' ? 'light' : 'dark';
-        
-        // 改变全局主题模式
-        document.documentElement.setAttribute('data-mode', newMode);
-        // 记录到本地
-        localStorage.setItem('theme-mode', newMode);
-        
-        // 切换图标
-        simpleBtn.textContent = newMode === 'dark' ? '☀️' : '🌙';
       });
     }
   });
