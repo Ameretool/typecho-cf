@@ -19,5 +19,54 @@
     overflow: hidden !important;
   }
 
-  /* ... 剩下的导航居中等代码 ... */
+  /* 把顶部多余留白干掉 */
+  #header {
+    padding: 10px 0 !important;
+    margin-bottom: 0 !important;
+  }
+  .col-mb-12 > div {
+    margin-top: 0 !important;
+  }
+  
+  /* 导航栏和齿轮按钮同行对齐 */
+  #header .col-mb-12 > div {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-top: 5px !important;
+  }
+
+  #nav-menu {
+    display: flex !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    padding: 0 40px !important;
+    gap: 10px !important;
+    float: none !important;
+  }
+
+  #nav-menu a {
+    float: none !important;
+    margin: 0 !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    height: 30px !important;
+    line-height: 28px !important;
+    padding: 0 15px !important;
+  }
+
+  /* 齿轮按钮右侧绝对居中 */
+  #header .theme-settings-wrapper {
+    position: absolute !important;
+    right: 15px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin: 0 !important;
+  }
+  
+  /* 4. 内容区往下挪，防遮挡 */
+  body {
+    padding-top: 100px !important;
+  }
 }
