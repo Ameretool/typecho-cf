@@ -95,7 +95,7 @@ const isIndex = currentPath === '/';
   .header-container {
     display: flex;
     justify-content: space-between;
-    align-items: center; /* 完美垂直对齐小太阳、搜索框和Logo */
+    align-items: center; 
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
@@ -161,7 +161,6 @@ const isIndex = currentPath === '/';
     gap: 15px;
   }
 
-  /* 搜索框 */
   .site-search form {
     display: flex;
     align-items: center;
@@ -193,7 +192,6 @@ const isIndex = currentPath === '/';
     font-size: 14px;
   }
 
-  /* 齿轮 */
   .theme-settings-wrapper {
     position: relative;
     display: flex;
@@ -229,7 +227,7 @@ const isIndex = currentPath === '/';
   .theme-settings-wrapper.active .theme-settings-panel { display: block; }
 
   /* ==============================
-     手机端适配 (干死旧 CSS 引起的蓝方块)
+     手机端下拉菜单优化
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky { padding: 10px 0; }
@@ -253,7 +251,6 @@ const isIndex = currentPath === '/';
       gap: 10px;
     }
     #nav-menu::-webkit-scrollbar { display: none; }
-    
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
@@ -262,26 +259,35 @@ const isIndex = currentPath === '/';
       border-radius: 6px;
       border: 1px solid var(--border-color);
       font-size: 14px;
-      color: var(--text-color); /* 修复文字消失变方块 */
+      color: var(--text-color);
     }
-    
     #nav-menu a.current {
       background: var(--accent-color);
       color: #fff;
       border-color: var(--accent-color);
     }
 
-    .header-right { position: absolute; top: 12px; right: 15px; margin: 0; }
+    /* 齿轮放在右上角 */
+    .header-right { position: absolute; top: 12px; right: 15px; margin: 0; z-index: 10001; }
 
+    /* 👇 暴力干死旧 CSS 对面板的干扰，变成干净的下拉菜单 👇 */
     .theme-settings-panel {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90vw;
-      max-width: 320px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      margin: 0;
+      position: absolute !important;
+      top: 45px !important;
+      right: 0 !important;
+      left: auto !important;
+      transform: none !important; /* 取消居中 */
+      width: 280px !important;
+      max-height: 80vh !important;
+      overflow-y: auto !important;
+      background: var(--card-bg) !important; /* 强制去除半透明 */
+      backdrop-filter: none !important; /* 干死模糊效果 */
+      -webkit-backdrop-filter: none !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
+      border-radius: 12px !important;
+      padding: 16px !important;
+      margin: 0 !important;
+      border: 1px solid var(--border-color) !important;
     }
   }
 </style>
