@@ -99,7 +99,7 @@ const isIndex = currentPath === '/';
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
-    position: relative; /* 非常重要：为手机端的下拉弹窗提供定位基准 */
+    position: relative; /* 为弹窗定位做基准 */
   }
 
   .header-left {
@@ -197,7 +197,6 @@ const isIndex = currentPath === '/';
   .theme-settings-toggle { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 5px; display: flex; align-items: center; }
   .theme-settings-toggle:hover { color: var(--accent-color); }
 
-  /* PC 端面板 */
   .theme-settings-panel {
     position: absolute; right: 0; top: 45px; width: 260px;
     background: var(--card-bg); border: 1px solid var(--border-color);
@@ -209,12 +208,11 @@ const isIndex = currentPath === '/';
 
 
   /* ==============================
-     手机端专属布局 (极简横向 + 完美下拉弹窗)
+     手机端专属布局 (极简横向 + 居中下拉弹窗)
      ============================== */
   @media (max-width: 768px) {
     .site-header-sticky { padding: 10px 0; }
     
-    /* 强制变成单行横向排列 */
     .header-container {
       display: flex;
       flex-direction: row; 
@@ -230,32 +228,30 @@ const isIndex = currentPath === '/';
       overflow: hidden; 
     }
 
+    /* 👇 1. Logo 和导航的距离缩小 (gap 从 15px 变成 10px) 👇 */
     .nav-row { 
       flex-direction: row; 
       align-items: center; 
-      gap: 15px; 
+      gap: 10px; 
       width: 100%; 
     }
 
-    /* 隐藏文字，只留 Logo 图片 */
     .site-title { display: none; }
     .site-logo img { height: 32px; }
-    
-    /* 隐藏副标题和搜索框 */
     .description, .site-search { display: none; }
 
-    /* 导航栏滑动 */
+    /* 👇 2. 导航文字距离缩小 (gap 从 15px 变成 12px，字号稍微收紧) 👇 */
     #nav-menu {
       display: flex;
       overflow-x: auto;
-      gap: 15px;
+      gap: 12px;
       padding: 0;
     }
     #nav-menu::-webkit-scrollbar { display: none; }
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
-      font-size: 16px;
+      font-size: 15px;
       color: var(--text-color);
       padding-bottom: 0;
       border: none;
@@ -266,17 +262,16 @@ const isIndex = currentPath === '/';
       font-weight: bold;
     }
 
-    /* 齿轮位于最右侧 */
     .header-right { margin: 0; padding-right: 5px; }
 
-    /* 👇 手机端下拉弹窗的完美对齐 👇 */
+    /* 👇 3. 弹窗相对屏幕居中，但不完全贴边 👇 */
     .theme-settings-panel {
-      position: absolute !important;
-      top: 45px !important;
-      right: 15px !important; /* 强制靠右对齐 */
-      left: auto !important;
-      transform: none !important;
-      width: 280px !important;
+      position: fixed !important; /* 改为 fixed，以屏幕为基准 */
+      top: 65px !important; /* 根据你的头部高度微调 */
+      left: 50% !important;
+      transform: translateX(-50%) !important; /* 强行水平居中 */
+      width: calc(100vw - 40px) !important; /* 宽度占满屏幕，两边留白 20px */
+      max-width: 320px !important;
       background: var(--card-bg) !important;
       border: 1px solid var(--border-color) !important;
       box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
@@ -297,7 +292,6 @@ const isIndex = currentPath === '/';
         wrapper.classList.toggle('active');
       });
 
-      // 点击空白处关闭弹窗
       document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) { 
           wrapper.classList.remove('active'); 
