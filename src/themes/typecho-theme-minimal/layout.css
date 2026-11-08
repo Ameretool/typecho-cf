@@ -1,16 +1,12 @@
 /* ==========================================================================
-   文件二：layout - 纯净版 (已剔除头部旧样式)
+   文件二：layout - 完美对齐版
    ========================================================================== */
 
-/* ============================================================
- * 1. 辅助类控制显示隐藏
- * ============================================================ */
+/* 1. 辅助类控制 */
 @media (min-width: 769px) { .kit-hidden-pc { display: none !important; } }
 @media (max-width: 768px) { .kit-hidden-tb { display: none !important; } }
 
-/* ============================================================
- * 2. 主内容区、文章、评论等基础样式
- * ============================================================ */
+/* 2. 内容基础 */
 .post { padding: 15px 0 20px; border-bottom: 1px solid var(--border-color); }
 .post-title { margin: .83em 0; font-size: 1.4em; }
 .post-title a { color: var(--accent-color) !important; text-decoration: none; }
@@ -25,17 +21,14 @@
 .more { text-align: center; }
 .more a { border: none; }
 
-/* 移动端文章标题、时间居中 */
 @media (max-width: 768px) { .post-title, .post-meta { text-align: center !important; } }
 
-/* 分页 */
 .page-navigator { list-style: none; margin: 25px 0; padding: 0; text-align: center; }
 .page-navigator li { display: inline-block; margin: 0 4px; }
 .page-navigator a { display: inline-block; padding: 0 10px; height: 30px; line-height: 30px; }
 .page-navigator a:hover { background: var(--card-bg); text-decoration: none; }
 .page-navigator .current a { color: var(--text-color); background: var(--card-bg); }
 
-/* 评论列表 */
 #comments { padding-top: 15px; }
 .comment-list, .comment-list ol { list-style: none; margin: 0; padding: 0; }
 .comment-list li { padding: 14px; margin-top: 10px; border: 1px solid var(--border-color); }
@@ -52,7 +45,6 @@
 #comment-form label { display: block; margin-bottom: .5em; font-weight: bold; }
 #comment-form .required:after { content: " *"; color: #C00; }
 
-/* 侧栏与页脚 */
 #secondary { padding-top: 15px; word-wrap: break-word; font-size: 14px !important; line-height: 1.8 !important; color: var(--text-color) !important; }
 .widget { margin-bottom: 30px; }
 .widget-title { font-size: 15px !important; font-weight: 600 !important; color: var(--text-color) !important; margin-bottom: 8px !important; }
@@ -65,7 +57,6 @@
 
 @media (min-width: 992px) { #secondary { border-left: 1px solid var(--border-color) !important; padding-left: 24px !important; } }
 
-/* 内容格式 */
 .post-content h2, .comment-content h2 { font-size: 1.28571em; }
 .post-content img, .comment-content img, .post-content video, .comment-content video { max-width: 100%; border-radius: 6px; }
 .post-content a img, .comment-content a img { background: var(--bg-color); position: relative; border-radius: 6px; bottom: -4px; }
@@ -76,16 +67,14 @@
 img.alignleft { margin: 0 15px 0 0; }
 img.alignright { margin: 0 0 0 15px; }
 
-@media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; } }
+/* 👇 核心：恢复 80% 宽度，和主内容区完美对齐 👇 */
+@media (max-width: 767px) { body { font-size: var(--font-size-base); } .container { padding-left: 16px; padding-right: 16px; width: auto; } }
 @media (min-width: 1200px) { .container { width: 80%; max-width: 1280px; margin: 0 auto; } }
 
-/* ==========================================================================
-   头部组件专属样式 (Header.astro)
-   ========================================================================== */
 
-/* ------------------------------
- * 1. 基础与 PC 端布局
- * ------------------------------ */
+/* ==========================================================================
+   头部组件专属 (纯净化)
+   ========================================================================== */
 .site-header-sticky {
   background-color: var(--bg-color);
   border-bottom: 1px solid var(--border-color);
@@ -95,131 +84,43 @@ img.alignright { margin: 0 0 0 15px; }
   padding: 15px 0;
 }
 
+/* 这里的宽度由父级 .container 控制，不再写死 1200px */
 .header-container {
   display: flex;
   justify-content: space-between;
   align-items: center; 
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
   position: relative; 
 }
 
-.header-left {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 1;
-}
+.header-left { display: flex; flex-direction: column; justify-content: center; flex: 1; }
+.nav-row { display: flex; align-items: center; gap: 30px; }
 
-.nav-row {
-  display: flex;
-  align-items: center;
-  gap: 30px;
-}
-
-.site-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: var(--text-color);
-}
-
+.site-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-color); }
 .site-logo img { height: 36px; width: auto; border-radius: 4px; }
 .site-title { font-size: 1.6em; font-weight: bold; white-space: nowrap; }
 
-#nav-menu {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin: 0;
-  padding: 0;
-}
+#nav-menu { display: flex; align-items: center; gap: 20px; margin: 0; padding: 0; }
+#nav-menu a { color: var(--text-color); text-decoration: none; font-size: 15px; padding-bottom: 4px; border-bottom: 2px solid transparent; transition: all 0.2s; }
+#nav-menu a:hover, #nav-menu a.current { color: var(--accent-color); border-bottom-color: var(--accent-color); }
 
-#nav-menu a {
-  color: var(--text-color);
-  text-decoration: none;
-  font-size: 15px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-#nav-menu a:hover, 
-#nav-menu a.current {
-  color: var(--accent-color);
-  border-bottom-color: var(--accent-color);
-}
-
-.description {
-  margin: 8px 0 0 0;
-  font-size: 13px;
-  color: var(--text-color);
-  opacity: 0.6;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
+.description { margin: 8px 0 0 0; font-size: 13px; color: var(--text-color); opacity: 0.6; }
+.header-right { display: flex; align-items: center; gap: 15px; }
 
 /* 搜索框 */
-.site-search form {
-  display: flex;
-  align-items: center;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
-  overflow: hidden;
-  height: 36px;
-  margin: 0;
-}
+.site-search form { display: flex; align-items: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; height: 36px; margin: 0; }
+.site-search input { border: none !important; outline: none !important; box-shadow: none !important; background: transparent !important; padding: 0 15px; color: var(--text-color); width: 160px; font-size: 14px; }
+.site-search .submit { background: var(--accent-color); color: #fff; border: none !important; padding: 0; width: 60px; height: 100%; cursor: pointer; font-size: 14px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
 
-.site-search input {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  padding: 0 15px;
-  color: var(--text-color);
-  width: 160px;
-  font-size: 14px;
-}
-
-.site-search .submit {
-  background: var(--accent-color);
-  color: #fff;
-  border: none !important;
-  padding: 0;
-  width: 60px;
-  height: 100%;
-  cursor: pointer;
-  font-size: 14px;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 设置面板基础 */
+/* 设置面板 */
 .theme-settings-wrapper { position: relative; display: flex; align-items: center; }
 .theme-settings-toggle { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 5px; display: flex; align-items: center; }
 .theme-settings-toggle:hover { color: var(--accent-color); }
-
-.theme-settings-panel {
-  position: absolute; right: 0; top: 45px; width: 260px;
-  background: var(--card-bg); border: 1px solid var(--border-color);
-  border-radius: 12px; padding: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  display: none; z-index: 10000;
-}
+.theme-settings-panel { position: absolute; right: 0; top: 45px; width: 260px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: none; z-index: 10000; }
 .theme-settings-wrapper.active .theme-settings-panel { display: block; }
 
 
 /* ==========================================================================
-   手机端专属 (彻底干死任何可能的触摸高亮和边框)
+   手机端专属 (超级暴力清理)
    ========================================================================== */
 @media (max-width: 768px) {
   .site-header-sticky { padding: 10px 0; }
@@ -229,37 +130,17 @@ img.alignright { margin: 0 0 0 15px; }
     flex-direction: row; 
     align-items: center;
     justify-content: space-between;
-    padding: 0 10px; 
   }
   
-  .header-left { 
-    flex-direction: row; 
-    align-items: center; 
-    flex: 1;
-    overflow: hidden; 
-    -webkit-tap-highlight-color: transparent; /* 👈 干掉手机点击时的默认高亮色 */
-  }
+  .header-left { flex-direction: row; align-items: center; flex: 1; overflow: hidden; -webkit-tap-highlight-color: transparent; }
 
-  .nav-row { 
-    flex-direction: row; 
-    align-items: center; 
-    gap: 10px; 
-    width: 100%; 
-  }
+  .nav-row { flex-direction: row; align-items: center; gap: 10px; width: 100%; }
 
   .site-title, .description, .site-search { display: none; }
   .site-logo img { height: 30px; }
 
-  /* 极简纯文字导航，连手机端的点击高亮也干掉 */
-  #nav-menu {
-    display: flex !important;
-    overflow-x: auto;
-    gap: 12px; 
-    padding: 0;
-    border: none !important;
-    background: transparent !important;
-    -webkit-tap-highlight-color: transparent;
-  }
+  /* 👇 超级暴力去边框：把 a 标签的所有可能性全部杀光 👇 */
+  #nav-menu { display: flex !important; overflow-x: auto; gap: 12px; padding: 0; border: none !important; background: transparent !important; }
   #nav-menu::-webkit-scrollbar { display: none; }
   
   #nav-menu a {
@@ -271,17 +152,16 @@ img.alignright { margin: 0 0 0 15px; }
     margin: 0 !important;
     border: none !important; 
     border-bottom: none !important; 
-    background: transparent !important; 
+    border-radius: 0 !important; /* 杀光圆角 */
+    background-color: transparent !important; /* 杀光背景 */
+    background: transparent !important;
     box-shadow: none !important; 
     outline: none !important;
     text-decoration: none !important;
-    -webkit-tap-highlight-color: transparent !important; /* 👈 核心：干掉点击时一闪而过的灰块 */
+    -webkit-tap-highlight-color: transparent !important; 
   }
   
-  #nav-menu a.current {
-    color: var(--accent-color) !important;
-    font-weight: bold;
-  }
+  #nav-menu a.current { color: var(--accent-color) !important; font-weight: bold; }
 
   .header-right { margin: 0; padding-right: 0; }
 
