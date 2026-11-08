@@ -29,6 +29,7 @@ const isIndex = currentPath === '/';
         </nav>
       </div>
       
+      <!-- 描述文字在 PC 端显示在下一行，手机端隐藏 -->
       <p class="description">{options.description}</p>
     </div>
 
@@ -42,13 +43,11 @@ const isIndex = currentPath === '/';
         </form>
       </div>
 
-      <!-- 设置面板包裹层 -->
       <div class="theme-settings-wrapper">
         <button class="theme-settings-toggle" aria-label="主题设置">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         </button>
 
-        <!-- 弹出的设置面板 -->
         <div class="theme-settings-panel">
           <div class="setting-group">
             <div class="setting-title">界面模式</div>
@@ -84,7 +83,7 @@ const isIndex = currentPath === '/';
 
 <style>
   /* ==============================
-     抽离后的独立头部样式 (防冲突)
+     头部终极布局方案
      ============================== */
   .site-header-sticky {
     background-color: var(--bg-color);
@@ -98,7 +97,7 @@ const isIndex = currentPath === '/';
   .header-container {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: center; /* 核心：强制所有元素垂直居中在一根水平线上 */
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
@@ -107,6 +106,7 @@ const isIndex = currentPath === '/';
   .header-left {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     flex: 1;
   }
 
@@ -138,7 +138,10 @@ const isIndex = currentPath === '/';
 
   #nav-menu {
     display: flex;
+    align-items: center;
     gap: 20px;
+    margin: 0;
+    padding: 0;
   }
 
   #nav-menu a {
@@ -148,6 +151,7 @@ const isIndex = currentPath === '/';
     padding-bottom: 4px;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
+    display: inline-block;
   }
 
   #nav-menu a:hover, 
@@ -169,7 +173,7 @@ const isIndex = currentPath === '/';
     gap: 15px;
   }
 
-  /* 搜索框样式 */
+  /* 搜索框 */
   .site-search form {
     display: flex;
     align-items: center;
@@ -187,7 +191,7 @@ const isIndex = currentPath === '/';
     padding: 0 15px;
     outline: none;
     color: var(--text-color);
-    width: 180px;
+    width: 160px;
     font-size: 14px;
   }
 
@@ -199,14 +203,9 @@ const isIndex = currentPath === '/';
     height: 100%;
     cursor: pointer;
     font-size: 14px;
-    transition: opacity 0.2s;
-  }
-  
-  .site-search .submit:hover {
-    opacity: 0.8;
   }
 
-  /* 设置面板定位 */
+  /* 齿轮按钮 */
   .theme-settings-wrapper {
     position: relative;
     display: flex;
@@ -219,14 +218,14 @@ const isIndex = currentPath === '/';
     color: var(--text-color);
     cursor: pointer;
     padding: 5px;
-    transition: transform 0.3s;
     display: flex;
     align-items: center;
+    justify-content: center;
   }
 
   .theme-settings-toggle:hover {
-    transform: rotate(30deg);
     color: var(--accent-color);
+    transform: rotate(30deg);
   }
 
   .theme-settings-panel {
@@ -240,7 +239,6 @@ const isIndex = currentPath === '/';
     padding: 16px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     display: none;
-    text-align: left;
     z-index: 10000;
   }
 
@@ -248,32 +246,42 @@ const isIndex = currentPath === '/';
     display: block;
   }
 
-  /* 针对你截图里的手机端适配 */
+  /* ==============================
+     手机端优化
+     ============================== */
   @media (max-width: 768px) {
-    .header-container {
-      padding: 10px 15px;
-      align-items: center;
+    .site-header-sticky {
+      padding: 10px 0;
     }
     
+    .header-container {
+      flex-direction: column; /* 手机端变成上下两行 */
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    /* 第一行：Logo + 齿轮 */
+    .header-left {
+      width: 100%;
+    }
+
     .nav-row {
-      flex-wrap: wrap;
-      gap: 15px;
+      width: 100%;
+      justify-content: space-between; /* Logo 靠左，导航靠右（或另起一行） */
     }
 
-    .site-title {
-      font-size: 1.3em;
-    }
-
-    .description,
+    /* 强制搜索框隐藏 */
     .site-search {
-      display: none !important; /* 手机端隐藏搜索框和描述 */
+      display: none !important; 
     }
 
-    /* 手机端导航滑动，防止溢出 */
+    /* 手机端导航另起一行并允许滑动 */
     #nav-menu {
       width: 100%;
       overflow-x: auto;
+      padding-top: 10px;
       padding-bottom: 5px;
+      gap: 12px;
     }
     #nav-menu::-webkit-scrollbar {
       display: none;
@@ -281,9 +289,25 @@ const isIndex = currentPath === '/';
     #nav-menu a {
       white-space: nowrap;
       flex-shrink: 0;
+      background: var(--card-bg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
     }
 
-    /* 移动端设置面板的定位 */
+    /* 描述文字隐藏 */
+    .description {
+      display: none !important;
+    }
+
+    /* 设置按钮放到右上角 */
+    .header-right {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+    }
+
+    /* 移动端面板定位 */
     .theme-settings-panel {
       position: fixed;
       top: 60px;
@@ -295,7 +319,6 @@ const isIndex = currentPath === '/';
 </style>
 
 <script is:inline>
-  // 齿轮面板的点击开关逻辑
   document.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.querySelector('.theme-settings-wrapper');
     const toggle = document.querySelector('.theme-settings-toggle');
