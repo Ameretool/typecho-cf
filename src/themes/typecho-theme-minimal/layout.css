@@ -102,7 +102,7 @@ img.alignright { margin: 0 0 0 15px; }
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
-  position: relative; /* 为手机端弹窗定位提供基准 */
+  position: relative; 
 }
 
 .header-left {
@@ -126,17 +126,9 @@ img.alignright { margin: 0 0 0 15px; }
   color: var(--text-color);
 }
 
-.site-logo img { 
-  height: 36px; 
-  width: auto; 
-  border-radius: 4px; 
-}
+.site-logo img { height: 36px; width: auto; border-radius: 4px; }
 
-.site-title { 
-  font-size: 1.6em; 
-  font-weight: bold; 
-  white-space: nowrap; 
-}
+.site-title { font-size: 1.6em; font-weight: bold; white-space: nowrap; }
 
 #nav-menu {
   display: flex;
@@ -201,11 +193,11 @@ img.alignright { margin: 0 0 0 15px; }
   color: #fff;
   border: none;
   padding: 0;
-  width: 60px; /* 强制给按钮一个固定宽度 */
+  width: 60px;
   height: 100%;
   cursor: pointer;
   font-size: 14px;
-  white-space: nowrap; /* 强制文字不换行 */
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -246,7 +238,6 @@ img.alignright { margin: 0 0 0 15px; }
     overflow: hidden; 
   }
 
-  /* Logo 和导航贴紧 */
   .nav-row { 
     flex-direction: row; 
     align-items: center; 
@@ -254,11 +245,10 @@ img.alignright { margin: 0 0 0 15px; }
     width: 100%; 
   }
 
-  /* 隐藏多余文字，缩小 Logo */
   .site-title, .description, .site-search { display: none; }
   .site-logo img { height: 30px; }
 
-  /* 纯文字导航，强行扒光背景和边框 */
+  /* 👇 极致的去边框：连浏览器自带的外发光 outline 都杀掉了 👇 */
   #nav-menu {
     display: flex;
     overflow-x: auto;
@@ -276,6 +266,7 @@ img.alignright { margin: 0 0 0 15px; }
     border: none !important; 
     background: transparent !important; 
     box-shadow: none !important; 
+    outline: none !important; /* 干掉浏览器的点击聚焦框 */
   }
   
   #nav-menu a.current {
@@ -285,7 +276,7 @@ img.alignright { margin: 0 0 0 15px; }
 
   .header-right { margin: 0; padding-right: 0; }
 
-  /* 弹窗靠右固定，防止撑爆屏幕 */
+  /* 弹窗靠右固定 */
   .theme-settings-panel {
     position: fixed !important;
     top: 60px !important;
