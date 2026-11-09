@@ -166,29 +166,29 @@ textarea { resize: vertical; } /* 允许竖向拉伸 */
 }
 .color-btn:hover { transform: scale(1.1); }
 
-/* 各个颜色按钮的配色（明亮模式 - 果冻渐变质感） */
-.color-btn.blue { 
-    background: linear-gradient(135deg, #60a5fa, #2563eb) !important; 
-    border: none !important; 
-}
-.color-btn.green { 
-    background: linear-gradient(135deg, #c084fc, #7c3aed) !important; 
-    border: none !important;
-}
-.color-btn.orange { 
-    background: linear-gradient(135deg, #d1d5db, #4b5563) !important; 
-    border: none !important;
-}
-.color-btn.purple { 
-    background: linear-gradient(135deg, #fcd34d, #d97706) !important; 
-    border: none !important;
-}
+//* ==========================================
+   1. 颜色按钮基础与纯正色（对应实际主题）
+   ========================================== */
+.color-btn.blue { background: #2563eb !important; border: none !important; }
+.color-btn.green { background: #7c3aed !important; border: none !important; }
+.color-btn.orange { background: #4b5563 !important; border: none !important; }
+.color-btn.purple { background: #d97706 !important; border: none !important; }
 
-/* 各个颜色按钮的配色（暗黑模式适配 - 稍微提亮一点，防止太暗） */
-html[data-mode="dark"] .color-btn.blue { background: linear-gradient(135deg, #93c5fd, #3b82f6) !important; }
-html[data-mode="dark"] .color-btn.green { background: linear-gradient(135deg, #d8b4fe, #9333ea) !important; }
-html[data-mode="dark"] .color-btn.orange { background: linear-gradient(135deg, #e5e7eb, #6b7280) !important; }
-html[data-mode="dark"] .color-btn.purple { background: linear-gradient(135deg, #fde047, #f59e0b) !important; }
+/* 暗黑模式下的纯正色（稍微提亮） */
+html[data-mode="dark"] .color-btn.blue { background: #3b82f6 !important; }
+html[data-mode="dark"] .color-btn.green { background: #9333ea !important; }
+html[data-mode="dark"] .color-btn.orange { background: #6b7280 !important; }
+html[data-mode="dark"] .color-btn.purple { background: #f59e0b !important; }
+
+/* ==========================================
+   2. 被选中时的光环特效（非常重要！）
+   ========================================== */
+.color-btn.active {
+    outline: 2px solid var(--accent-color) !important; /* 外圈颜色跟随当前主题 */
+    outline-offset: 3px !important; /* 外圈和球的距离 */
+    transform: scale(1.1) !important; /* 稍微放大一点点 */
+    transition: all 0.2s ease;
+}
 /* ==========================================================================
    3. 折叠面板基础（双圆角）
    ========================================================================== */
