@@ -264,5 +264,28 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
     }, true); // 👈 注意这里的 true，表示在事件捕获阶段触发，极大地提高了点击响应率
   </script>
   <!-- 备注 -->
+  <!-- 新窗口打开文章图片脚本 -->
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 获取文章内容区的所有图片
+      const images = document.querySelectorAll('.post-content img');
+      
+      images.forEach(img => {
+        // 如果图片已经被 <a> 标签包裹了，说明可能原本就是个链接，就不处理了
+        if (img.parentElement.tagName.toLowerCase() === 'a') return;
+
+        // 给图片外层套一个 <a> 标签
+        const link = document.createElement('a');
+        link.href = img.src;         // 链接地址就是图片的真实地址
+        link.target = '_blank';      // 在新窗口打开
+        link.rel = 'noopener noreferrer'; // 安全属性
+        link.style.cursor = 'zoom-in';    // 鼠标放上去显示放大镜
+
+        // 将原图片替换为包裹了链接的图片
+        img.parentNode.insertBefore(link, img);
+        link.appendChild(img);
+      });
+    });
+  </script>
 </body>
 </html>
