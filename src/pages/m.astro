@@ -1,11 +1,15 @@
 ---
 /**
- * 独立的微型博客页面 /m (完全独立版)
+ * 独立的微型博客页面 /m (直接引入当前主题头尾版)
  */
 import { createContext } from '@/lib/context';
 import { prepareIndexData } from '@/lib/page-data';
 import Base from '@/layouts/Base.astro';
 import { formatDate } from '@/lib/content';
+
+// 👇 核心 1：路径改成你正在使用的 minimal 主题 👇
+import Header from '../themes/typecho-theme-minimal/components/Header.astro';
+import Footer from '../themes/typecho-theme-minimal/components/Footer.astro';
 
 const ctx = await createContext(Astro.locals, Astro.request);
 const { options, urls } = ctx;
@@ -31,46 +35,39 @@ const currentPath = '/m';
   isLoggedIn={isLoggedIn} 
   pluginCtx={pluginCtx}
 >
-  
-  <!-- 独立极简头部：绝对不打架 -->
-  <header class="micro-header">
-    <div class="micro-container header-inner">
-      <a href={urls.siteUrl + '/'} class="back-btn">
-        ← 返回首页
-      </a>
-      <div class="page-title">💬 碎碎念</div>
-    </div>
-  </header>
+  <!-- 👇 核心 2：把所需的参数全部传进去 👇 -->
+  <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
 
   <!-- 时间轴内容 -->
   <div id="body">
-    <div class="micro-container">
+    <div class="container" style="max-width: 640px; margin: 40px auto; padding: 0 20px;">
       
-      <div class="timeline-hint">
+      <div style="text-align: center; margin-bottom: 40px; opacity: 0.6; font-size: 14px; letter-spacing: 1px;">
         · 记录瞬间的碎碎念 ·
       </div>
 
       {microPosts.length === 0 ? (
-        <p class="empty-tip">当前页没有动态哦~</p>
+        <p style="text-align: center; opacity: 0.5; margin-top: 50px;">当前页没有动态哦~</p>
       ) : (
         <div class="micro-timeline">
           {microPosts.map((post: any) => (
-            <div class="micro-card">
+            <div style="margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px dashed var(--border-color);">
               
-              <div class="card-header">
-                <div class="author-info">
-                  <img src={post.author?.avatarUrl || '/img/avatar.svg'} alt="avatar" class="author-avatar" />
-                  <span class="author-name">{post.author?.screenName || post.author?.name || 'HB'}</span>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 13px; color: #8a8f9a; display: flex; align-items: center; gap: 8px;">
+                  <img src={post.author?.avatarUrl || '/img/avatar.svg'} alt="avatar" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; opacity: 0.8;" />
+                  <span>{post.author?.screenName || post.author?.name || 'HB'}</span>
                 </div>
-                <time datetime={new Date((post.created) * 1000).toISOString()} class="post-time">
+                <time datetime={new Date((post.created) * 1000).toISOString()} style="font-size: 12px; color: #8a8f9a;">
                   {formatDate(post.created, 'Y.m.d H:i', options.timezone)}
                 </time>
               </div>
 
-              <div class="post-content micro-content" set:html={post.content || post.excerpt}></div>
+              <!-- 添加了 class="post-content" 以便全局图片放大脚本生效，并且限制了图片宽度 -->
+              <div class="post-content" set:html={post.content || post.excerpt} style="font-size: 15px; line-height: 1.8; color: var(--text-color); word-break: break-word; overflow: hidden;"></div>
 
-              <div class="card-footer">
-                <a href={`${post.permalink}#comments`} class="comment-link">
+              <div style="margin-top: 16px; font-size: 13px; text-align: right;">
+                <a href={`${post.permalink}#comments`} style="color: var(--accent-color); text-decoration: none; border: none;">
                   💬 {post.commentsNum === 0 ? '去评论' : `${post.commentsNum} 条评论`}
                 </a>
               </div>
@@ -81,135 +78,16 @@ const currentPath = '/m';
     </div>
   </div>
 
-  <!-- 独立极简底部 -->
-  <footer class="micro-footer">
-    &copy; {new Date().getFullYear()} {options.title}. All Rights Reserved.
-  </footer>
-
+  <!-- 👇 核心 3：引入底部 👇 -->
+  <Footer options={options} urls={urls} />
 </Base>
 
 <style>
-  /* 全页面统一约束宽度 */
-  .micro-container {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 0 20px;
-  }
-
-  /* 头部样式 */
-  .micro-header {
-    background: var(--bg-color);
-    border-bottom: 1px solid var(--border-color);
-    padding: 15px 0;
-    position: sticky;
-    top: 0;
-    z-index: 999;
-  }
-  .header-inner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .back-btn {
-    text-decoration: none;
-    color: var(--text-color);
-    font-size: 1rem;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    transition: color 0.2s;
-  }
-  .back-btn:hover {
-    color: var(--accent-color);
-  }
-  .page-title {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: var(--accent-color);
-  }
-
-  /* 内容区提示 */
-  .timeline-hint {
-    text-align: center;
-    margin: 40px 0;
-    opacity: 0.6;
-    font-size: 14px;
-    letter-spacing: 1px;
-  }
-  .empty-tip {
-    text-align: center;
-    opacity: 0.5;
-    margin-top: 50px;
-  }
-
-  /* 卡片样式（像微信朋友圈或微博） */
-  .micro-card {
-    margin-bottom: 30px;
-    padding-bottom: 24px;
-    border-bottom: 1px dashed var(--border-color);
-  }
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .author-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--text-color);
-    opacity: 0.8;
-  }
-  .author-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-  .author-name {
-    font-weight: 600;
-  }
-  .post-time {
-    font-size: 12px;
-    color: var(--text-color);
-    opacity: 0.5;
-  }
-  
-  /* 正文样式及图片防撑爆 */
-  .micro-content {
-    font-size: 15px;
-    line-height: 1.8;
-    color: var(--text-color);
-    word-break: break-word;
-  }
-  .micro-content :global(img) {
+  /* 专门用来防止动态里的图片撑爆手机屏幕 */
+  .post-content :global(img) {
     max-width: 100% !important;
     height: auto !important;
     border-radius: 6px;
     margin: 10px 0;
-    display: block;
-  }
-
-  /* 卡片底部 */
-  .card-footer {
-    margin-top: 16px;
-    font-size: 13px;
-    text-align: right;
-  }
-  .comment-link {
-    color: var(--accent-color);
-    text-decoration: none;
-  }
-
-  /* 独立底部 */
-  .micro-footer {
-    text-align: center;
-    padding: 40px 0;
-    opacity: 0.5;
-    font-size: 13px;
-    color: var(--text-color);
   }
 </style>
