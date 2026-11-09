@@ -11,20 +11,21 @@ const { options, urls } = Astro.props;
 </footer>
 
 <script>
-  // 等页面 HTML 解析完就计算，不等图片和脚本
-  document.addEventListener('DOMContentLoaded', () => {
-    const nav = performance.getEntriesByType('navigation')[0];
-    const el = document.getElementById('page-speed');
-    
-    if (nav && el) {
-      // 1. 服务器响应时间 (TTFB) = 收到服务器第一个字节 - 开始请求
-      const ttfb = Math.round(nav.responseStart - nav.requestStart);
+  // 等页面完全加载完后（放在 load 里最稳妥）
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const nav = performance.getEntriesByType('navigation')[0];
+      const el = document.getElementById('page-speed');
       
-      // 2. DOM 解析时间 = HTML 下载完并解析完的时间
-      const domReady = Math.round(nav.domContentLoadedEventEnd);
-
-      // 显示在页脚
-      el.textContent = `| 服务器响应 ${ttfb} ms | 页面解析 ${domReady} ms`;
-    }
+      if (nav && el) {
+        // 拿到从发请求到收到服务器第一个字节的时间
+        const ttfb = Math.round(nav.responseStart - nav.startTime);
+        
+        // 如果超过 1000 毫秒（1秒），就显示秒，否则显示毫秒
+        const displayTime = ttfb > 1000 ? (ttfb / 1000).toFixed(2) + ' s' : ttfb + ' ms';
+        
+        el.textContent = `| 响应 ${displayTime}`;
+      }
+    }, 0); // 延迟 0 毫秒，让浏览器把性能数据完全准备好
   });
 </script>
