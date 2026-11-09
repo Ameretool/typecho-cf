@@ -11,21 +11,29 @@ const { options, urls } = Astro.props;
 </footer>
 
 <script>
-  // 等页面完全加载完后（放在 load 里最稳妥）
   window.addEventListener('load', () => {
     setTimeout(() => {
+      // 获取浏览器的性能导航数据
       const nav = performance.getEntriesByType('navigation')[0];
       const el = document.getElementById('page-speed');
       
       if (nav && el) {
-        // 拿到从发请求到收到服务器第一个字节的时间
-        const ttfb = Math.round(nav.responseStart - nav.startTime);
+        // 计算 TTFB（首字节时间，即服务器响应时间）
+        // 注意：有些老浏览器可能没有 startTime，用 fetchStart 兜底
+        const start = nav.startTime || nav.fetchStart;
+        const ttfb = Math.round(nav.responseStart - start);
         
-        // 如果超过 1000 毫秒（1秒），就显示秒，否则显示毫秒
-        const displayTime = ttfb > 1000 ? (ttfb / 1000).toFixed(2) + ' s' : ttfb + ' ms';
+        // 格式化时间：大于等于1000ms就转成秒（保留两位小数），小于1000ms直接显示ms
+        let displayTime = '';
+        if (ttfb >= 1000) {
+          displayTime = (ttfb / 1000).toFixed(2) + ' s';
+        } else {
+          displayTime = ttfb + ' ms';
+        }
         
+        // 显示在页脚
         el.textContent = `| 响应 ${displayTime}`;
       }
-    }, 0); // 延迟 0 毫秒，让浏览器把性能数据完全准备好
+    }, 0);
   });
 </script>
