@@ -263,29 +263,37 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       if (action === 'font') window.setThemeFont(value);
     }, true); // 👈 注意这里的 true，表示在事件捕获阶段触发，极大地提高了点击响应率
   </script>
-  <!-- 备注 -->
-  <!-- 新窗口打开文章图片脚本 -->
+  <!-- 图片新窗口打开 -->
   <script is:inline>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 获取文章内容区的所有图片
-      const images = document.querySelectorAll('.post-content img');
+  // 放弃 DOMContentLoaded，直接用全局点击事件拦截
+  // 这是所有 SPA 框架里最稳妥的“打补丁”方式
+  document.addEventListener('click', function(e) {
+    const img = e.target;
+    
+    // 如果是图片，且图片在文章内容区
+    if (img.tagName === 'IMG' && img.closest('.post-content')) {
+      // 如果它已经是一个带有链接的图片了（避免死循环）
+      if (img.parentElement.tagName.toLowerCase() === 'a') return;
+
+      // 阻止默认行为
+      e.preventDefault();
       
-      images.forEach(img => {
-        // 如果图片已经被 <a> 标签包裹了，说明可能原本就是个链接，就不处理了
-        if (img.parentElement.tagName.toLowerCase() === 'a') return;
+      // 在新窗口打开原图
+      window.open(img.src, '_blank');
+      
+      // 让鼠标变放大镜（针对 PC 端体验）
+      img.style.cursor = 'zoom-in';
+    }
+  });
 
-        // 给图片外层套一个 <a> 标签
-        const link = document.createElement('a');
-        link.href = img.src;         // 链接地址就是图片的真实地址
-        link.target = '_blank';      // 在新窗口打开
-        link.rel = 'noopener noreferrer'; // 安全属性
-        link.style.cursor = 'zoom-in';    // 鼠标放上去显示放大镜
-
-        // 将原图片替换为包裹了链接的图片
-        img.parentNode.insertBefore(link, img);
-        link.appendChild(img);
-      });
-    });
-  </script>
+  // 顺便在页面加载完成后，把鼠标样式批量改一下
+  document.addEventListener('DOMContentLoaded', () => {
+     document.querySelectorAll('.post-content img').forEach(img => {
+         if (img.parentElement.tagName.toLowerCase() !== 'a') {
+             img.style.cursor = 'zoom-in';
+         }
+     });
+  });
+</script>
 </body>
 </html>
