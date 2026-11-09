@@ -1,0 +1,111 @@
+---
+// 全局纯 CSS 图片点击放大组件 (严格限定文章内容区)
+---
+<div id="css-lightbox" class="lightbox-overlay">
+  <a href="#" class="lightbox-close-area"></a>
+  <div class="lightbox-content-wrapper">
+    <a href="#" class="lightbox-close-btn" title="关闭">×</a>
+    <img id="lightbox-img" src="" alt="Zoomed Image" />
+  </div>
+</div>
+
+<style>
+  /* 遮罩层：默认隐藏 */
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+  }
+
+  /* 显示遮罩 */
+  .lightbox-overlay:target {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 关闭区域 */
+  .lightbox-close-area {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  /* 图片容器 */
+  .lightbox-content-wrapper {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  /* 放大后的图片 */
+  .lightbox-content-wrapper img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    pointer-events: auto;
+  }
+
+  /* 关闭按钮 */
+  .lightbox-close-btn {
+    position: absolute;
+    top: -30px;
+    right: -10px;
+    color: #fff;
+    font-size: 36px;
+    font-weight: bold;
+    text-decoration: none;
+    line-height: 1;
+    pointer-events: auto;
+    z-index: 3;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  /* 严格限制：只有文章内容区 (.post-content) 里的图片才生效 */
+  .post-content a.lightbox-link {
+    cursor: zoom-in;
+    display: inline-block;
+    transition: opacity 0.2s;
+  }
+  .post-content a.lightbox-link:hover {
+    opacity: 0.9;
+  }
+  .post-content a.lightbox-link img {
+    margin-bottom: 0 !important;
+  }
+</style>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    // 严格选择器：只抓取 .post-content 内部的 <img>，绝不碰 Header 或侧边栏
+    const images = document.querySelectorAll('.post-content img');
+    
+    images.forEach(img => {
+      // 排除已经被 a 标签包裹的图片，防止二次嵌套
+      if (img.parentElement.tagName.toLowerCase() === 'a') return;
+      
+      // 构造 <a> 标签包裹图片
+      const wrapper = document.createElement('a');
+      wrapper.href = '#css-lightbox';
+      wrapper.className = 'lightbox-link';
+      img.parentNode.insertBefore(wrapper, img);
+      wrapper.appendChild(img);
+
+      // 点击时替换遮罩层里的图片地址
+      wrapper.addEventListener('click', () => {
+        document.getElementById('lightbox-img').src = img.src;
+      });
+    });
+  });
+</script>
