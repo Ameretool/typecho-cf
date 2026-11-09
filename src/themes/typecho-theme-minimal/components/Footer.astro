@@ -7,17 +7,24 @@ const { options, urls } = Astro.props;
 ---
 <footer id="footer" role="contentinfo">
   &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CloudFlare</a> 强力驱动.
-  <!-- 加了一个 span 用来显示速度 -->
   <span id="page-speed" style="margin-left: 8px; font-size: 0.85em; opacity: 0.6;"></span>
 </footer>
 
 <script>
-  window.addEventListener('load', () => {
-    // performance.now() 就是从打开网页到现在的毫秒数
-    const time = Math.round(performance.now());
+  // 等页面 HTML 解析完就计算，不等图片和脚本
+  document.addEventListener('DOMContentLoaded', () => {
+    const nav = performance.getEntriesByType('navigation')[0];
     const el = document.getElementById('page-speed');
-    if (el) {
-      el.textContent = `| 加载耗时 ${time} ms`;
+    
+    if (nav && el) {
+      // 1. 服务器响应时间 (TTFB) = 收到服务器第一个字节 - 开始请求
+      const ttfb = Math.round(nav.responseStart - nav.requestStart);
+      
+      // 2. DOM 解析时间 = HTML 下载完并解析完的时间
+      const domReady = Math.round(nav.domContentLoadedEventEnd);
+
+      // 显示在页脚
+      el.textContent = `| 服务器响应 ${ttfb} ms | 页面解析 ${domReady} ms`;
     }
   });
 </script>
