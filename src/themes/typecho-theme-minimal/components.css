@@ -166,19 +166,29 @@ textarea { resize: vertical; } /* 允许竖向拉伸 */
 }
 .color-btn:hover { transform: scale(1.1); }
 
-/* 各个颜色按钮的配色（明亮模式） */
-.color-btn.blue { background: linear-gradient(135deg, #dcecf9, #ffffff) !important; border: 1px solid #b0cde0 !important; }
-.color-btn.green { background: #7c3aed !important; }
-.color-btn.orange { background: #555555 !important; }
-.color-btn.purple { background: #9c4f7a !important; }
+/* 各个颜色按钮的配色（明亮模式 - 果冻渐变质感） */
+.color-btn.blue { 
+    background: linear-gradient(135deg, #60a5fa, #2563eb) !important; 
+    border: none !important; 
+}
+.color-btn.green { 
+    background: linear-gradient(135deg, #c084fc, #7c3aed) !important; 
+    border: none !important;
+}
+.color-btn.orange { 
+    background: linear-gradient(135deg, #d1d5db, #4b5563) !important; 
+    border: none !important;
+}
+.color-btn.purple { 
+    background: linear-gradient(135deg, #fcd34d, #d97706) !important; 
+    border: none !important;
+}
 
-/* 各个颜色按钮的配色（暗黑模式适配） */
-html[data-mode="dark"] .color-btn.blue { background: #60a5fa !important; border: none; }
-html[data-mode="dark"] .color-btn.green { background: #a78bfa !important; }
-html[data-mode="dark"] .color-btn.orange { background: #999999 !important; }
-html[data-mode="dark"] .color-btn.purple { background: #c8a878 !important; }
-
-
+/* 各个颜色按钮的配色（暗黑模式适配 - 稍微提亮一点，防止太暗） */
+html[data-mode="dark"] .color-btn.blue { background: linear-gradient(135deg, #93c5fd, #3b82f6) !important; }
+html[data-mode="dark"] .color-btn.green { background: linear-gradient(135deg, #d8b4fe, #9333ea) !important; }
+html[data-mode="dark"] .color-btn.orange { background: linear-gradient(135deg, #e5e7eb, #6b7280) !important; }
+html[data-mode="dark"] .color-btn.purple { background: linear-gradient(135deg, #fde047, #f59e0b) !important; }
 /* ==========================================================================
    3. 折叠面板基础（双圆角）
    ========================================================================== */
