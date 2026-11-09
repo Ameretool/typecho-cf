@@ -13,7 +13,7 @@ table {
     width: 100% !important; 
     margin-bottom: 16px !important; 
     border: none !important; 
-    box-shadow: 0 0 0 2px var(--border-color) !important; /* 用阴影模拟外边框 */
+    box-shadow: 0 0 0 2px var(--border-color) !important; 
     border-radius: 6px !important; 
     font-size: 15px !important; 
     display: block !important; 
@@ -26,11 +26,11 @@ table th, table td {
     padding: 12px 16px !important; 
     border: none !important; 
     vertical-align: middle !important; 
-    box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; /* 阴影画线 */
+    box-shadow: 1px 0 0 0 var(--border-color), 0 1px 0 0 var(--border-color) !important; 
     white-space: nowrap !important; 
     word-break: keep-all !important; 
 }
-table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; } /* 处理最后一列的右边框 */
+table tr > *:last-child { box-shadow: 0 1px 0 0 var(--border-color) !important; } 
 
 /* 表头样式 */
 table th { 
@@ -42,7 +42,7 @@ table th {
 
 /* 表格斑马纹与悬浮效果 */
 table tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.025) !important; }
-html[data-mode="dark"] table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03) !important; } /* 暗黑模式斑马纹 */
+html[data-mode="dark"] table tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03) !important; } 
 table tbody tr:hover { background-color: var(--card-bg) !important; }
 
 /* 表格内的行内代码块样式 */
@@ -91,11 +91,11 @@ input[type="text"], input[type="email"], input[type="url"], input[type="password
     border: 1px solid var(--border-color); 
     width: 100%; 
     border-radius: 2px; 
-    box-sizing: border-box; /* 修正盒模型 */
+    box-sizing: border-box; 
     background: var(--card-bg); 
     color: var(--text-color); 
 }
-textarea { resize: vertical; } /* 允许竖向拉伸 */
+textarea { resize: vertical; } 
 
 /* 链接下划线动效 */
 .post-meta a, .post-content a, .widget a, .comment-content a { border-bottom: 1px solid var(--border-color); }
@@ -108,7 +108,7 @@ textarea { resize: vertical; } /* 允许竖向拉伸 */
 
 .theme-settings-wrapper { position: relative; display: inline-block; z-index: 9999; }
 .theme-settings-toggle { background: transparent; border: none; color: var(--text-color, #444); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; transition: transform 0.3s, color 0.3s; }
-.theme-settings-toggle:hover { transform: rotate(30deg); color: var(--accent-color, #3354AA); } /* 悬浮旋转动效 */
+.theme-settings-toggle:hover { transform: rotate(30deg); color: var(--accent-color, #3354AA); } 
 
 /* 设置面板主体 */
 .theme-settings-panel { 
@@ -124,7 +124,7 @@ textarea { resize: vertical; } /* 允许竖向拉伸 */
     text-align: left; 
     z-index: 10000; 
 }
-.theme-settings-wrapper.active .theme-settings-panel { display: block; } /* 激活时显示 */
+.theme-settings-wrapper.active .theme-settings-panel { display: block; } 
 
 /* 设置项分组 */
 .setting-group { margin-bottom: 16px; }
@@ -166,8 +166,8 @@ textarea { resize: vertical; } /* 允许竖向拉伸 */
 }
 .color-btn:hover { transform: scale(1.1); }
 
-//* ==========================================
-   1. 颜色按钮基础与纯正色（对应实际主题）
+/* ==========================================
+   颜色按钮：纯正色（对应实际主题）
    ========================================== */
 .color-btn.blue { background: #2563eb !important; border: none !important; }
 .color-btn.green { background: #7c3aed !important; border: none !important; }
@@ -181,14 +181,16 @@ html[data-mode="dark"] .color-btn.orange { background: #6b7280 !important; }
 html[data-mode="dark"] .color-btn.purple { background: #f59e0b !important; }
 
 /* ==========================================
-   2. 被选中时的光环特效（非常重要！）
+   被选中时的光环特效（非常重要！）
    ========================================== */
 .color-btn.active {
-    outline: 2px solid var(--accent-color) !important; /* 外圈颜色跟随当前主题 */
-    outline-offset: 3px !important; /* 外圈和球的距离 */
-    transform: scale(1.1) !important; /* 稍微放大一点点 */
+    outline: 2px solid var(--accent-color) !important; 
+    outline-offset: 3px !important; 
+    transform: scale(1.1) !important; 
     transition: all 0.2s ease;
 }
+
+
 /* ==========================================================================
    3. 折叠面板基础（双圆角）
    ========================================================================== */
@@ -225,7 +227,7 @@ details details {
     margin-top: 15px !important; 
     margin-bottom: 10px !important; 
 }
-details details::before { width: 3px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; } /* 嵌套的指示条变细 */
+details details::before { width: 3px; border-top-left-radius: 6px; border-bottom-left-radius: 6px; } 
 
 /* 暗黑模式下的折叠面板背景 */
 html[data-mode="dark"] details { background-color: rgba(255, 255, 255, 0.03) !important; }
@@ -240,7 +242,7 @@ details summary {
     list-style: none; 
     user-select: none; 
 }
-details summary::-webkit-details-marker { display: none; } /* 隐藏默认三角 */
+details summary::-webkit-details-marker { display: none; } 
 
 /* 自定义前面的小三角箭头 */
 details summary::before { 
@@ -251,7 +253,7 @@ details summary::before {
     margin-right: 8px; 
     transition: transform 0.2s ease; 
 }
-details[open] > summary::before { transform: rotate(90deg); } /* 展开时箭头旋转90度 */
+details[open] > summary::before { transform: rotate(90deg); } 
 
 
 /* ==========================================================================
