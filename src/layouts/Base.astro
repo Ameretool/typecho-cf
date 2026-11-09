@@ -6,7 +6,6 @@ import type { SiteOptions } from '@/lib/options';
 import type { computeUrls } from '@/lib/options';
 import type { UserRow } from '@/lib/context';
 import { getThemeStylesheets } from '@/lib/theme';
-import ImageLightbox from './ImageLightbox.astro';
 import { getClientSnippets, type PageContext, type HookContext } from '@/lib/plugin';
 
 interface Props {
@@ -264,8 +263,6 @@ const pluginSnippets = await getClientSnippets(pluginCtx ?? { activatedPlugins: 
       if (action === 'font') window.setThemeFont(value);
     }, true); // 👈 注意这里的 true，表示在事件捕获阶段触发，极大地提高了点击响应率
   </script>
-  <!-- 全局图片放大 -->
-  <ImageLightbox />
-
+  <!-- 备注 -->
 </body>
 </html>
