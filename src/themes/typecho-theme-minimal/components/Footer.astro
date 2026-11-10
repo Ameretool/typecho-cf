@@ -11,32 +11,15 @@ const { options, urls } = Astro.props;
 </footer>
 
 <style is:global>
-  /* 👇 1. 彻底干掉分页组件底部自带的 margin 👇 */
-  .super-pagination, .page-navigator {
-    margin-bottom: 0 !important; 
-    padding-bottom: 0 !important;
-  }
-
-  /* 👇 2. 干掉所有外层容器和主内容区的底部空白 👇 */
-  #body, #main, .container, .row {
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
-  }
-
-  /* 👇 3. 页脚顶线及间距 👇 */
   #footer {
     border-top: 1px solid var(--border-color) !important;
-    margin-top: 15px !important; /* 这 15px 是唯一留下的呼吸空间 */
-    padding: 15px 0 25px !important; 
+    margin-top: 15px !important; 
+    padding: 20px 0 25px !important; 
     text-align: center;
     color: var(--text-color);
     opacity: 0.8;
   }
-  
-  #footer a {
-    color: var(--accent-color);
-    text-decoration: none;
-  }
+  /* ... */
 </style>
 
 <script is:inline>
