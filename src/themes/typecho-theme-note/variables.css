@@ -1,5 +1,5 @@
 /* ==========================================================================
-   文件一：variables.css - 颜色变量、全局基础、头部与导航
+   文件一：variables.css - 颜色变量与全局基础 (精简版)
    ========================================================================== */
 
 /* ============================================================
@@ -8,6 +8,7 @@
 :root {
   --bg-color:     #f6f8fa;   
   --text-color:   #24292f;   
+  --text-inverse: #ffffff; /* 用于高亮背景的反色字 */
   --card-bg:      #eaeef2;   
   --border-color: #d0d7de;   
   --accent-color: #0969da;   
@@ -22,6 +23,7 @@
 html[data-mode="dark"] {
   --bg-color:     #22272e;   
   --text-color:   #adbac7;   
+  --text-inverse: #161b22; 
   --card-bg:      #2d333b;   
   --border-color: #444c56;   
   --accent-color: #539bf5;   
@@ -74,6 +76,7 @@ button {
   text-decoration: none;
   display: inline-block;
   border-radius: 6px;
+  cursor: pointer;
 }
 
 .meta-tags {
@@ -90,44 +93,6 @@ button {
 .logout-form button:hover, .logout-form button:active { color: var(--text-color); }
 
 /* ============================================================
- * 3. 头部导航与搜索
+ * ⚠️ 注意：所有 #header、#nav-menu、#search 等旧样式已彻底删除
+ * 因为已经全部转移到 Header.astro 组件内部。
  * ============================================================ */
-#header { padding-top: 35px; border-bottom: 1px solid var(--border-color); }
-#logo { color: var(--text-color); font-size: 2.5em; }
-#logo img { max-height: 64px; }
-.description { margin: .5em 0 0; color: var(--text-color); opacity: 0.6; font-style: italic; }
-
-#nav-menu { margin: 25px 0 0; padding: 0; }
-#nav-menu a {
-  display: block;
-  margin-right: -1px;
-  padding: 0 20px;
-  border: 1px solid var(--border-color);
-  border-bottom: none;
-  height: 32px;
-  line-height: 32px;
-  color: var(--text-color);
-  background: var(--bg-color);
-  float: left;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-#nav-menu a:hover { background: var(--card-bg); color: var(--accent-color); }
-#nav-menu a.current { background: var(--card-bg); color: var(--accent-color); font-weight: 700; border-color: var(--accent-color); }
-
-#search { position: relative; margin-top: 15px; }
-#search input { padding-right: 30px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
-#search button {
-  position: absolute;
-  right: 4px;
-  top: 2px;
-  border: none;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  background: transparent;
-  cursor: pointer;
-  direction: ltr;
-  font-size: 0;
-  color: transparent;
-}
-#search button:before { content: "\1F50D"; font-size: 14px; color: var(--text-color); opacity: 0.6; }
