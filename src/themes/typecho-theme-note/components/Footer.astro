@@ -7,9 +7,29 @@ const { options, urls } = Astro.props;
 ---
 
 <footer id="footer" role="contentinfo">
-  &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CloudFlare</a> 强力驱动.
+  &copy; {new Date().getFullYear()} <a href="{urls.siteUrl}">{options.title}</a>. 由 <a href="#">Typecho CloudFlare</a> 强力驱动.
   <span id="page-speed" style="margin-left: 8px; font-size: 0.85em; opacity: 0.6;"></span>
 </footer>
+
+<style is:global>
+  /* 👇 1. 给页脚顶部加一条跟随主题颜色的边框线，并留出间距 👇 */
+  #footer {
+    border-top: 1px solid var(--border-color);
+    margin-top: 50px; 
+    padding: 2em 0 3em;
+    text-align: center;
+  }
+
+  /* 👇 2. 顺手修复侧边栏长文本撑爆屏幕的 Bug 👇 */
+  #secondary, 
+  .widget, 
+  .widget-list li, 
+  .widget-list a {
+    word-wrap: break-word !important;
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+  }
+</style>
 
 <script is:inline>
   window.addEventListener('load', () => {
