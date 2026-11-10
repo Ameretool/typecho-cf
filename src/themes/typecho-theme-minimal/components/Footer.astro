@@ -6,16 +6,16 @@ type Props = {
 const { options, urls } = Astro.props;
 ---
 <footer id="footer" role="contentinfo">
-  &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CloudFlare</a> 强力驱动.
+  &copy; {new Date().getFullYear()} <a href="{urls.siteUrl}">{options.title}</a>. 由 <a href="#">Typecho CloudFlare</a> 强力驱动.
   <span id="page-speed" style="margin-left: 8px; font-size: 0.85em; opacity: 0.6;"></span>
 </footer>
 
 <style is:global>
-  /* 👇 添加顶部边框线并控制间距 👇 */
+  /* 👇 暴力压缩距离，强制贴紧 👇 */
   #footer {
-    border-top: 1px solid var(--border-color);
-    margin-top: 15px; /* 和分页拉近 */
-    padding: 2em 0 3em;
+    border-top: 1px solid var(--border-color) !important;
+    margin-top: 10px !important; 
+    padding: 15px 0 25px !important; /* 之前是 padding: 2em 0 3em，这里改成 px 锁死 */
     text-align: center;
     color: var(--text-color);
     opacity: 0.8;
@@ -30,17 +30,13 @@ const { options, urls } = Astro.props;
 <script is:inline>
   window.addEventListener('load', () => {
     setTimeout(() => {
-      // 获取浏览器的性能导航数据
       const nav = performance.getEntriesByType('navigation')[0];
       const el = document.getElementById('page-speed');
       
       if (nav && el) {
-        // 计算 TTFB（首字节时间，即服务器响应时间）
-        // 注意：有些老浏览器可能没有 startTime，用 fetchStart 兜底
         const start = nav.startTime || nav.fetchStart;
         const ttfb = Math.round(nav.responseStart - start);
         
-        // 格式化时间：大于等于1000ms就转成秒（保留两位小数），小于1000ms直接显示ms
         let displayTime = '';
         if (ttfb >= 1000) {
           displayTime = (ttfb / 1000).toFixed(2) + ' s';
@@ -48,7 +44,6 @@ const { options, urls } = Astro.props;
           displayTime = ttfb + ' ms';
         }
         
-        // 显示在页脚
         el.textContent = `| 响应 ${displayTime}`;
       }
     }, 0);
