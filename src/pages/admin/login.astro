@@ -53,16 +53,13 @@ const refererValue = safeAdminRedirectUrl(refererAbsolute, urls.siteUrl || Astro
   <title>{`登录 - ${options.title}`}</title>
   <meta name="robots" content="noindex, nofollow" />
   
-  <!-- 👇 引入 Cloudflare Turnstile 脚本 👇 -->
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
   <link rel="stylesheet" href="/css/normalize.css" />
   {loginHeadHtml && <Fragment set:html={loginHeadHtml} />}
   <link rel="stylesheet" href="/css/grid.css" />
   <link rel="stylesheet" href="/css/admin.css" />
 </head>
 <body class="body-100">
-  <!-- 👇 全新的登录容器 👇 -->
+  <!-- 全新的登录容器 -->
   <div class="modern-login-page">
     <div class="modern-login-card">
       
@@ -97,9 +94,7 @@ const refererValue = safeAdminRedirectUrl(refererAbsolute, urls.siteUrl || Astro
           <input type="password" id="password" name="password" placeholder="密码" class="modern-input" required />
         </div>
         
-        <!-- 👇 Cloudflare Turnstile 验证组件 (把这里换成你的 Site Key) 👇 -->
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAAF7SDWf_S9OZ3udR" data-theme="auto" style="margin-bottom: 15px;"></div>
-
+        <!-- 👇 这里会由 Typecho-CF 的插件自动注入 Turnstile 验证码 👇 -->
         {loginFormHtml && <Fragment set:html={loginFormHtml} />}
 
         <button type="submit" class="modern-btn">登 录</button>
@@ -131,7 +126,7 @@ const refererValue = safeAdminRedirectUrl(refererAbsolute, urls.siteUrl || Astro
     });
   </script>
 
-  <!-- 👇 覆盖原有样式的现代 CSS 👇 -->
+  <!-- 覆盖原有样式的现代 CSS -->
   <style is:global>
     /* 重置背景 */
     body {
