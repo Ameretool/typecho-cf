@@ -1,7 +1,7 @@
 {
   "name": "typecho-cf",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Typecho blog rewrite with Astro + Cloudflare Workers + D1",
   "engines": {
     "node": ">=22.12.0"
