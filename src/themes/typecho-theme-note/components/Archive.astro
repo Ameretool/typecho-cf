@@ -1,14 +1,13 @@
 ---
 /**
  * ============================================================
- *  默认主题 — Archive 列表组件（最终修改版）
- * ============================================================
- *  修改点：
- *    1. 导航栏新增「归档」按钮，指向 /archive/
- *    2. 侧边栏「归档」改为显示分类列表（彻底解决 404）
+ *  默认主题 — Archive 列表组件（组件化最终版）
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
+import Header from './Header.astro';         // 👈 引入头部组件
+import Footer from './Footer.astro';         // 👈 引入底部组件
+import Pagination from './Pagination.astro'; // 👈 引入分页组件
 import type { ThemeArchiveProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
 
@@ -29,33 +28,8 @@ const isIndex = currentPath === '/';
   isLoggedIn={isLoggedIn}
   pluginCtx={pluginCtx}
 >
-  <!-- ==================== 页面头部 ==================== -->
-  <header id="header" class="clearfix">
-    <div class="container">
-      <div class="row">
-        <div class="site-name col-mb-12 col-9">
-          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-          <p class="description">{options.description}</p>
-        </div>
-        <div class="site-search col-3 kit-hidden-tb">
-          <form id="search" method="post" action={urls.siteUrl + '/'} role="search">
-            <label for="s" class="sr-only">搜索关键字</label>
-            <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索" />
-            <button type="submit" class="submit">搜索</button>
-          </form>
-        </div>
-        <div class="col-mb-12">
-          <nav id="nav-menu" class="clearfix" role="navigation">
-            <a class:list={[{ current: isIndex }]} href={urls.siteUrl + '/'}>首页</a>
-            {/* ==================== 修改点 1：新增「归档」按钮，指向 /archive/ ==================== */}
-            {pages.map((page) => (
-              <a href={page.permalink} title={page.title}>{page.title}</a>
-            ))}
-          </nav>
-        </div>
-      </div>
-    </div>
-  </header>
+  <!-- 👇 引入头部组件 👇 -->
+  <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
 
   <!-- ==================== 页面主体 ==================== -->
   <div id="body">
@@ -106,12 +80,9 @@ const isIndex = currentPath === '/';
             ))
           )}
 
-          {pagination.totalPages > 1 && (
-            <nav class="page-navigator">
-              {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
-              {pagination.hasNext && <a class="next" href={pagination.nextUrl!}>后一页 &raquo;</a>}
-            </nav>
-          )}
+          <!-- 👇 替换为分页组件 👇 -->
+          <Pagination pagination={pagination} />
+
         </div>
 
         <!-- ==================== 侧边栏 ==================== -->
@@ -148,21 +119,6 @@ const isIndex = currentPath === '/';
               </section>
             )}
 
-            {/* ==================== 修改点 2：侧边栏「归档」改为显示分类 ==================== */}
-        {/*    
-           {sidebarData.categories && sidebarData.categories.length > 0 && (
-              <section class="widget">
-                <h3 class="widget-title">归档</h3>
-                <ul class="widget-list">
-                  {sidebarData.categories.map((cat) => (
-                    <li><a href={cat.permalink}>{cat.name} ({cat.count})</a></li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          */}
-            {/* ========================================================================= */}
-
             <section class="widget">
               <h3 class="widget-title">其它</h3>
               <ul class="widget-list">
@@ -186,9 +142,6 @@ const isIndex = currentPath === '/';
     </div>
   </div>
 
-  <!-- ==================== 页脚 ==================== -->
-  <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
-   由 <a href="#">Typecho CF</a> 强力驱动.
-  </footer>
+  <!-- 👇 引入底部组件 👇 -->
+  <Footer options={options} urls={urls} />
 </Base>
