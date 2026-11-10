@@ -1,12 +1,7 @@
 ---
 /**
  * ============================================================
- *  标签总览页 - /tag/ （极简统一风格版）
- * ============================================================
- *  功能：
- *    1. 列出所有标签，采用统一的极简主题色（适配暗黑模式）
- *    2. 导航栏带 pages（项目、链接、关于）
- *    3. 右侧带完整侧边栏，且包含标签云
+ *  标签总览页 - /tag/ （极简统一风格 + 动态主题适配版）
  * ============================================================
  */
 import Base from '@/layouts/Base.astro';
@@ -19,12 +14,27 @@ import { eq } from 'drizzle-orm';
 const ctx = await createContext(Astro.locals, Astro.request);
 const { db, options, urls, user, isLoggedIn, pluginCtx } = ctx;
 
-// 2. 复用首页数据，拿到 pages 和 sidebarData
+// 2. 👇 动态获取当前激活的主题并加载头尾组件 👇
+const currentTheme = options.theme || 'typecho-theme-minimal'; 
+let Header, Footer;
+try {
+  const headerModule = await import(`../../themes/${currentTheme}/components/Header.astro`);
+  const footerModule = await import(`../../themes/${currentTheme}/components/Footer.astro`);
+  Header = headerModule.default;
+  Footer = footerModule.default;
+} catch (e) {
+  Header = () => null;
+  Footer = () => null;
+}
+
+const currentPath = Astro.url.pathname; // 获取当前路径用于导航高亮
+
+// 3. 复用首页数据，拿到 pages 和 sidebarData
 const data = await prepareIndexData(ctx, Astro.request.url, Astro.locals, Astro.url);
-const pages = data?.pages;
+const pages = data?.pages || [];
 const sidebarData = data?.sidebarData;
 
-// 3. 查询所有标签
+// 4. 查询所有标签
 const allTags = await db
   .select({
     mid: schema.metas.mid,
@@ -34,7 +44,7 @@ const allTags = await db
   .from(schema.metas)
   .where(eq(schema.metas.type, 'tag'));
 
-// 4. 统计每个标签下的文章数
+// 5. 统计每个标签下的文章数
 const relationships = await db
   .select({
     mid: schema.relationships.mid,
@@ -47,13 +57,13 @@ relationships.forEach((r) => {
   tagCountMap[r.mid] = (tagCountMap[r.mid] || 0) + 1;
 });
 
-// 5. 合并数据，并按文章数量从多到少排序
+// 6. 合并数据，并按文章数量从多到少排序
 const tagsWithCount = allTags.map((tag) => {
   return {
     ...tag,
     count: tagCountMap[tag.mid] || 0,
   };
-}).sort((a, b) => b.count - a.count); // 按文章数降序排列
+}).sort((a, b) => b.count - a.count);
 ---
 
 <Base
@@ -64,26 +74,8 @@ const tagsWithCount = allTags.map((tag) => {
   isLoggedIn={isLoggedIn}
   pluginCtx={pluginCtx}
 >
-  <header id="header" class="clearfix">
-    <div class="container">
-      <div class="row">
-        <div class="site-name col-mb-12 col-9">
-          <a id="logo" href={urls.siteUrl + '/'}>{options.title}</a>
-          <p class="description">{options.description}</p>
-        </div>
-        <div class="col-mb-12">
-          <nav id="nav-menu" class="clearfix" role="navigation">
-            <a href={urls.siteUrl + '/'}>首页</a>
-            <a href={urls.siteUrl + '/tag/'} class="current">标签</a>
-            {/* 导航栏补齐 pages */}
-            {(pages || []).map((page) => (
-              <a href={page.permalink} title={page.title}>{page.title}</a>
-            ))}
-          </nav>
-        </div>
-      </div>
-    </div>
-  </header>
+  <!-- 👇 动态渲染当前主题的头部 👇 -->
+  {Header && <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />}
 
   <div id="body">
     <div class="container">
@@ -173,10 +165,8 @@ const tagsWithCount = allTags.map((tag) => {
     </div>
   </div>
 
-  <footer id="footer" role="contentinfo">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
-   由 <a href="#">Typecho CF</a> 强力驱动.
-  </footer>
+  <!-- 👇 动态渲染当前主题的底部 👇 -->
+  {Footer && <Footer options={options} urls={urls} />}
 </Base>
 
 <style>
