@@ -169,21 +169,22 @@ const titleActionHtml = new Map<number, string>(
       <div class="typecho-table-wrap">
         <table class="typecho-list-table">
           <colgroup>
-            <col width="30" /> <!-- 👈 删掉了 kit-hidden-mb，让复选框在手机端显示 -->
+            <!-- 调整列宽分配，解决手机端距离过大的问题 -->
+            <col width="35" /> 
             <col width="6%" class="kit-hidden-mb" />
-            <col width="45%" />
+            <col width="auto" /> <!-- 标题列自适应剩余空间 -->
             <col width="" class="kit-hidden-mb" />
             <col width="18%" class="kit-hidden-mb" />
-            <col width="16%" />
+            <col width="85" /> <!-- 日期列固定宽度，防止折行 -->
           </colgroup>
           <thead>
             <tr>
-              <th></th> <!-- 👈 删掉了 kit-hidden-mb -->
+              <th></th>
               <th class="kit-hidden-mb"></th>
-              <th>标题</th>
+              <th style="text-align: left !important;">标题</th> <!-- 强制靠左 -->
               <th class="kit-hidden-mb">作者</th>
               <th class="kit-hidden-mb">分类</th>
-              <th>日期</th>
+              <th style="text-align: right !important; white-space: nowrap;">日期</th> <!-- 强制靠右且不换行 -->
             </tr>
           </thead>
           <tbody>
@@ -198,13 +199,13 @@ const titleActionHtml = new Map<number, string>(
                 const isDraft = post.type === 'post_draft';
                 return (
                   <tr>
-                    <td style="padding-right: 5px;"><input type="checkbox" value={String(post.cid)} name="cid[]" /></td> <!-- 👈 删掉了 kit-hidden-mb 并加了一点右侧间距 -->
+                    <td><input type="checkbox" value={String(post.cid)} name="cid[]" /></td>
                     <td class="kit-hidden-mb">
                       <a href={`/admin/manage-comments?cid=${post.cid}`}
                         class="balloon-button size-small"
                         title={`${post.commentsNum || 0} 评论`}>{post.commentsNum || 0}</a>
                     </td>
-                    <td>
+                    <td style="text-align: left !important; padding-left: 5px !important;">
                       <a href={`/admin/write-post?cid=${post.cid}`}>{post.title || '无标题'}</a>
                       {isDraft && <em class="status">草稿</em>}
                       {post.status === 'hidden' && <em class="status">隐藏</em>}
@@ -225,7 +226,9 @@ const titleActionHtml = new Map<number, string>(
                       ))}
                       {cats.length === 0 && '未分类'}
                     </td>
-                    <td>{formatDate(post.created || 0, 'Y-m-d', options.timezone)}</td>
+                    <td style="text-align: right !important; white-space: nowrap !important;">
+                      {formatDate(post.created || 0, 'Y-m-d', options.timezone)}
+                    </td>
                   </tr>
                 );
               })
