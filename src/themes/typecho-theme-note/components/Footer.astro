@@ -12,12 +12,19 @@ const { options, urls } = Astro.props;
 </footer>
 
 <style is:global>
-  /* 👇 1. 给页脚顶部加一条跟随主题颜色的边框线，并留出间距 👇 */
+  /* 👇 1. 给页脚顶部加一条跟随主题颜色的边框线，并收紧间距 👇 */
   #footer {
     border-top: 1px solid var(--border-color);
-    margin-top: 50px; 
-    padding: 2em 0 3em;
+    margin-top: 15px; /* 从 50px 缩减到 15px，紧贴分页 */
+    padding: 25px 0 35px; /* 调整上下内边距，不至于太挤 */
     text-align: center;
+    color: var(--text-color);
+    opacity: 0.8;
+  }
+  
+  #footer a {
+    color: var(--accent-color);
+    text-decoration: none;
   }
 
   /* 👇 2. 顺手修复侧边栏长文本撑爆屏幕的 Bug 👇 */
