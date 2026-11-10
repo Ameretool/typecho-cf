@@ -1,13 +1,39 @@
 ---
-/**
- * 全局页脚组件
- */
+type Props = {
+  options: any;
+  urls: any;
+};
 const { options, urls } = Astro.props;
 ---
 
 <footer id="footer" role="contentinfo">
-  <div class="container">
-    &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>.
-    由 <a href="#">Typecho CloudFlare</a> 强力驱动.
-  </div>
+  &copy; {new Date().getFullYear()} <a href={urls.siteUrl}>{options.title}</a>. 由 <a href="#">Typecho CloudFlare</a> 强力驱动.
+  <span id="page-speed" style="margin-left: 8px; font-size: 0.85em; opacity: 0.6;"></span>
 </footer>
+
+<script is:inline>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      // 获取浏览器的性能导航数据
+      const nav = performance.getEntriesByType('navigation')[0];
+      const el = document.getElementById('page-speed');
+      
+      if (nav && el) {
+        // 计算 TTFB（首字节时间，即服务器响应时间）
+        const start = nav.startTime || nav.fetchStart;
+        const ttfb = Math.round(nav.responseStart - start);
+        
+        // 格式化时间：大于等于1000ms就转成秒（保留两位小数），小于1000ms直接显示ms
+        let displayTime = '';
+        if (ttfb >= 1000) {
+          displayTime = (ttfb / 1000).toFixed(2) + ' s';
+        } else {
+          displayTime = ttfb + ' ms';
+        }
+        
+        // 显示在页脚
+        el.textContent = `| 响应 ${displayTime}`;
+      }
+    }, 0);
+  });
+</script>
