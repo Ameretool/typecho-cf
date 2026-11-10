@@ -4,8 +4,9 @@
  * 首页组件（Astro 语法）
  */
 import Base from '@/layouts/Base.astro';
-import Header from './Header.astro'; // 👈 引入抽离的头部组件
-import Footer from './Footer.astro'; // 👈 修改了这里，同目录下直接引入
+import Header from './Header.astro'; 
+import Footer from './Footer.astro'; 
+import Pagination from './Pagination.astro'; // 👈 引入翻页组件
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
 import { renderContentExcerpt } from '@/lib/markdown';
@@ -68,6 +69,7 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
 
 <Base options={options} urls={urls} user={user} isLoggedIn={isLoggedIn} pluginCtx={pluginCtx}>
   
+  <!-- 👇 头部组件 👇 -->
   <Header options={options} urls={urls} pages={pages} currentPath={currentPath} />
 
   <div id="body">
@@ -142,12 +144,9 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
             ))
           )}
 
-          {pagination.totalPages > 1 && (
-            <nav class="page-navigator">
-              {pagination.hasPrev && <a class="prev" href={pagination.prevUrl!}>&laquo; 前一页</a>}
-              {pagination.hasNext && <a class="next" href={pagination.nextUrl!}>后一页 &raquo;</a>}
-            </nav>
-          )}
+          <!-- 👇 翻页组件 👇 -->
+          <Pagination pagination={pagination} />
+
         </div>
 
         <div class="col-mb-12 col-offset-1 col-3 kit-hidden-tb" id="secondary" role="complementary">
@@ -208,5 +207,6 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
     </div>
   </div>
 
+  <!-- 👇 底部组件 👇 -->
   <Footer options={options} urls={urls} />
 </Base>
