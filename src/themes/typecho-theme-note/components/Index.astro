@@ -6,6 +6,7 @@
 import Base from '@/layouts/Base.astro';
 import Header from './Header.astro'; 
 import Footer from './Footer.astro'; 
+import Pagination from './Pagination.astro'; // 👈 1. 重新引入分页组件 (路径确认没问题)
 import type { ThemeIndexProps } from '@/lib/theme-props';
 import { formatDate, buildAuthorLink } from '@/lib/content';
 import { renderContentExcerpt } from '@/lib/markdown';
@@ -142,21 +143,8 @@ function buildSquareLivePhoto(src: string, videoSrc?: string): string {
             ))
           )}
 
-          {/* 👇 这里直接使用原生的 HTML 写分页，确保页面绝对不报错 👇 */}
-          {pagination && pagination.totalPages > 1 && (
-            <nav style="display: flex; justify-content: center; align-items: center; gap: 12px; margin: 40px 0;">
-              {pagination.hasPrev && pagination.prevUrl && (
-                <a href={pagination.prevUrl} style="display: inline-flex; align-items: center; justify-content: center; min-width: 80px; height: 36px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); text-decoration: none; font-size: 14px;">
-                  &laquo; 上一页
-                </a>
-              )}
-              {pagination.hasNext && pagination.nextUrl && (
-                <a href={pagination.nextUrl} style="display: inline-flex; align-items: center; justify-content: center; min-width: 80px; height: 36px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); text-decoration: none; font-size: 14px;">
-                  下一页 &raquo;
-                </a>
-              )}
-            </nav>
-          )}
+          {/* 👇 2. 重新挂载组件 👇 */}
+          <Pagination pagination={pagination} />
 
         </div>
 
