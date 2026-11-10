@@ -10,7 +10,24 @@ const { options, urls } = Astro.props;
   <span id="page-speed" style="margin-left: 8px; font-size: 0.85em; opacity: 0.6;"></span>
 </footer>
 
-<script>
+<style is:global>
+  /* 👇 添加顶部边框线并控制间距 👇 */
+  #footer {
+    border-top: 1px solid var(--border-color);
+    margin-top: 15px; /* 和分页拉近 */
+    padding: 2em 0 3em;
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.8;
+  }
+  
+  #footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+  }
+</style>
+
+<script is:inline>
   window.addEventListener('load', () => {
     setTimeout(() => {
       // 获取浏览器的性能导航数据
