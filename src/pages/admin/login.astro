@@ -1,0 +1,295 @@
+---
+import { createContext } from '@/lib/context';
+import { LOGIN_ERROR_FLASH_COOKIE, REGISTER_NOTICE_FLASH_COOKIE, clearFlashCookieHeader, getFlashCookieValue } from '@/lib/flash';
+import { applyFilterSafely } from '@/lib/plugin';
+import { safeAdminRedirectUrl } from '@/lib/admin-auth';
+
+let options: any = { title: 'Blog', charset: 'UTF-8', lang: 'zh_CN', description: '' };
+let urls: any = { siteUrl: '' };
+let loginHeadHtml = '';
+let loginFormHtml = '';
+
+try {
+  const ctx = await createContext(Astro.locals, Astro.request);
+  options = ctx.options;
+  urls = ctx.urls;
+
+  // If already logged in, redirect to admin
+  if (ctx.isLoggedIn) {
+    return Astro.redirect('/admin/');
+  }
+
+  [loginHeadHtml, loginFormHtml] = await Promise.all([
+    applyFilterSafely(ctx, 'admin:loginHead', '', { options }),
+    applyFilterSafely(ctx, 'admin:loginForm', '', { options }),
+  ]);
+} catch {
+  // DB not initialized - redirect to install
+  return Astro.redirect('/install');
+}
+
+const cookieHeader = Astro.request.headers.get('cookie');
+const error = getFlashCookieValue(cookieHeader, LOGIN_ERROR_FLASH_COOKIE);
+if (error) {
+  Astro.response.headers.append('Set-Cookie', clearFlashCookieHeader(LOGIN_ERROR_FLASH_COOKIE, { path: '/admin/login', request: Astro.request }));
+}
+const notice = getFlashCookieValue(cookieHeader, REGISTER_NOTICE_FLASH_COOKIE);
+if (notice) {
+  Astro.response.headers.append('Set-Cookie', clearFlashCookieHeader(REGISTER_NOTICE_FLASH_COOKIE, { path: '/admin/login', request: Astro.request }));
+}
+
+const redirectInput = Astro.url.searchParams.get('redirect') || '/admin/';
+const refererAbsolute = (() => {
+  try { return new URL(redirectInput, urls.siteUrl || Astro.url.origin).toString(); } catch { return urls.siteUrl || '/admin/'; }
+})();
+const refererValue = safeAdminRedirectUrl(refererAbsolute, urls.siteUrl || Astro.url.origin, '/admin/');
+---
+<!DOCTYPE html>
+<html lang={options.lang === 'zh_CN' ? 'zh-CN' : 'en'}>
+<head>
+  <meta charset={options.charset || 'UTF-8'} />
+  <meta name="renderer" content="webkit" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{`登录 - ${options.title}`}</title>
+  <meta name="robots" content="noindex, nofollow" />
+  
+  <!-- 👇 引入 Cloudflare Turnstile 脚本 👇 -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+  <link rel="stylesheet" href="/css/normalize.css" />
+  {loginHeadHtml && <Fragment set:html={loginHeadHtml} />}
+  <link rel="stylesheet" href="/css/grid.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="body-100">
+  <!-- 👇 全新的登录容器 👇 -->
+  <div class="modern-login-page">
+    <div class="modern-login-card">
+      
+      <!-- 替换为 Logo 图片，如果图片加载失败，自动显示站点标题文字 -->
+      <a href={urls.siteUrl + '/'} class="login-brand">
+        <img 
+          src="/logo.png" 
+          alt={options.title} 
+          onerror="this.style.display='none';this.nextElementSibling.style.display='block';" 
+        />
+        <h1 style="display:none;">{options.title}</h1>
+      </a>
+
+      {error && (
+        <div class="modern-message error typecho-dismissible">
+          {error}
+          <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
+        </div>
+      )}
+      {notice && (
+        <div class="modern-message success typecho-dismissible">
+          {notice}
+          <button type="button" class="typecho-notice-close" aria-label="关闭提示">&times;</button>
+        </div>
+      )}
+
+      <form action="/api/users/login" method="post" name="login" id="login-form" role="form" class="modern-form">
+        <div class="input-group">
+          <input type="text" id="name" name="name" placeholder="用户名" class="modern-input" autofocus required />
+        </div>
+        <div class="input-group">
+          <input type="password" id="password" name="password" placeholder="密码" class="modern-input" required />
+        </div>
+        
+        <!-- 👇 Cloudflare Turnstile 验证组件 (把这里换成你的 Site Key) 👇 -->
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAF7SDWf_S9OZ3udR" data-theme="auto" style="margin-bottom: 15px;"></div>
+
+        {loginFormHtml && <Fragment set:html={loginFormHtml} />}
+
+        <button type="submit" class="modern-btn">登 录</button>
+        <input type="hidden" name="referer" value={refererValue} />
+        
+        <div class="modern-options">
+          <label for="remember" class="remember-label">
+            <input type="checkbox" name="remember" class="checkbox" value="1" id="remember" /> 下次自动登录
+          </label>
+        </div>
+      </form>
+      
+      <div class="modern-footer">
+        <a href="/admin/forgot-password">忘记密码？</a>
+        <span>·</span>
+        <a href={urls.siteUrl + '/'}>返回首页</a>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    document.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('typecho-notice-close')) return;
+      var notice = target.closest('.typecho-dismissible');
+      if (notice && notice.parentNode) {
+        notice.parentNode.removeChild(notice);
+      }
+    });
+  </script>
+
+  <!-- 👇 覆盖原有样式的现代 CSS 👇 -->
+  <style is:global>
+    /* 重置背景 */
+    body {
+      background-color: #f4f6f8 !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* 暗黑模式适配 */
+    @media (prefers-color-scheme: dark) {
+      body { background-color: #1a1a1a !important; }
+      .modern-login-card { background: #2a2a2a !important; border-color: #3a3a3a !important; }
+      .modern-input { background: #1f1f1f !important; border-color: #444 !important; color: #eee !important; }
+      .modern-input:focus { border-color: #60a5fa !important; }
+      .modern-footer a { color: #60a5fa !important; }
+      .login-brand h1 { color: #eee !important; }
+      .remember-label { color: #aaa !important; }
+    }
+
+    .modern-login-page {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .modern-login-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 40px 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+
+    .login-brand {
+      display: block;
+      margin: 0 auto 30px auto;
+      text-decoration: none;
+    }
+
+    .login-brand img {
+      max-height: 64px;
+      width: auto;
+      border-radius: 8px;
+    }
+
+    .login-brand h1 {
+      font-size: 24px;
+      color: #333;
+      margin: 0;
+    }
+
+    .modern-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modern-input {
+      width: 100%;
+      height: 46px;
+      padding: 0 16px;
+      background: #f9fafb;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      color: #111;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    .modern-input:focus {
+      border-color: #3b82f6;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .modern-btn {
+      height: 46px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 5px;
+    }
+
+    .modern-btn:hover {
+      background: #2563eb;
+    }
+
+    .modern-options {
+      display: flex;
+      justify-content: center;
+      margin-top: 5px;
+    }
+
+    .remember-label {
+      font-size: 14px;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .modern-message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      text-align: left;
+      position: relative;
+    }
+    .modern-message.error { background: #fee2e2; color: #b91c1c; }
+    .modern-message.success { background: #d1fae5; color: #047857; }
+    
+    .modern-message .typecho-notice-close {
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.6;
+    }
+
+    .modern-footer {
+      margin-top: 25px;
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
+    .modern-footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+
+    .modern-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .modern-footer span {
+      margin: 0 8px;
+      opacity: 0.5;
+    }
+  </style>
+</body>
+</html>
